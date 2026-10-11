@@ -150,7 +150,9 @@ const Emotes = {
 	StrokeStage2: 5,
 	StrokeBloom: 6,
 	StrokeCancel: 7,
-	Dance: 8
+	StageDance: 8,
+	Faint: 15,
+	Dance: 16
 };
 
 
@@ -3624,7 +3626,7 @@ document.body.appendChild(
 					onclick: _ => {
 						window.wasDancing = true;
 						if (typeof gameState !== "undefined" && gameState?.sendEmoteNow) {
-							gameState.sendEmoteNow(Emotes.Dance || 8);
+							gameState.sendEmoteNow(Emotes.Dance || 16);
 						}
 					}
 				}),
@@ -6650,14 +6652,18 @@ window.spkmodTriggerDeathSelf = function() {
 };
 
 function spkmodPlayDance(targetController, targetName) {
-	if (!targetController || typeof targetController.playStageDance !== 'function') {
-		console.warn("[SpeakiMod+ Local Effects] Target does not have a valid controller or playStageDance function.", targetName);
+	if (!targetController || (typeof targetController.playFreeDance !== 'function' && typeof targetController.playStageDance !== 'function')) {
+		console.warn("[SpeakiMod+ Local Effects] Target does not have a valid controller or dance function.", targetName);
 		return false;
 	}
 	try {
 		spkmodPatchControllerForDeath(targetController);
 		lunDeathLocks.add(targetController);
-		targetController.playStageDance();
+		if (typeof targetController.playFreeDance === 'function') {
+			targetController.playFreeDance();
+		} else {
+			targetController.playStageDance();
+		}
 		console.log(`[SpeakiMod+ Local Effects] "${targetName}" DANCE animation played.`);
 		return true;
 	} catch (err) {
@@ -6704,14 +6710,18 @@ function spkmodPlayFly(targetController, targetName) {
 }
 
 function spkmodPlayHobagi(targetController, targetName) {
-	if (!targetController || typeof targetController.playEmote !== 'function') {
-		console.warn("[SpeakiMod+ Local Effects] Target does not have a valid controller or playEmote function.", targetName);
+	if (!targetController || (typeof targetController.playStageDance !== 'function' && typeof targetController.playEmote !== 'function')) {
+		console.warn("[SpeakiMod+ Local Effects] Target does not have a valid controller or playStageDance function.", targetName);
 		return false;
 	}
 	try {
 		spkmodPatchControllerForDeath(targetController);
 		lunDeathLocks.add(targetController);
-		targetController.playEmote(8);
+		if (typeof targetController.playStageDance === 'function') {
+			targetController.playStageDance();
+		} else {
+			targetController.playEmote(8);
+		}
 		console.log(`[SpeakiMod+ Local Effects] "${targetName}" HOBAGI animation played.`);
 		return true;
 	} catch (err) {
