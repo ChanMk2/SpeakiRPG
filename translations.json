@@ -518,7 +518,11 @@
         "effectHaunted": "Paranormal Cam",
         "effectGlitch": "Glitch Art",
         "effectKaleido": "Rainbow Prism",
-        "effectSupernova": "Supernova"
+        "effectSupernova": "Supernova",
+        "trueFirstPersonOn": "True 1st Person: ⏸️",
+        "trueFirstPersonOff": "True 1st Person: ▶️",
+        "speedometerText": "Speed: {0} m/s",
+        "speedometerToggleLabel": "Speedometer (m/s)"
     },
     "ja": {
         "langName": "日本語",
@@ -1069,7 +1073,11 @@
         "effectHaunted": "心霊暗視カメラ",
         "effectGlitch": "グリッチアート (崩壊バグ)",
         "effectKaleido": "レインボープリズム",
-        "effectSupernova": "超新星スーパーノヴァ"
+        "effectSupernova": "超新星スーパーノヴァ",
+        "trueFirstPersonOn": "完全1人称: ⏸️",
+        "trueFirstPersonOff": "完全1人称: ▶️",
+        "speedometerText": "速度: {0} m/s",
+        "speedometerToggleLabel": "スピードメーター (m/s)"
     },
     "ko": {
         "langName": "한국어",
@@ -1590,7 +1598,11 @@
         "effectHaunted": "심령 야간 투시경",
         "effectGlitch": "글리치 아트 (오류)",
         "effectKaleido": "레인보우 프리즘",
-        "effectSupernova": "초신성 폭발"
+        "effectSupernova": "초신성 폭발",
+        "trueFirstPersonOn": "리얼 1인칭: ⏸️",
+        "trueFirstPersonOff": "리얼 1인칭: ▶️",
+        "speedometerText": "속도: {0} m/s",
+        "speedometerToggleLabel": "속도계 (m/s)"
     },
     "zh-TW": {
         "langName": "繁體中文",
@@ -2106,7 +2118,11 @@
         "effectHaunted": "靈異夜視鏡",
         "effectGlitch": "故障藝術 (Glitch)",
         "effectKaleido": "彩虹稜鏡",
-        "effectSupernova": "超新星爆發"
+        "effectSupernova": "超新星爆發",
+        "trueFirstPersonOn": "真・第一人稱: ⏸️",
+        "trueFirstPersonOff": "真・第一人稱: ▶️",
+        "speedometerText": "速度: {0} m/s",
+        "speedometerToggleLabel": "時速表 (m/s)"
     },
     "zh-CN": {
         "langName": "简体中文",
@@ -2622,7 +2638,11 @@
         "effectHaunted": "灵异夜视仪",
         "effectGlitch": "故障艺术 (Glitch)",
         "effectKaleido": "彩虹棱镜",
-        "effectSupernova": "超新星爆发"
+        "effectSupernova": "超新星爆发",
+        "trueFirstPersonOn": "真・第一人称: ⏸️",
+        "trueFirstPersonOff": "真・第一人称: ▶️",
+        "speedometerText": "速度: {0} m/s",
+        "speedometerToggleLabel": "时速表 (m/s)"
     },
     "es-419": {
         "langName": "Español",
@@ -3138,6 +3158,10 @@
         "effectHaunted": "Cámara Paranormal",
         "effectGlitch": "Arte Glitch",
         "effectKaleido": "Prisma Arcoíris",
-        "effectSupernova": "Supernova"
+        "effectSupernova": "Supernova",
+        "trueFirstPersonOn": "Verdadera 1ra Persona: ⏸️",
+        "trueFirstPersonOff": "Verdadera 1ra Persona: ▶️",
+        "speedometerText": "Velocidad: {0} m/s",
+        "speedometerToggleLabel": "Velocímetro (m/s)"
     }
 }

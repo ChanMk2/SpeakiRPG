@@ -155,6 +155,13 @@ const Emotes = {
 	Dance: 16
 };
 
+// True First Person & Speedometer State
+var lunTrueFirstPersonActive = false;
+var lunSpeedometerEnabled = true;
+var lunCurrentSpeedMps = 0;
+
+
+
 
 
 const Portals = {
@@ -2462,6 +2469,8 @@ var lunChromaKeyColor = (window.localStorage && localStorage.getItem("spkmod-chr
 var lunHideAllOtherPlayers = (window.localStorage && localStorage.getItem("spkmod-hide-all-players") === "true") || false;
 var lunLockedFacialExpression = (window.localStorage && localStorage.getItem("spkmod-locked-facial-expression")) || "none";
 
+var lunSpeedometerEnabled = window.localStorage ? (localStorage.getItem("spkmod-speedometer") !== "false") : true;
+
 const LUN_CHROMA_COLORS = {
 	green: 0x00FF00,
 	blue: 0x0000FF,
@@ -3587,6 +3596,10 @@ document.body.appendChild(
 				innerText: t("fpsPingText", "--", "--"),
 				style: lunFpsPingEnabled ? "" : "display: none;"
 			}),
+			lunHudElements.speedometerTracker = buildElement("span", {
+				innerText: t("speedometerText", "0.0"),
+				style: lunSpeedometerEnabled ? "" : "display: none;"
+			}),
 			lunHudElements.resetTimerTracker = buildElement("span", {
 				innerText: t("resetTimerText", "--", "--", "--"),
 				style: lunResetTimerEnabled ? "" : "display: none;"
@@ -4055,6 +4068,11 @@ document.body.appendChild(
 						lunFirstPersonActive = !lunFirstPersonActive;
 						setText(e.target, t(lunFirstPersonActive ? "firstPersonOn" : "firstPersonOff"));
 						if (lunFirstPersonActive) {
+							if (lunTrueFirstPersonActive) {
+								lunTrueFirstPersonActive = false;
+								if (window.lunInvisibilityActive && typeof window.spkmodToggleInvisibility === "function") window.spkmodToggleInvisibility();
+								if (lunPanelElements.trueFirstPersonBtn) setText(lunPanelElements.trueFirstPersonBtn, t("trueFirstPersonOff"));
+							}
 							lunDroneModeActive = false;
 							if (lunPanelElements.freeCamBtn) setText(lunPanelElements.freeCamBtn, t("freeCamOff"));
 							if (typeof gameState !== "undefined" && gameState?.cameraController) {
@@ -4078,6 +4096,44 @@ document.body.appendChild(
 									if (!remoteContainers.includes(c)) c.visible = true;
 								});
 							}
+							if (typeof gameState !== "undefined" && gameState?.cameraController) {
+								gameState.cameraController.cameraZoomDistance = 12;
+								lunViewClip = false;
+								if (lunPanelElements.viewClipBtn) setText(lunPanelElements.viewClipBtn, t("viewClipOff"));
+							}
+						}
+					}
+				}),
+				lunPanelElements.trueFirstPersonBtn = buildElement("button", {
+					className: "spkmod-panel-btn",
+					innerText: t("trueFirstPersonOff"),
+					onclick: e => {
+						lunTrueFirstPersonActive = !lunTrueFirstPersonActive;
+						setText(e.target, t(lunTrueFirstPersonActive ? "trueFirstPersonOn" : "trueFirstPersonOff"));
+						if (lunTrueFirstPersonActive) {
+							if (lunFirstPersonActive) {
+								lunFirstPersonActive = false;
+								if (lunPanelElements.firstPersonBtn) setText(lunPanelElements.firstPersonBtn, t("firstPersonOff"));
+							}
+							lunDroneModeActive = false;
+							if (lunPanelElements.freeCamBtn) setText(lunPanelElements.freeCamBtn, t("freeCamOff"));
+
+							// Enable 👻 invisibility
+							if (!window.lunInvisibilityActive && typeof window.spkmodToggleInvisibility === "function") {
+								window.spkmodToggleInvisibility();
+							}
+
+							if (typeof gameState !== "undefined" && gameState?.cameraController) {
+								gameState.cameraController.cameraZoomDistance = 0.05;
+								lunViewClip = true;
+								if (lunPanelElements.viewClipBtn) setText(lunPanelElements.viewClipBtn, t("viewClipOn"));
+							}
+						} else {
+							// Disable 👻 invisibility
+							if (window.lunInvisibilityActive && typeof window.spkmodToggleInvisibility === "function") {
+								window.spkmodToggleInvisibility();
+							}
+
 							if (typeof gameState !== "undefined" && gameState?.cameraController) {
 								gameState.cameraController.cameraZoomDistance = 12;
 								lunViewClip = false;
@@ -4133,6 +4189,11 @@ document.body.appendChild(
 						if (lunDroneModeActive) {
 							lunFirstPersonActive = false;
 							if (lunPanelElements.firstPersonBtn) setText(lunPanelElements.firstPersonBtn, t("firstPersonOff"));
+							if (lunTrueFirstPersonActive) {
+								lunTrueFirstPersonActive = false;
+								if (window.lunInvisibilityActive && typeof window.spkmodToggleInvisibility === "function") window.spkmodToggleInvisibility();
+								if (lunPanelElements.trueFirstPersonBtn) setText(lunPanelElements.trueFirstPersonBtn, t("trueFirstPersonOff"));
+							}
 							if (gameState.playerContainer) {
 								const remoteContainers = gameState.remotePlayers?.remotePlayers ? 
 									Array.from(gameState.remotePlayers.remotePlayers.values()).map(rp => rp.container) : [];
@@ -4714,6 +4775,14 @@ document.body.appendChild(
 						if (window.localStorage) localStorage.setItem("spkmod-channel-tracker", lunChannelTrackerEnabled);
 						if (lunHudElements.channelTracker) lunHudElements.channelTracker.style.display = lunChannelTrackerEnabled ? "" : "none";
 						if (typeof lunChannelTrackerNextTicks !== 'undefined') lunChannelTrackerNextTicks = 0;
+					} })
+				]),
+				buildElement("div", { className: "spkmod-panel-cat" }, [
+					lunPanelElements.speedometerToggleLabel = buildElement("span", { style: "color: #fff; font-size: 11px; font-weight: bold; flex: 1;", innerText: t("speedometerToggleLabel") }),
+					lunPanelElements.speedometerToggleInput = buildElement("input", { type: "checkbox", checked: lunSpeedometerEnabled, onchange: e => {
+						lunSpeedometerEnabled = e.target.checked;
+						if (window.localStorage) localStorage.setItem("spkmod-speedometer", lunSpeedometerEnabled ? "true" : "false");
+						if (lunHudElements.speedometerTracker) lunHudElements.speedometerTracker.style.display = lunSpeedometerEnabled ? "" : "none";
 					} })
 				]),
 
@@ -7347,6 +7416,8 @@ window.spkmodApplyNamePresets = function() {
 
 
 
+
+
 const mapModalElements = {};
 let mapUpdateFrame = null;
 
@@ -9895,6 +9966,8 @@ spkmodI18nRenderers.push(() => {
 	if (lunPanelElements.chatTimestampLabel) setText(lunPanelElements.chatTimestampLabel, t("chatTimestampToggleLabel"));
 	if (lunPanelElements.fpPitchLabel) setText(lunPanelElements.fpPitchLabel, t("firstPersonPitchLabel"));
 	if (lunPanelElements.firstPersonBtn) setText(lunPanelElements.firstPersonBtn, t(lunFirstPersonActive ? "firstPersonOn" : "firstPersonOff"));
+	if (lunPanelElements.trueFirstPersonBtn) setText(lunPanelElements.trueFirstPersonBtn, t(lunTrueFirstPersonActive ? "trueFirstPersonOn" : "trueFirstPersonOff"));
+	if (lunPanelElements.speedometerToggleLabel) setText(lunPanelElements.speedometerToggleLabel, t("speedometerToggleLabel"));
 
 	if (lunPanelElements.freeCamBtn) setText(lunPanelElements.freeCamBtn, t(lunDroneModeActive ? "freeCamOn" : "freeCamOff"));
 	if (lunPanelElements.lowHpLabel) setText(lunPanelElements.lowHpLabel, t("lowHpWarningToggleLabel"));
@@ -10178,6 +10251,33 @@ function tick() {
 					targetY: gameState.cameraController.target?.position?.y,
 					camY: gameState.cameraController.camera?.position?.y
 				});
+			}
+		}
+
+		if (lunTrueFirstPersonActive && gameState.cameraController) {
+			gameState.cameraController.cameraZoomDistance = 0.05;
+		}
+
+		// Speedometer calculation
+		if (gameState?.playerContainer) {
+			const now = performance.now();
+			const currentPos = gameState.playerContainer.position;
+			if (!window._lunLastSpeedPos) {
+				window._lunLastSpeedPos = { x: currentPos.x, y: currentPos.y, z: currentPos.z, t: now };
+			} else {
+				const dtSec = (now - window._lunLastSpeedPos.t) / 1000;
+				if (dtSec >= 0.08) {
+					const dx = currentPos.x - window._lunLastSpeedPos.x;
+					const dy = currentPos.y - window._lunLastSpeedPos.y;
+					const dz = currentPos.z - window._lunLastSpeedPos.z;
+					const dist = Math.hypot(dx, dy, dz);
+					const instantSpeed = dist / dtSec;
+					lunCurrentSpeedMps = lunCurrentSpeedMps * 0.7 + instantSpeed * 0.3;
+					window._lunLastSpeedPos = { x: currentPos.x, y: currentPos.y, z: currentPos.z, t: now };
+					if (lunSpeedometerEnabled && lunHudElements.speedometerTracker) {
+						setText(lunHudElements.speedometerTracker, t("speedometerText", lunCurrentSpeedMps.toFixed(1)));
+					}
+				}
 			}
 		}
 
@@ -10912,6 +11012,13 @@ function hookGameStateOnce() {
 		const origComputeCameraTargetPosition = gameState.cameraController.computeCameraTargetPosition.bind(gameState.cameraController);
 		gameState.cameraController.computeCameraTargetPosition = (pos) => {
 			if (lunCameraLocked) return undefined;
+			if (lunTrueFirstPersonActive) {
+				const playerPos = gameState.playerContainer?.position || gameState.cameraController.target?.position;
+				if (playerPos && pos) {
+					pos.set(playerPos.x, playerPos.y + 0.95, playerPos.z);
+					return pos;
+				}
+			}
 			const targetPos = origComputeCameraTargetPosition(pos);
 			if (lunFirstPersonActive && targetPos) {
 				targetPos.y = (pos.y || 0) + 1.25; 
@@ -10919,6 +11026,30 @@ function hookGameStateOnce() {
 			return targetPos;
 		};
 		gameState.cameraController.__speakiComputeHooked = true;
+	}
+
+	if (gameState.cameraController && typeof gameState.cameraController.update === "function" && !gameState.cameraController.__speakiTrueFpHooked) {
+		const origCamUpdate = gameState.cameraController.update.bind(gameState.cameraController);
+		gameState.cameraController.update = function(dt) {
+			origCamUpdate(dt);
+			if (lunTrueFirstPersonActive && gameState.playerContainer && this.camera) {
+				const eyeHeight = 0.95;
+				const px = gameState.playerContainer.position.x;
+				const py = gameState.playerContainer.position.y + eyeHeight;
+				const pz = gameState.playerContainer.position.z;
+				this.camera.position.set(px, py, pz);
+				
+				const yaw = this.cameraYaw || 0;
+				const pitch = this.cameraPitch || 0;
+				const lookX = -Math.sin(yaw) * Math.cos(pitch);
+				const lookY = -Math.sin(pitch);
+				const lookZ = -Math.cos(yaw) * Math.cos(pitch);
+				this.camera.lookAt(px + lookX * 10, py + lookY * 10, pz + lookZ * 10);
+				
+				gameState.playerContainer.rotation.y = yaw;
+			}
+		};
+		gameState.cameraController.__speakiTrueFpHooked = true;
 	}
 
 	if (gameState.cameraController && typeof gameState.cameraController.getObstacles === "function" && !gameState.cameraController.__speakiObstaclesHooked) {
@@ -11312,7 +11443,6 @@ function forceTranslateMessage(name, msg) {
 		});
 	});
 }
-
 function hookRemotePlayersOnce() {
 	if (typeof gameState === 'undefined' || !gameState?.remotePlayers?.remotePlayers) return;
 	if (gameState.remotePlayers.remotePlayers.__speakiHooked) return;
