@@ -6014,12 +6014,49 @@ function autoFaintLoop() {
 	window.__autoFaintTimeoutId = setTimeout(autoFaintLoop, lunFaintAnimMs);
 }
 
+function spkmodPerformJump() {
+	if (typeof gameState !== "undefined" && gameState) {
+		if (typeof gameState.tryJump === "function") {
+			gameState.tryJump();
+		} else if (typeof gameState.sendEmoteNow === "function") {
+			gameState.sendEmoteNow(Emotes.Jump);
+		}
+	}
+}
+
 function autoJumpLoop() {
 	if (!window.AutoJumpActive) return;
-	if (typeof gameState !== "undefined" && gameState && typeof gameState.sendEmoteNow === "function") {
-		gameState.sendEmoteNow(Emotes.Jump);
+	
+	let nextDelay = lunJumpAnimMs;
+	
+	if (typeof gameState !== "undefined" && gameState?.isLocalOnTrampoline && gameState.isLocalOnTrampoline()) {
+		const rhythm = gameState.trampolineRhythm;
+		const nowSec = performance.now() / 1000;
+		if (rhythm) {
+			if (!rhythm.airborne) {
+				spkmodPerformJump();
+				if (rhythm.airborne && rhythm.landAtSec > nowSec) {
+					nextDelay = Math.max(30, Math.floor((rhythm.landAtSec - nowSec) * 1000) - 60);
+				} else {
+					nextDelay = 100;
+				}
+			} else {
+				const timeToLand = (rhythm.landAtSec - nowSec) * 1000;
+				if (timeToLand <= 150) {
+					spkmodPerformJump();
+					nextDelay = 250;
+				} else {
+					nextDelay = Math.max(30, Math.floor(timeToLand - 60));
+				}
+			}
+		} else {
+			spkmodPerformJump();
+		}
+	} else {
+		spkmodPerformJump();
 	}
-	window.__autoJumpTimeoutId = setTimeout(autoJumpLoop, lunJumpAnimMs);
+	
+	window.__autoJumpTimeoutId = setTimeout(autoJumpLoop, nextDelay);
 }
 
 const lunHeartsAnimMs = 1100; // Debounce window is 1100ms; 1100ms pushes the limit of no dropped packets on server/clients
@@ -6484,9 +6521,7 @@ let gamepadListeningAction = null;
 function executeGamepadAction(actionName) {
 	switch (actionName) {
 		case "jump":
-			if (typeof gameState !== "undefined" && gameState && typeof gameState.sendEmoteNow === "function") {
-				gameState.sendEmoteNow(Emotes.Jump);
-			}
+			spkmodPerformJump();
 			if (typeof gameState !== "undefined" && gameState && typeof gameState.tryUsePortal === "function") gameState.tryUsePortal();
 			break;
 
@@ -10234,7 +10269,7 @@ function tick() {
 		trueGainedThisFrame = (window.lunExpTrackerLastMaxExp - window.lunExpTrackerLastRawExp) + playerExp;
 	}
 	
-	if (trueGainedThisFrame > 50000) {
+	if (trueGainedThisFrame > 20000) {
 		window.lunExpTrackerIgnoredExp = (window.lunExpTrackerIgnoredExp || 0) + trueGainedThisFrame;
 	}
 
@@ -10787,7 +10822,9 @@ function hookGameStateOnce() {
 				ritualEmoteTick++;
 				if (ritualEmoteTick % 30 === 0) {
 					if (ritualEmoteTick % 60 === 0) {
-						if (typeof gameState !== "undefined" && gameState && typeof gameState.sendEmoteNow === "function") {
+						if (typeof spkmodPerformJump === "function") {
+							spkmodPerformJump();
+						} else if (typeof gameState !== "undefined" && gameState && typeof gameState.sendEmoteNow === "function") {
 							gameState.sendEmoteNow(Emotes.Jump);
 						}
 					} else {
@@ -10833,7 +10870,9 @@ function hookGameStateOnce() {
 				
 				if (partnerDanceTick % 40 === 0) {
 					if (partnerDanceTick % 80 === 0) {
-						if (typeof gameState !== "undefined" && gameState && typeof gameState.sendEmoteNow === "function") {
+						if (typeof spkmodPerformJump === "function") {
+							spkmodPerformJump();
+						} else if (typeof gameState !== "undefined" && gameState && typeof gameState.sendEmoteNow === "function") {
 							gameState.sendEmoteNow(Emotes.Jump);
 						}
 					} else {
