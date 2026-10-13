@@ -7364,6 +7364,27 @@ window.spkmodResetNames = function() {
 	console.log(`[SpeakiMod+] Reset ${count} names to their original values`);
 };
 
+window.spkmodWarpSoccerField = function() {
+	if (typeof gameState === 'undefined' || !gameState || !gameState.playerContainer) {
+		if (typeof chatLog === 'function') chatLog("[Soccer] Game is not loaded yet.");
+		return;
+	}
+	const currentZone = gameState.visualZoneId ?? gameState.zoneId;
+	if (currentZone !== 1) {
+		if (typeof chatLog === 'function') chatLog("[Soccer] You must be in Town (Zone 1) to warp to the soccer field.");
+		return;
+	}
+	gameState.playerContainer.position.set(78, 0, 82);
+	if (gameState.socket && typeof gameState.socket.sendMove === 'function') {
+		gameState.socket.sendMove(0, 78, 0, 82, gameState.playerContainer.rotation?.y || 0);
+		if (gameState.lastSent) {
+			gameState.lastSent.x = 78;
+			gameState.lastSent.z = 82;
+		}
+	}
+	if (typeof chatLog === 'function') chatLog("[Soccer] Teleported to soccer field center.");
+};
+
 window.spkmodSetTeam = function(team, targetPlayer) {
 	if (typeof gameState === 'undefined' || !gameState) {
 		if (typeof chatLog === 'function') chatLog("[Soccer] Game is not loaded yet.");
@@ -7391,7 +7412,7 @@ window.spkmodSetTeam = function(team, targetPlayer) {
 	const teamNames = { 0: "Default (None)", 1: "Red Team", 2: "Blue Team" };
 	const label = teamNames[teamNum] || ("Team " + teamNum);
 
-	// If targeting a specific player (or all players)
+	// If targeting a specific remote player (or all players)
 	if (targetPlayer) {
 		const targetLower = String(targetPlayer).trim().toLowerCase();
 		let affectedCount = 0;
@@ -7409,46 +7430,104 @@ window.spkmodSetTeam = function(team, targetPlayer) {
 					}
 				}
 			}
-			if (typeof chatLog === 'function') chatLog(`[Soccer] Applied ${label} to all players (${affectedCount}).`);
+			if (typeof chatLog === 'function') chatLog(`[Soccer] Applied ${label} to all players locally (${affectedCount}).`);
 			return;
 		}
 
-		if (targetLower === "me" || (gameState.myPlayerName && gameState.myPlayerName.toLowerCase() === targetLower)) {
-			if (typeof gameState.setLocalSoccerTeam === 'function') {
-				gameState.setLocalSoccerTeam(teamNum);
-				if (typeof chatLog === 'function') chatLog(`[Soccer] Uniform set to ${label}.`);
-			}
-			return;
-		}
-
-		if (gameState.remotePlayers && gameState.remotePlayers.remotePlayers) {
-			for (const [id, rp] of gameState.remotePlayers.remotePlayers.entries()) {
-				const curName = (rp.info && rp.info.name ? rp.info.name : "").toLowerCase();
-				const origName = (rp.info && rp.info.__spkmodOrigName ? rp.info.__spkmodOrigName : "").toLowerCase();
-				if (curName === targetLower || origName === targetLower || String(id) === targetLower) {
-					if (typeof gameState.remotePlayers.applySoccerTeam === 'function') {
-						gameState.remotePlayers.applySoccerTeam(id, teamNum);
-						affectedCount++;
-						if (typeof chatLog === 'function') chatLog(`[Soccer] Set ${rp.info?.name || id} to ${label}.`);
+		if (targetLower !== "me" && (!gameState.myPlayerName || gameState.myPlayerName.toLowerCase() !== targetLower)) {
+			if (gameState.remotePlayers && gameState.remotePlayers.remotePlayers) {
+				for (const [id, rp] of gameState.remotePlayers.remotePlayers.entries()) {
+					const curName = (rp.info && rp.info.name ? rp.info.name : "").toLowerCase();
+					const origName = (rp.info && rp.info.__spkmodOrigName ? rp.info.__spkmodOrigName : "").toLowerCase();
+					if (curName === targetLower || origName === targetLower || String(id) === targetLower) {
+						if (typeof gameState.remotePlayers.applySoccerTeam === 'function') {
+							gameState.remotePlayers.applySoccerTeam(id, teamNum);
+							affectedCount++;
+							if (typeof chatLog === 'function') chatLog(`[Soccer] Set ${rp.info?.name || id} to ${label} locally.`);
+						}
 					}
 				}
 			}
-		}
 
-		if (affectedCount === 0 && typeof chatLog === 'function') {
-			chatLog(`[Soccer] Player "${targetPlayer}" not found.`);
+			if (affectedCount === 0 && typeof chatLog === 'function') {
+				chatLog(`[Soccer] Player "${targetPlayer}" not found.`);
+			}
+			return;
+		}
+	}
+
+	// Target is Local Player (Me):
+	// 1. Immediately apply locally for instant visual responsiveness
+	if (typeof gameState.setLocalSoccerTeam === 'function') {
+		gameState.setLocalSoccerTeam(teamNum);
+	}
+
+	// 2. Server-wide Network Sync:
+	// The server triggers soccerTeam when the player's position enters the soccer field (Zone 1).
+	// Field bounds: minX: 65.5, maxX: 90.5, minZ: 74, maxZ: 90 (center: 78, 82).
+	// Red side: ~72, 82. Blue side: ~84, 82. Outside: ~55, 82.
+	const currentZone = gameState.visualZoneId ?? gameState.zoneId;
+	if (currentZone !== 1) {
+		if (typeof chatLog === 'function') {
+			chatLog(`[Soccer] Uniform set to ${label} locally. Note: Server-wide sync requires being in Town (Zone 1).`);
 		}
 		return;
 	}
 
-	// Default: Apply to local player
-	if (typeof gameState.setLocalSoccerTeam === 'function') {
-		gameState.setLocalSoccerTeam(teamNum);
+	if (!gameState.socket || typeof gameState.socket.sendMove !== 'function' || !gameState.playerContainer) {
 		if (typeof chatLog === 'function') {
-			chatLog(`[Soccer] Character uniform set to: ${label}`);
+			chatLog(`[Soccer] Uniform set to ${label} locally (network socket unavailable).`);
 		}
-	} else {
-		console.warn("[SpeakiMod+] gameState.setLocalSoccerTeam not available.");
+		return;
+	}
+
+	const origPos = {
+		x: gameState.playerContainer.position.x,
+		y: gameState.playerContainer.position.y || 0,
+		z: gameState.playerContainer.position.z,
+		yaw: gameState.playerContainer.rotation?.y || 0
+	};
+
+	let targetX = 72; // Red half
+	if (teamNum === 2) targetX = 84; // Blue half
+	else if (teamNum === 0) targetX = 55; // Outside field (Default/None)
+	const targetZ = 82;
+
+	try {
+		// Send a spoofed move to the field position so the server registers the team trigger
+		gameState.socket.sendMove(0 /* P_IDLE */, targetX, 0, targetZ, origPos.yaw);
+		if (gameState.lastSent) {
+			gameState.lastSent.x = targetX;
+			gameState.lastSent.z = targetZ;
+		}
+
+		if (typeof chatLog === 'function') {
+			chatLog(`[Soccer] Syncing ${label} with server...`);
+		}
+
+		// Restore original position after server processes the zone packet (250ms)
+		setTimeout(() => {
+			try {
+				if (gameState && gameState.playerContainer && gameState.socket && typeof gameState.socket.sendMove === 'function') {
+					gameState.playerContainer.position.set(origPos.x, origPos.y, origPos.z);
+					gameState.socket.sendMove(0 /* P_IDLE */, origPos.x, origPos.y, origPos.z, origPos.yaw);
+					if (gameState.lastSent) {
+						gameState.lastSent.x = origPos.x;
+						gameState.lastSent.z = origPos.z;
+					}
+					if (typeof chatLog === 'function') {
+						chatLog(`[Soccer] Server sync complete! Uniform: ${label}`);
+					}
+				}
+			} catch (restoreErr) {
+				console.error("[SpeakiMod] Failed restoring position after soccer sync:", restoreErr);
+			}
+		}, 250);
+	} catch (syncErr) {
+		console.error("[SpeakiMod] Soccer server sync failed:", syncErr);
+		if (typeof chatLog === 'function') {
+			chatLog(`[Soccer] Uniform set to ${label} locally (sync error).`);
+		}
 	}
 };
 
@@ -11348,7 +11427,13 @@ function hookGameStateOnce() {
 					case "soccer":
 					case "jersey":
 						if (!cmd[1]) {
-							chatLog("Usage: /team [red|blue|none] [optional: player_name|all]");
+							chatLog("Usage: /team [red|blue|none|warp] [optional: player_name|all]");
+							return;
+						}
+						if (cmd[1].toLowerCase() === "warp" || cmd[1].toLowerCase() === "field") {
+							if (typeof window.spkmodWarpSoccerField === "function") {
+								window.spkmodWarpSoccerField();
+							}
 							return;
 						}
 						if (typeof window.spkmodSetTeam === "function") {
