@@ -4356,6 +4356,9 @@ document.body.appendChild(
 						
 						if (lunHudElements.effectsModal) {
 							lunHudElements.effectsModal.classList.toggle("hidden");
+							if (!lunHudElements.effectsModal.classList.contains("hidden") && typeof updateLocalEditsUI === "function") {
+								updateLocalEditsUI();
+							}
 						}
 					}
 				}),
@@ -8261,11 +8264,13 @@ setTimeout(() => {
 	}
 }, 500);
 
+const editsModalElements = {};
+
 document.body.appendChild(
 	lunHudElements.effectsModal = buildElement("div", {
 		id: "spkmod-effects-modal",
 		className: "hidden",
-		style: "width: 550px; max-width: 95vw; min-width: 450px; max-width: 90vw; overflow-x: hidden;"
+		style: "width: 580px; max-width: 95vw; min-width: 480px; max-width: 90vw; overflow-x: hidden;"
 	}, [
 		buildElement("div", { className: "spkmod-panel-cat", style: "justify-content: space-between;" }, [
 			lunPanelElements.effectsModalTitle = buildElement("span", {
@@ -8308,7 +8313,141 @@ document.body.appendChild(
 					className: "spkmod-panel-btn", style: "padding: 6px; font-size: 11px;",
 					innerText: t("flyEveryoneBtn"),
 					onclick: () => window.spkmodTriggerFlyEveryone && window.spkmodTriggerFlyEveryone()
-				})
+				}),
+
+				// Soccer Uniform
+				buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px; border-top: 1px solid #555; padding-top: 6px;" }, [
+					editsModalElements.soccerHeader = buildElement("div", {
+						className: "spkmod-panel-cat-header",
+						innerText: "⚽ " + (t("soccerHeader") || "Soccer Uniform"),
+						style: "margin-top: 0px;"
+					}),
+					buildElement("div", { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;" }, [
+						editsModalElements.soccerBtnRed = buildElement("button", {
+							className: "spkmod-panel-btn",
+							style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #ff5555; font-weight: bold;",
+							innerText: "🔴 " + (t("soccerBtnRed") || "Red Team"),
+							title: "Set soccer uniform to Red Team",
+							onclick: () => { if (window.spkmodSetTeam) window.spkmodSetTeam("red"); updateLocalEditsUI(); }
+						}),
+						editsModalElements.soccerBtnBlue = buildElement("button", {
+							className: "spkmod-panel-btn",
+							style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #5599ff; font-weight: bold;",
+							innerText: "🔵 " + (t("soccerBtnBlue") || "Blue Team"),
+							title: "Set soccer uniform to Blue Team",
+							onclick: () => { if (window.spkmodSetTeam) window.spkmodSetTeam("blue"); updateLocalEditsUI(); }
+						}),
+						editsModalElements.soccerBtnNone = buildElement("button", {
+							className: "spkmod-panel-btn",
+							style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #eeeeee;",
+							innerText: "⚪ " + (t("soccerBtnNone") || "Default"),
+							title: "Reset soccer uniform to default",
+							onclick: () => { if (window.spkmodSetTeam) window.spkmodSetTeam("none"); updateLocalEditsUI(); }
+						})
+					])
+				]),
+
+				// Character Dye & FX
+				buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px; border-top: 1px solid #555; padding-top: 6px;" }, [
+					buildElement("div", { style: "display: flex; justify-content: space-between; align-items: center;" }, [
+						editsModalElements.avatarDyeHeader = buildElement("div", {
+							className: "spkmod-panel-cat-header",
+							innerText: "🎨 " + (t("avatarDyeHeader") || "Character Dye & FX (Local Only)"),
+							style: "margin-top: 0px;"
+						}),
+						editsModalElements.dyeScopeBtn = buildElement("button", {
+							className: "spkmod-panel-btn",
+							style: "padding: 3px 6px; font-size: 9px; color: #ffd54a; border-color: #ffd54a;",
+							innerText: window.spkmodAvatarColorScope === "body" ? (t("dyeScopeBody") || "Outfit Only") : (t("dyeScopeAll") || "Full Avatar"),
+							title: "Toggle whether to color the whole avatar or outfit/body only",
+							onclick: () => {
+								if (window.spkmodSetAvatarColorScope) {
+									window.spkmodSetAvatarColorScope(window.spkmodAvatarColorScope === "body" ? "all" : "body");
+								}
+							}
+						})
+					]),
+					// Color Grid: 18 vivid colors (3 columns x 6 rows)
+					buildElement("div", { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px;" }, [
+						...[
+							{ name: "Crimson", hex: "#ff2a4b", emoji: "🔴" },
+							{ name: "Blue", hex: "#2563eb", emoji: "🔵" },
+							{ name: "Emerald", hex: "#10b981", emoji: "🟢" },
+							{ name: "Gold", hex: "#facc15", emoji: "🟡" },
+							{ name: "Purple", hex: "#8b5cf6", emoji: "🟣" },
+							{ name: "Hot Pink", hex: "#ec4899", emoji: "🌸" },
+							{ name: "Cyan", hex: "#06b6d4", emoji: "🩵" },
+							{ name: "Orange", hex: "#f97316", emoji: "🧡" },
+							{ name: "Mint", hex: "#14b8a6", emoji: "🌿" },
+							{ name: "Amber", hex: "#d97706", emoji: "🪙" },
+							{ name: "Pearl", hex: "#ffffff", emoji: "⚪" },
+							{ name: "Obsidian", hex: "#18181b", emoji: "⚫" },
+							{ name: "Magenta", hex: "#f43f5e", emoji: "🍇" },
+							{ name: "Ice", hex: "#38bdf8", emoji: "🧊" },
+							{ name: "Sepia", hex: "#b45309", emoji: "☕" },
+							{ name: "Lavender", hex: "#a78bfa", emoji: "🔮" },
+							{ name: "Lime", hex: "#84cc16", emoji: "🍀" },
+							{ name: "Indigo", hex: "#4f46e5", emoji: "🫐" }
+						].map(c => {
+							const btn = buildElement("button", {
+								className: "spkmod-panel-btn",
+								style: `padding: 4px 2px; font-size: 9.5px; text-align: center; color: ${c.hex === "#ffffff" ? "#eee" : c.hex}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`,
+								innerText: `${c.emoji} ${c.name}`,
+								title: `Apply ${c.name} Dye (${c.hex})`,
+								onclick: () => {
+									if (window.spkmodApplyAvatarColor) window.spkmodApplyAvatarColor(c.hex);
+								}
+							});
+							editsModalElements["dyeBtn_" + c.name] = btn;
+							return btn;
+						})
+					]),
+					// Custom Color Picker row
+					buildElement("div", { style: "display: flex; gap: 4px; align-items: center; margin-top: 2px;" }, [
+						buildElement("span", { style: "font-size: 10px; color: #ccc;", innerText: "Custom Color:" }),
+						editsModalElements.dyeColorPicker = buildElement("input", {
+							type: "color",
+							value: window.spkmodAvatarColorHex || "#ffffff",
+							style: "flex: 1; height: 26px; border: 1px solid #555; background: #222; border-radius: 4px; cursor: pointer; padding: 1px;",
+							onchange: (e) => {
+								if (window.spkmodApplyAvatarColor) window.spkmodApplyAvatarColor(e.target.value);
+							}
+						})
+					]),
+					// Special FX Controls Row (Rainbow and Void Shadow only)
+					buildElement("div", { style: "display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-top: 2px;" }, [
+						editsModalElements.dyeBtnRainbow = buildElement("button", {
+							className: "spkmod-panel-btn",
+							style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #ec4899; font-weight: bold;",
+							innerText: "🌈 Rainbow",
+							title: "Animate real-time smooth cycling through rainbow spectrum",
+							onclick: () => {
+								if (window.spkmodStartRainbowWave) window.spkmodStartRainbowWave();
+							}
+						}),
+						editsModalElements.dyeBtnShadow = buildElement("button", {
+							className: "spkmod-panel-btn",
+							style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #c084fc; font-weight: bold;",
+							innerText: "👤 Void Shadow",
+							title: "Dark obsidian silhouette with subtle void aura",
+							onclick: () => {
+								if (window.spkmodApplyShadowMode) window.spkmodApplyShadowMode();
+							}
+						})
+					]),
+					// Reset Button
+					buildElement("div", { style: "display: flex; gap: 4px; margin-top: 2px;" }, [
+						editsModalElements.dyeBtnReset = buildElement("button", {
+							className: "spkmod-panel-btn",
+							style: "width: 100%; padding: 6px; font-size: 10.5px; text-align: center; color: #ffaaaa;",
+							innerText: "↺ " + (t("dyeReset") || "Reset Character Dye & FX"),
+							title: "Restore avatar to original appearance",
+							onclick: () => {
+								if (window.spkmodResetAvatarColors) window.spkmodResetAvatarColors();
+							}
+						})
+					])
+				])
 			]),
 			buildElement("div", { style: "display: flex; flex-direction: column; gap: 8px; flex: 1; border-left: 1px solid #555; padding-left: 10px;" }, [
 				buildElement("div", { className: "spkmod-panel-cat-header", innerText: t("renameHeader") || "Rename Name Tags", style: "margin-top: 0px;" }),
@@ -8395,8 +8534,6 @@ setTimeout(() => {
 		makeDraggable(lunHudElements.effectsModal, [lunPanelElements.effectsModalTitle]);
 	}
 }, 500);
-
-const editsModalElements = {};
 
 function setCameraEffectLocal(effectKey) {
 	lunCameraEffect = effectKey || "none";
@@ -8633,12 +8770,10 @@ function updateLocalEditsUI() {
 	}
 
 	// Soccer Uniform Buttons
-	if (editsModalElements.soccerHeader) setText(editsModalElements.soccerHeader, "⚽ " + (t("soccerHeader") || "Soccer Uniform (Server Sync)"));
+	if (editsModalElements.soccerHeader) setText(editsModalElements.soccerHeader, "⚽ " + (t("soccerHeader") || "Soccer Uniform"));
 	if (editsModalElements.soccerBtnRed) setText(editsModalElements.soccerBtnRed, "🔴 " + (t("soccerBtnRed") || "Red Team"));
 	if (editsModalElements.soccerBtnBlue) setText(editsModalElements.soccerBtnBlue, "🔵 " + (t("soccerBtnBlue") || "Blue Team"));
 	if (editsModalElements.soccerBtnNone) setText(editsModalElements.soccerBtnNone, "⚪ " + (t("soccerBtnNone") || "Default"));
-	if (editsModalElements.soccerBtnWarp) setText(editsModalElements.soccerBtnWarp, "⚡ " + (t("soccerBtnWarp") || "Warp Field"));
-	if (editsModalElements.soccerHint) setText(editsModalElements.soccerHint, t("soccerHint") || "Network-synced to other players (requires Town / Zone 1)");
 
 	const myTeam = (typeof gameState !== 'undefined' && gameState ? gameState.mySoccerTeam : 0) || window.spkmodActiveSoccerTeam || 0;
 	if (editsModalElements.soccerBtnRed) {
@@ -8692,26 +8827,6 @@ function updateLocalEditsUI() {
 		} else {
 			editsModalElements.dyeBtnShadow.style.borderColor = "#555";
 			editsModalElements.dyeBtnShadow.style.background = "";
-		}
-	}
-	if (editsModalElements.dyeBtnDropping) {
-		setText(editsModalElements.dyeBtnDropping, window.spkmodAvatarDroppingActive ? "✨ Dropping: ON" : "✨ Dropping: OFF");
-		if (window.spkmodAvatarDroppingActive) {
-			editsModalElements.dyeBtnDropping.style.borderColor = "#55ff55";
-			editsModalElements.dyeBtnDropping.style.background = "rgba(85, 255, 85, 0.2)";
-		} else {
-			editsModalElements.dyeBtnDropping.style.borderColor = "#555";
-			editsModalElements.dyeBtnDropping.style.background = "";
-		}
-	}
-	if (editsModalElements.dyeBtnHeartDrop) {
-		setText(editsModalElements.dyeBtnHeartDrop, window.spkmodAvatarHeartDropActive ? "💖 Hearts: ON" : "💖 Hearts: OFF");
-		if (window.spkmodAvatarHeartDropActive) {
-			editsModalElements.dyeBtnHeartDrop.style.borderColor = "#ff55aa";
-			editsModalElements.dyeBtnHeartDrop.style.background = "rgba(255, 85, 170, 0.2)";
-		} else {
-			editsModalElements.dyeBtnHeartDrop.style.borderColor = "#555";
-			editsModalElements.dyeBtnHeartDrop.style.background = "";
 		}
 	}
 	if (editsModalElements.dyeColorPicker && window.spkmodAvatarColorHex) {
@@ -8982,170 +9097,7 @@ document.body.appendChild(
 				])
 			]),
 
-			// Section 4: Soccer Uniform (Server Sync)
-			buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid #555; padding-bottom: 8px;" }, [
-				editsModalElements.soccerHeader = buildElement("div", {
-					className: "spkmod-panel-cat-header",
-					innerText: "⚽ " + (t("soccerHeader") || "Soccer Uniform (Server Sync)"),
-					style: "margin-top: 0px;"
-				}),
-				buildElement("div", { style: "display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;" }, [
-					editsModalElements.soccerBtnRed = buildElement("button", {
-						className: "spkmod-panel-btn",
-						style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #ff5555; font-weight: bold;",
-						innerText: "🔴 " + (t("soccerBtnRed") || "Red Team"),
-						title: "Syncs with server so everyone sees Team Red (Zone 1 Town)",
-						onclick: () => { if (window.spkmodSetTeam) window.spkmodSetTeam("red"); updateLocalEditsUI(); }
-					}),
-					editsModalElements.soccerBtnBlue = buildElement("button", {
-						className: "spkmod-panel-btn",
-						style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #5599ff; font-weight: bold;",
-						innerText: "🔵 " + (t("soccerBtnBlue") || "Blue Team"),
-						title: "Syncs with server so everyone sees Team Blue (Zone 1 Town)",
-						onclick: () => { if (window.spkmodSetTeam) window.spkmodSetTeam("blue"); updateLocalEditsUI(); }
-					}),
-					editsModalElements.soccerBtnNone = buildElement("button", {
-						className: "spkmod-panel-btn",
-						style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #eeeeee;",
-						innerText: "⚪ " + (t("soccerBtnNone") || "Default"),
-						title: "Reset soccer uniform to default",
-						onclick: () => { if (window.spkmodSetTeam) window.spkmodSetTeam("none"); updateLocalEditsUI(); }
-					}),
-					editsModalElements.soccerBtnWarp = buildElement("button", {
-						className: "spkmod-panel-btn",
-						style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #ffd54a;",
-						innerText: "⚡ " + (t("soccerBtnWarp") || "Warp Field"),
-						title: "Teleport directly to the soccer field in Town",
-						onclick: () => { if (window.spkmodWarpSoccerField) window.spkmodWarpSoccerField(); }
-					})
-				]),
-				editsModalElements.soccerHint = buildElement("div", {
-					style: "font-size: 9px; color: #888; text-align: center; padding-top: 2px;",
-					innerText: t("soccerHint") || "Network-synced to other players (requires Town / Zone 1)"
-				})
-			]),
-
-			// Section 5: Character Dye & FX (Local Only)
-			buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid #555; padding-bottom: 8px;" }, [
-				buildElement("div", { style: "display: flex; justify-content: space-between; align-items: center;" }, [
-					editsModalElements.avatarDyeHeader = buildElement("div", {
-						className: "spkmod-panel-cat-header",
-						innerText: "🎨 " + (t("avatarDyeHeader") || "Character Dye & FX (Local Only)"),
-						style: "margin-top: 0px;"
-					}),
-					editsModalElements.dyeScopeBtn = buildElement("button", {
-						className: "spkmod-panel-btn",
-						style: "padding: 3px 6px; font-size: 9px; color: #ffd54a; border-color: #ffd54a;",
-						innerText: window.spkmodAvatarColorScope === "body" ? (t("dyeScopeBody") || "Outfit Only") : (t("dyeScopeAll") || "Full Avatar"),
-						title: "Toggle whether to color the whole avatar or outfit/body only",
-						onclick: () => {
-							if (window.spkmodSetAvatarColorScope) {
-								window.spkmodSetAvatarColorScope(window.spkmodAvatarColorScope === "body" ? "all" : "body");
-							}
-						}
-					})
-				]),
-				// Color Grid: 18 vivid colors
-				buildElement("div", { style: "display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px;" }, [
-					...[
-						{ name: "Crimson", hex: "#ff2a4b", emoji: "🔴" },
-						{ name: "Blue", hex: "#2563eb", emoji: "🔵" },
-						{ name: "Emerald", hex: "#10b981", emoji: "🟢" },
-						{ name: "Gold", hex: "#facc15", emoji: "🟡" },
-						{ name: "Purple", hex: "#8b5cf6", emoji: "🟣" },
-						{ name: "Hot Pink", hex: "#ec4899", emoji: "🌸" },
-						{ name: "Cyan", hex: "#06b6d4", emoji: "🩵" },
-						{ name: "Orange", hex: "#f97316", emoji: "🧡" },
-						{ name: "Mint", hex: "#14b8a6", emoji: "🌿" },
-						{ name: "Amber", hex: "#d97706", emoji: "🪙" },
-						{ name: "Pearl", hex: "#ffffff", emoji: "⚪" },
-						{ name: "Obsidian", hex: "#18181b", emoji: "⚫" },
-						{ name: "Magenta", hex: "#f43f5e", emoji: "🍇" },
-						{ name: "Ice", hex: "#38bdf8", emoji: "🧊" },
-						{ name: "Sepia", hex: "#b45309", emoji: "☕" },
-						{ name: "Lavender", hex: "#a78bfa", emoji: "🔮" },
-						{ name: "Lime", hex: "#84cc16", emoji: "🍀" },
-						{ name: "Indigo", hex: "#4f46e5", emoji: "🫐" }
-					].map(c => {
-						const btn = buildElement("button", {
-							className: "spkmod-panel-btn",
-							style: `padding: 5px 2px; font-size: 9.5px; text-align: center; color: ${c.hex === "#ffffff" ? "#eee" : c.hex};`,
-							innerText: `${c.emoji} ${c.name}`,
-							title: `Apply ${c.name} Dye (${c.hex})`,
-							onclick: () => {
-								if (window.spkmodApplyAvatarColor) window.spkmodApplyAvatarColor(c.hex);
-							}
-						});
-						editsModalElements["dyeBtn_" + c.name] = btn;
-						return btn;
-					})
-				]),
-				// Custom Color Picker row
-				buildElement("div", { style: "display: flex; gap: 4px; align-items: center; margin-top: 2px;" }, [
-					buildElement("span", { style: "font-size: 10px; color: #ccc;", innerText: "Custom Color:" }),
-					editsModalElements.dyeColorPicker = buildElement("input", {
-						type: "color",
-						value: window.spkmodAvatarColorHex || "#ffffff",
-						style: "flex: 1; height: 26px; border: 1px solid #555; background: #222; border-radius: 4px; cursor: pointer; padding: 1px;",
-						onchange: (e) => {
-							if (window.spkmodApplyAvatarColor) window.spkmodApplyAvatarColor(e.target.value);
-						}
-					})
-				]),
-				// Special FX Controls Row
-				buildElement("div", { style: "display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 2px;" }, [
-					editsModalElements.dyeBtnRainbow = buildElement("button", {
-						className: "spkmod-panel-btn",
-						style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #ec4899; font-weight: bold;",
-						innerText: "🌈 Rainbow",
-						title: "Animate real-time smooth cycling through rainbow spectrum",
-						onclick: () => {
-							if (window.spkmodStartRainbowWave) window.spkmodStartRainbowWave();
-						}
-					}),
-					editsModalElements.dyeBtnShadow = buildElement("button", {
-						className: "spkmod-panel-btn",
-						style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #c084fc; font-weight: bold;",
-						innerText: "👤 Void Shadow",
-						title: "Dark obsidian silhouette with subtle void aura",
-						onclick: () => {
-							if (window.spkmodApplyShadowMode) window.spkmodApplyShadowMode();
-						}
-					}),
-					editsModalElements.dyeBtnDropping = buildElement("button", {
-						className: "spkmod-panel-btn",
-						style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #ffd54a; font-weight: bold;",
-						innerText: window.spkmodAvatarDroppingActive ? "✨ Dropping: ON" : "✨ Dropping: OFF",
-						title: "Drop trailing star sparks/afterimages as you walk or stand",
-						onclick: () => {
-							if (window.spkmodToggleDropping) window.spkmodToggleDropping();
-						}
-					}),
-					editsModalElements.dyeBtnHeartDrop = buildElement("button", {
-						className: "spkmod-panel-btn",
-						style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #ff55aa; font-weight: bold;",
-						innerText: window.spkmodAvatarHeartDropActive ? "💖 Hearts: ON" : "💖 Hearts: OFF",
-						title: "Spawns floating heart bursts as you move/idle",
-						onclick: () => {
-							if (window.spkmodToggleHeartDropping) window.spkmodToggleHeartDropping();
-						}
-					})
-				]),
-				// Reset Button
-				buildElement("div", { style: "display: flex; gap: 4px; margin-top: 2px;" }, [
-					editsModalElements.dyeBtnReset = buildElement("button", {
-						className: "spkmod-panel-btn",
-						style: "width: 100%; padding: 6px; font-size: 10.5px; text-align: center; color: #ffaaaa;",
-						innerText: "↺ " + (t("dyeReset") || "Reset Character Dye & FX"),
-						title: "Restore avatar to original appearance",
-						onclick: () => {
-							if (window.spkmodResetAvatarColors) window.spkmodResetAvatarColors();
-						}
-					})
-				])
-			]),
-
-			// Section 6: Camera Effects (Filters & Hotkeys)
+			// Section 4: Camera Effects (Filters & Hotkeys)
 			buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px;" }, [
 				editsModalElements.cameraHeader = buildElement("div", {
 					className: "spkmod-panel-cat-header",
