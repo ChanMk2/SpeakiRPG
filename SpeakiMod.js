@@ -5479,14 +5479,14 @@ function toggleEmojiPicker(anchorBtn) {
     lunEmojiPickerPanel.id = "spkmod-emoji-picker-v2";
     
     const isMobile = typeof window.speakiMobile !== "undefined" || (typeof navigator !== "undefined" && /mobi|android/i.test(navigator.userAgent));
-    const defaultW = isMobile ? "280px" : "340px";
-    const defaultH = isMobile ? "200px" : "300px";
-    lunEmojiPickerPanel.style.cssText = `position: fixed; width: ${defaultW}; height: ${defaultH}; max-width: 90vw; max-height: 60vh; min-width: 200px; min-height: 150px; resize: both; overflow: hidden; background: rgba(20, 20, 20, 0.95); border: 1px solid #555; border-radius: 6px; padding: 6px; display: flex; flex-direction: column; gap: 4px; z-index: 999999; box-shadow: 0 4px 12px rgba(0,0,0,0.5); pointer-events: auto;`;
+    const defaultW = isMobile ? "360px" : "420px";
+    const defaultH = isMobile ? "320px" : "420px";
+    lunEmojiPickerPanel.style.cssText = `position: fixed; width: ${defaultW}; height: ${defaultH}; max-width: 95vw; max-height: 80vh; min-width: 200px; min-height: 150px; resize: both; overflow: hidden; background: rgba(20, 20, 20, 0.95); border: 1px solid #555; border-radius: 6px; padding: 6px; display: flex; flex-direction: column; gap: 4px; z-index: 999999; box-shadow: 0 4px 12px rgba(0,0,0,0.5); pointer-events: auto;`;
     
     if (!(window.localStorage && localStorage.getItem("spkmod-pos-spkmod-emoji-picker-v2"))) {
         if (isMobile) {
-            lunEmojiPickerPanel.style.left = Math.max(10, (window.innerWidth / 2) - 140) + "px";
-            lunEmojiPickerPanel.style.top = Math.max(10, (window.innerHeight / 2) - 100) + "px";
+            lunEmojiPickerPanel.style.left = Math.max(10, (window.innerWidth / 2) - 180) + "px";
+            lunEmojiPickerPanel.style.top = Math.max(10, (window.innerHeight / 2) - 160) + "px";
             lunEmojiPickerPanel.style.bottom = "auto";
         } else {
             const btnRect = anchorBtn.getBoundingClientRect();
@@ -7658,13 +7658,69 @@ window.__spkmodRainbowAnimId = null;
 window.__spkmodBasePristineMaterials = window.__spkmodBasePristineMaterials || new Map();
 window.spkmodActiveDyedMaterials = window.spkmodActiveDyedMaterials || new Map();
 
+// Safely ensure Material.prototype has a resilient userData getter/setter to prevent OutlineEffect crashes
+function spkmodEnsureMaterialPrototypeSafety(sampleMat) {
+	if (!sampleMat || window.__spkmodMaterialSafetyHooked) return;
+	try {
+		const targetMat = Array.isArray(sampleMat) ? sampleMat[0] : sampleMat;
+		if (!targetMat) return;
+		let proto = Object.getPrototypeOf(targetMat);
+		let baseProto = null;
+		while (proto && proto !== Object.prototype) {
+			baseProto = proto;
+			proto = Object.getPrototypeOf(proto);
+		}
+		if (baseProto && !baseProto.__spkmodUserDataHooked) {
+			baseProto.__spkmodUserDataHooked = true;
+			Object.defineProperty(baseProto, 'userData', {
+				get() {
+					if (!this.__spkmodUserData) this.__spkmodUserData = {};
+					return this.__spkmodUserData;
+				},
+				set(val) {
+					this.__spkmodUserData = (val && typeof val === 'object') ? val : {};
+				},
+				configurable: true,
+				enumerable: true
+			});
+			window.__spkmodMaterialSafetyHooked = true;
+		}
+	} catch (_) {}
+}
+
+function spkmodIsOutlineMaterial(mat) {
+	if (!mat) return false;
+	const arr = Array.isArray(mat) ? mat : [mat];
+	return arr.some(m => m && (m.type === 'OutlineEffect' || m.name === 'OutlineEffect'));
+}
+
+function spkmodCloneMaterialSafely(mat) {
+	if (!mat) return mat;
+	if (mat.type === 'OutlineEffect' || mat.name === 'OutlineEffect') {
+		return null; // Do not clone temporary OutlineEffect materials
+	}
+	spkmodEnsureMaterialPrototypeSafety(mat);
+	const cloned = mat.clone();
+	if (!cloned.userData) cloned.userData = {};
+	if (!mat.userData) mat.userData = {};
+	if (mat.userData.outlineParameters) {
+		try {
+			cloned.userData.outlineParameters = Object.assign({}, mat.userData.outlineParameters);
+		} catch (_) {}
+	}
+	return cloned;
+}
+
 function spkmodEnsurePristineMaterials() {
 	if (typeof gameState === 'undefined' || !gameState || !gameState.localAvatar || !gameState.localAvatar.root) return;
 	gameState.localAvatar.root.traverse(child => {
 		if (child.isMesh && child.material && !child.userData.__spkmodClonedMat) {
+			if (spkmodIsOutlineMaterial(child.material)) return;
+			spkmodEnsureMaterialPrototypeSafety(child.material);
+			const mats = Array.isArray(child.material) ? child.material : [child.material];
+			for (const m of mats) if (m && !m.userData) m.userData = {};
 			if (!window.__spkmodBasePristineMaterials.has(child.name)) {
-				const mats = Array.isArray(child.material) ? child.material : [child.material];
-				window.__spkmodBasePristineMaterials.set(child.name, mats.map(m => m.clone()));
+				window.__spkmodBasePristineMaterials.set(child.name, mats.map(m => spkmodCloneMaterialSafely(m) || m));
 			}
 		}
 	});
@@ -7679,12 +7735,16 @@ function spkmodSetFbxMaterialsPristine(isPristine) {
 				child.material = child.userData.__spkmodOrigMat;
 			} else if (window.__spkmodBasePristineMaterials.has(child.name)) {
 				const mats = window.__spkmodBasePristineMaterials.get(child.name);
-				child.material = Array.isArray(child.material) ? mats.map(m => m.clone()) : mats[0].clone();
+				child.material = Array.isArray(child.material) ? mats.map(m => spkmodCloneMaterialSafely(m) || m) : (spkmodCloneMaterialSafely(mats[0]) || mats[0]);
 			}
 		} else {
 			if (window.spkmodActiveDyedMaterials.has(child)) {
 				child.material = window.spkmodActiveDyedMaterials.get(child);
 			}
+		}
+		if (child.material) {
+			const mats = Array.isArray(child.material) ? child.material : [child.material];
+			for (const m of mats) if (m && !m.userData) m.userData = {};
 		}
 	});
 }
@@ -7699,13 +7759,25 @@ window.spkmodSanitizeRemotePlayers = function() {
 			if (!child.isMesh) return;
 			if (child.userData.__spkmodClonedMat || child.userData.__spkmodOrigMat) {
 				if (child.userData.__spkmodOrigMat) {
-					child.material = child.userData.__spkmodOrigMat;
-				} else if (window.__spkmodBasePristineMaterials && window.__spkmodBasePristineMaterials.has(child.name)) {
-					const prist = window.__spkmodBasePristineMaterials.get(child.name);
-					child.material = Array.isArray(child.material) ? prist.map(m => m.clone()) : prist[0].clone();
+					const orig = child.userData.__spkmodOrigMat;
+					const current = child.material;
+					child.material = orig;
+					if (current && current !== orig) {
+						const arr = Array.isArray(current) ? current : [current];
+						const origArr = Array.isArray(orig) ? orig : [orig];
+						for (const c of arr) {
+							if (c && !origArr.includes(c) && typeof c.dispose === 'function') {
+								try { c.dispose(); } catch (_) {}
+							}
+						}
+					}
 				}
 				delete child.userData.__spkmodClonedMat;
 				delete child.userData.__spkmodOrigMat;
+			}
+			if (child.material) {
+				const mats = Array.isArray(child.material) ? child.material : [child.material];
+				for (const m of mats) if (m && !m.userData) m.userData = {};
 			}
 		});
 	}
@@ -7726,7 +7798,11 @@ window.hookRemotePlayerRebuildIsolation = function() {
 			} finally {
 				Promise.resolve().then(() => {
 					spkmodSetFbxMaterialsPristine(false);
-					window.spkmodSanitizeRemotePlayers();
+					if (window.spkmodAvatarColorMode === "bad_apple") {
+						window.spkmodApplyBadAppleMode();
+					} else if (window.spkmodAvatarColorMode !== "rainbow_all" && window.spkmodAvatarColorMode !== "rainbow_random") {
+						window.spkmodSanitizeRemotePlayers();
+					}
 				});
 			}
 		}
@@ -7750,6 +7826,8 @@ window.spkmodSetAvatarColorScope = function(scope) {
 		window.spkmodStartRainbowWave("random");
 	} else if (window.spkmodAvatarColorMode === "shadow") {
 		window.spkmodApplyShadowMode();
+	} else if (window.spkmodAvatarColorMode === "bad_apple") {
+		window.spkmodApplyBadAppleMode();
 	}
 	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
 };
@@ -7777,7 +7855,10 @@ window.spkmodApplyAvatarColor = function(hexColor) {
 
 	root.traverse(child => {
 		if (!child.isMesh) return;
+		if (spkmodIsOutlineMaterial(child.material)) return;
+		spkmodEnsureMaterialPrototypeSafety(child.material);
 		const mats = Array.isArray(child.material) ? child.material : [child.material];
+		for (const m of mats) if (m && !m.userData) m.userData = {};
 		
 		const matName = (mats[0]?.name || "").toLowerCase();
 		const meshName = (child.name || "").toLowerCase();
@@ -7800,8 +7881,8 @@ window.spkmodApplyAvatarColor = function(hexColor) {
 
 		if (!child.userData.__spkmodClonedMat) {
 			child.material = Array.isArray(child.material) 
-				? child.material.map(m => m.clone()) 
-				: child.material.clone();
+				? child.material.map(m => spkmodCloneMaterialSafely(m) || m) 
+				: (spkmodCloneMaterialSafely(child.material) || child.material);
 			child.userData.__spkmodClonedMat = true;
 		}
 
@@ -7875,8 +7956,11 @@ window.spkmodStartRainbowWave = function(targetMode, customSpeed) {
 	const root = gameState.localAvatar.root;
 	if (root) {
 		root.traverse(child => {
-			if (!child.isMesh) return;
+			if (!child.isMesh || !child.material) return;
+			if (spkmodIsOutlineMaterial(child.material)) return;
+			spkmodEnsureMaterialPrototypeSafety(child.material);
 			const mats = Array.isArray(child.material) ? child.material : [child.material];
+			for (const m of mats) if (m && !m.userData) m.userData = {};
 			const matName = (mats[0]?.name || "").toLowerCase();
 			const meshName = (child.name || "").toLowerCase();
 			if (window.spkmodAvatarColorScope === "body") {
@@ -7893,8 +7977,8 @@ window.spkmodStartRainbowWave = function(targetMode, customSpeed) {
 			if (!child.userData.__spkmodOrigMat) child.userData.__spkmodOrigMat = child.material;
 			if (!child.userData.__spkmodClonedMat) {
 				child.material = Array.isArray(child.material) 
-					? child.material.map(m => m.clone()) 
-					: child.material.clone();
+					? child.material.map(m => spkmodCloneMaterialSafely(m) || m) 
+					: (spkmodCloneMaterialSafely(child.material) || child.material);
 				child.userData.__spkmodClonedMat = true;
 			}
 			window.spkmodActiveDyedMaterials.set(child, child.material);
@@ -7924,7 +8008,8 @@ window.spkmodStartRainbowWave = function(targetMode, customSpeed) {
 		// 1. Local avatar
 		if (gameState && gameState.localAvatar && gameState.localAvatar.root) {
 			gameState.localAvatar.root.traverse(child => {
-				if (!child.isMesh || !child.userData.__spkmodClonedMat) return;
+				if (!child.isMesh || !child.material || !child.userData.__spkmodClonedMat) return;
+				if (spkmodIsOutlineMaterial(child.material)) return;
 				const currentMats = Array.isArray(child.material) ? child.material : [child.material];
 				for (const m of currentMats) {
 					if (m && m.color && typeof m.color.setHSL === 'function') {
@@ -7949,12 +8034,14 @@ window.spkmodStartRainbowWave = function(targetMode, customSpeed) {
 					: window.spkmodRainbowPhase;
 
 				rp.avatar.root.traverse(child => {
-					if (!child.isMesh) return;
+					if (!child.isMesh || !child.material) return;
+					if (spkmodIsOutlineMaterial(child.material)) return;
+					spkmodEnsureMaterialPrototypeSafety(child.material);
 					if (!child.userData.__spkmodClonedMat) {
 						if (!child.userData.__spkmodOrigMat) child.userData.__spkmodOrigMat = child.material;
 						child.material = Array.isArray(child.material) 
-							? child.material.map(m => m.clone()) 
-							: child.material.clone();
+							? child.material.map(m => spkmodCloneMaterialSafely(m) || m) 
+							: (spkmodCloneMaterialSafely(child.material) || child.material);
 						child.userData.__spkmodClonedMat = true;
 					}
 					const currentMats = Array.isArray(child.material) ? child.material : [child.material];
@@ -8007,12 +8094,17 @@ window.spkmodApplyShadowMode = function() {
 	if (!root) return;
 
 	root.traverse(child => {
-		if (!child.isMesh) return;
+		if (!child.isMesh || !child.material) return;
+		if (spkmodIsOutlineMaterial(child.material)) return;
+		spkmodEnsureMaterialPrototypeSafety(child.material);
+		const mats = Array.isArray(child.material) ? child.material : [child.material];
+		for (const m of mats) if (m && !m.userData) m.userData = {};
+
 		if (!child.userData.__spkmodOrigMat) child.userData.__spkmodOrigMat = child.material;
 		if (!child.userData.__spkmodClonedMat) {
 			child.material = Array.isArray(child.material) 
-				? child.material.map(m => m.clone()) 
-				: child.material.clone();
+				? child.material.map(m => spkmodCloneMaterialSafely(m) || m) 
+				: (spkmodCloneMaterialSafely(child.material) || child.material);
 			child.userData.__spkmodClonedMat = true;
 		}
 
@@ -8031,6 +8123,133 @@ window.spkmodApplyShadowMode = function() {
 
 	window.spkmodSanitizeRemotePlayers();
 	if (typeof chatLog === 'function') chatLog("[FX] 👤 Void Shadow Mode activated!");
+	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
+};
+
+window.spkmodApplyBadAppleMode = function() {
+	if (typeof gameState === 'undefined' || !gameState || !gameState.scene) {
+		if (typeof chatLog === 'function') chatLog("[FX] Game scene is not loaded yet.");
+		return;
+	}
+
+	if (window.spkmodAvatarColorMode === "bad_apple") {
+		window.spkmodResetAvatarColors();
+		return;
+	}
+
+	window.hookRemotePlayerRebuildIsolation();
+	spkmodEnsurePristineMaterials();
+
+	if (window.__spkmodRainbowAnimId) {
+		cancelAnimationFrame(window.__spkmodRainbowAnimId);
+		window.__spkmodRainbowAnimId = null;
+	}
+
+	window.spkmodAvatarColorMode = "bad_apple";
+	window.spkmodActiveDyedMaterials.clear();
+
+	const scene = gameState.scene;
+
+	// 1. Scene Background, Fog & Renderer Clear Color
+	if (scene.__spkmodBadAppleOrigBg === undefined) {
+		scene.__spkmodBadAppleOrigBg = scene.background || null;
+	}
+	if (scene.__spkmodBadAppleOrigFog === undefined) {
+		scene.__spkmodBadAppleOrigFog = scene.fog && scene.fog.color ? scene.fog.color.getHex() : null;
+	}
+	if (scene.background && typeof scene.background.setHex === 'function') {
+		scene.background.setHex(0xffffff);
+	} else if (scene.children) {
+		const anyMesh = scene.children.find(c => c?.material?.color);
+		if (anyMesh && anyMesh.material?.color?.constructor) {
+			scene.background = new anyMesh.material.color.constructor(0xffffff);
+		}
+	}
+	if (scene.fog && scene.fog.color && typeof scene.fog.color.setHex === 'function') {
+		scene.fog.color.setHex(0xffffff);
+	}
+	if (gameState.renderer && typeof gameState.renderer.setClearColor === 'function') {
+		if (gameState.renderer.__spkmodOrigClearColor === undefined) {
+			try {
+				const col = scene.background ? new (scene.background.constructor)() : null;
+				if (col) {
+					gameState.renderer.getClearColor(col);
+					gameState.renderer.__spkmodOrigClearColor = col.getHex();
+				} else {
+					gameState.renderer.__spkmodOrigClearColor = null;
+				}
+			} catch (_) {
+				gameState.renderer.__spkmodOrigClearColor = null;
+			}
+		}
+		try { gameState.renderer.setClearColor(0xffffff, 1); } catch (_) {}
+	}
+
+	// Helper to silhouette a mesh into solid black
+	const makeMeshSilhouette = (child) => {
+		if (!child.isMesh || !child.material) return;
+		if (spkmodIsOutlineMaterial(child.material)) return;
+		spkmodEnsureMaterialPrototypeSafety(child.material);
+
+		if (child.renderOrder === -1) {
+			// Skybox dome / background mesh - make pure white
+			const mats = Array.isArray(child.material) ? child.material : [child.material];
+			for (const m of mats) {
+				if (!m) continue;
+				if (m.__spkmodBadAppleOrigMap === undefined) m.__spkmodBadAppleOrigMap = m.map;
+				if (m.__spkmodBadAppleOrigColor === undefined && m.color) m.__spkmodBadAppleOrigColor = m.color.getHex();
+				m.map = null;
+				if (m.color && typeof m.color.setHex === 'function') m.color.setHex(0xffffff);
+				m.needsUpdate = true;
+			}
+			child.visible = true;
+			return;
+		}
+
+		if (!child.userData.__spkmodBadAppleOrigMat) {
+			child.userData.__spkmodBadAppleOrigMat = child.material;
+		}
+		if (!child.userData.__spkmodBadAppleCloned) {
+			child.material = Array.isArray(child.material) 
+				? child.material.map(m => spkmodCloneMaterialSafely(m) || m) 
+				: (spkmodCloneMaterialSafely(child.material) || child.material);
+			child.userData.__spkmodBadAppleCloned = true;
+		}
+
+		const currentMats = Array.isArray(child.material) ? child.material : [child.material];
+		for (const m of currentMats) {
+			if (!m) continue;
+			if (!m.userData) m.userData = {};
+			if (m.color && typeof m.color.setHex === 'function') {
+				m.color.setHex(0x000000);
+			}
+			if (m.emissive && typeof m.emissive.setHex === 'function') {
+				m.emissive.setHex(0x000000);
+			}
+			m.map = null;
+			if (m.roughness !== undefined) m.roughness = 1.0;
+			if (m.metalness !== undefined) m.metalness = 0.0;
+			m.needsUpdate = true;
+		}
+		window.spkmodActiveDyedMaterials.set(child, child.material);
+	};
+
+	// 2. Apply to entire scene (scenery, ferris wheel, ground, environment)
+	scene.traverse(makeMeshSilhouette);
+
+	// 3. Ensure local avatar & all remote avatars are also traversed
+	if (gameState.localAvatar && gameState.localAvatar.root) {
+		gameState.localAvatar.root.traverse(makeMeshSilhouette);
+	}
+	if (gameState.remotePlayers && gameState.remotePlayers.remotePlayers) {
+		for (const rp of gameState.remotePlayers.remotePlayers.values()) {
+			if (rp && rp.avatar && rp.avatar.root) {
+				rp.avatar.root.traverse(makeMeshSilhouette);
+			}
+		}
+	}
+
+	if (typeof chatLog === 'function') chatLog("[FX] 🍎 Bad Apple Monochrome Mode activated!");
 	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
 };
 
@@ -8103,23 +8322,91 @@ window.spkmodResetAvatarColors = function() {
 	window.spkmodAvatarHeartDropActive = false;
 	if (window.spkmodActiveDyedMaterials) window.spkmodActiveDyedMaterials.clear();
 
+	// 0. Restore Bad Apple scene modifications if active or present
+	if (typeof gameState !== 'undefined' && gameState && gameState.scene) {
+		const scene = gameState.scene;
+		if (scene.__spkmodBadAppleOrigBg !== undefined) {
+			scene.background = scene.__spkmodBadAppleOrigBg;
+			delete scene.__spkmodBadAppleOrigBg;
+		}
+		if (scene.fog && scene.__spkmodBadAppleOrigFog !== undefined) {
+			if (scene.__spkmodBadAppleOrigFog !== null && scene.fog.color && typeof scene.fog.color.setHex === 'function') {
+				scene.fog.color.setHex(scene.__spkmodBadAppleOrigFog);
+			}
+			delete scene.__spkmodBadAppleOrigFog;
+		}
+		if (gameState.renderer && gameState.renderer.__spkmodOrigClearColor !== undefined) {
+			try {
+				if (gameState.renderer.__spkmodOrigClearColor !== null && typeof gameState.renderer.setClearColor === 'function') {
+					gameState.renderer.setClearColor(gameState.renderer.__spkmodOrigClearColor, 1);
+				}
+			} catch (_) {}
+			delete gameState.renderer.__spkmodOrigClearColor;
+		}
+
+		scene.traverse(child => {
+			if (!child.isMesh) return;
+			if (child.renderOrder === -1 && child.material) {
+				const mats = Array.isArray(child.material) ? child.material : [child.material];
+				for (const m of mats) {
+					if (!m) continue;
+					if (m.__spkmodBadAppleOrigMap !== undefined) {
+						m.map = m.__spkmodBadAppleOrigMap;
+						delete m.__spkmodBadAppleOrigMap;
+					}
+					if (m.__spkmodBadAppleOrigColor !== undefined && m.color && typeof m.color.setHex === 'function') {
+						m.color.setHex(m.__spkmodBadAppleOrigColor);
+						delete m.__spkmodBadAppleOrigColor;
+					}
+					m.needsUpdate = true;
+				}
+			}
+			if (child.userData.__spkmodBadAppleOrigMat) {
+				const orig = child.userData.__spkmodBadAppleOrigMat;
+				const cloned = child.material;
+				child.material = orig;
+				delete child.userData.__spkmodBadAppleOrigMat;
+				delete child.userData.__spkmodBadAppleCloned;
+				if (cloned && cloned !== orig) {
+					const arr = Array.isArray(cloned) ? cloned : [cloned];
+					const origArr = Array.isArray(orig) ? orig : [orig];
+					for (const c of arr) {
+						if (c && !origArr.includes(c) && typeof c.dispose === 'function') {
+							try { c.dispose(); } catch (_) {}
+						}
+					}
+				}
+			}
+		});
+	}
+
 	// 1. Reset local avatar
 	if (typeof gameState !== 'undefined' && gameState && gameState.localAvatar && gameState.localAvatar.root) {
 		gameState.localAvatar.root.traverse(child => {
 			if (!child.isMesh) return;
 			if (child.userData.__spkmodOrigMat) {
+				const orig = child.userData.__spkmodOrigMat;
 				const cloned = child.material;
-				child.material = child.userData.__spkmodOrigMat;
+				child.material = orig;
 				delete child.userData.__spkmodOrigMat;
 				delete child.userData.__spkmodClonedMat;
-				if (cloned) {
+				if (cloned && cloned !== orig) {
 					const arr = Array.isArray(cloned) ? cloned : [cloned];
-					for (const c of arr) if (c && typeof c.dispose === 'function') c.dispose();
+					const origArr = Array.isArray(orig) ? orig : [orig];
+					for (const c of arr) {
+						if (c && !origArr.includes(c) && typeof c.dispose === 'function') {
+							try { c.dispose(); } catch (_) {}
+						}
+					}
 				}
 			} else if (window.__spkmodBasePristineMaterials && window.__spkmodBasePristineMaterials.has(child.name)) {
 				const prist = window.__spkmodBasePristineMaterials.get(child.name);
-				child.material = Array.isArray(child.material) ? prist.map(m => m.clone()) : prist[0].clone();
+				child.material = Array.isArray(child.material) ? prist.map(m => spkmodCloneMaterialSafely(m) || m) : (spkmodCloneMaterialSafely(prist[0]) || prist[0]);
 				delete child.userData.__spkmodClonedMat;
+			}
+			if (child.material) {
+				const mats = Array.isArray(child.material) ? child.material : [child.material];
+				for (const m of mats) if (m && !m.userData) m.userData = {};
 			}
 		});
 	}
@@ -8134,14 +8421,24 @@ window.spkmodResetAvatarColors = function() {
 				rp.avatar.root.traverse(child => {
 					if (!child.isMesh) return;
 					if (child.userData.__spkmodOrigMat) {
+						const orig = child.userData.__spkmodOrigMat;
 						const cloned = child.material;
-						child.material = child.userData.__spkmodOrigMat;
+						child.material = orig;
 						delete child.userData.__spkmodOrigMat;
 						delete child.userData.__spkmodClonedMat;
-						if (cloned) {
+						if (cloned && cloned !== orig) {
 							const arr = Array.isArray(cloned) ? cloned : [cloned];
-							for (const c of arr) if (c && typeof c.dispose === 'function') c.dispose();
+							const origArr = Array.isArray(orig) ? orig : [orig];
+							for (const c of arr) {
+								if (c && !origArr.includes(c) && typeof c.dispose === 'function') {
+									try { c.dispose(); } catch (_) {}
+								}
+							}
 						}
+					}
+					if (child.material) {
+						const mats = Array.isArray(child.material) ? child.material : [child.material];
+						for (const m of mats) if (m && !m.userData) m.userData = {};
 					}
 				});
 			}
@@ -8656,6 +8953,16 @@ document.body.appendChild(
 								if (window.spkmodApplyShadowMode) window.spkmodApplyShadowMode();
 								updateLocalEditsUI();
 							}
+						}),
+						editsModalElements.dyeBtnBadApple = buildElement("button", {
+							className: "spkmod-panel-btn",
+							style: "grid-column: span 2; padding: 6px 2px; font-size: 10px; text-align: center; color: #ffffff; background: #111111; border: 1px solid #666; font-weight: bold;",
+							innerText: "🍎 " + (t("dyeBtnBadApple") || "Bad Apple"),
+							title: "Iconic monochrome silhouette mode (pitch-black silhouettes on pure white background)",
+							onclick: () => {
+								if (window.spkmodApplyBadAppleMode) window.spkmodApplyBadAppleMode();
+								updateLocalEditsUI();
+							}
 						})
 					]),
 					// Reset Button
@@ -9085,6 +9392,18 @@ function updateLocalEditsUI() {
 		} else {
 			editsModalElements.dyeBtnShadow.style.borderColor = "#555";
 			editsModalElements.dyeBtnShadow.style.background = "";
+		}
+	}
+	if (editsModalElements.dyeBtnBadApple) {
+		setText(editsModalElements.dyeBtnBadApple, "🍎 " + (t("dyeBtnBadApple") || "Bad Apple"));
+		if (window.spkmodAvatarColorMode === "bad_apple") {
+			editsModalElements.dyeBtnBadApple.style.borderColor = "#ffffff";
+			editsModalElements.dyeBtnBadApple.style.background = "#333333";
+			editsModalElements.dyeBtnBadApple.style.boxShadow = "0 0 8px rgba(255, 255, 255, 0.6)";
+		} else {
+			editsModalElements.dyeBtnBadApple.style.borderColor = "#666";
+			editsModalElements.dyeBtnBadApple.style.background = "#111111";
+			editsModalElements.dyeBtnBadApple.style.boxShadow = "";
 		}
 	}
 	if (editsModalElements.dyeColorPicker && window.spkmodAvatarColorHex) {
@@ -12337,6 +12656,12 @@ function hookGameStateOnce() {
 					case "void":
 						if (typeof window.spkmodApplyShadowMode === "function") {
 							window.spkmodApplyShadowMode();
+						}
+						break;
+					case "badapple":
+					case "apple":
+						if (typeof window.spkmodApplyBadAppleMode === "function") {
+							window.spkmodApplyBadAppleMode();
 						}
 						break;
 					case "drop":
