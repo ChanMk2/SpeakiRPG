@@ -1038,6 +1038,15 @@ var lunNametagMode = 0;
 const NAMETAG_MODES = ["showAllNametags", "keepPartyNametags", "keepFriendsNametags", "hideAllNametags"];
 
 var lunFriendNicknames = new Set();
+if (window.localStorage) {
+	try {
+		const cached = localStorage.getItem("spkmod-friend-cache");
+		if (cached) {
+			const arr = JSON.parse(cached);
+			if (Array.isArray(arr)) arr.forEach(n => lunFriendNicknames.add(n.toLowerCase()));
+		}
+	} catch (e) { }
+}
 var lunFriendChatHighlightEnabled = (window.localStorage && localStorage.getItem("spkmod-friend-highlight-enabled")) === "true";
 
 function setFriendChatHighlightEnabled(enabled) {
@@ -1052,32 +1061,55 @@ function fetchFriendsList(force = false) {
 	const now = Date.now();
 	if (!force && now - lunLastFriendFetchTime < 60000) return;
 	if (lunFriendFetchInProgress) return;
-	const token = typeof getAuthToken === "function" ? getAuthToken() : null;
-	if (!token) return;
+	let token = (typeof getAuthToken === "function" ? getAuthToken() : "") || (typeof lunSpkAuthToken === "string" ? lunSpkAuthToken : "");
+	if (token.toLowerCase().startsWith("bearer ")) {
+		token = token.substring(7).trim();
+	}
 	lunFriendFetchInProgress = true;
-	fetch("https://sr1.overture.io.kr/api/friend/list", {
-		method: "GET",
-		headers: {
-			"authorization": `Bearer ${token}`
-		},
-		mode: "cors"
-	}).then(async res => {
-		if (!res.ok) return;
-		const data = await res.json();
+	const endpoint = (typeof lunActivePingEndpoint !== 'undefined' && lunActivePingEndpoint) || 
+	                 (typeof window.lunActiveApiEndpoint !== 'undefined' && window.lunActiveApiEndpoint) || 
+	                 "https://relay.overture.io.kr";
+	const targetUrl = endpoint + "/api/friend/list";
+	const headers = {};
+	if (token) headers["authorization"] = `Bearer ${token}`;
+
+	const applyFriendData = (data) => {
 		const friends = data?.friends;
 		if (Array.isArray(friends)) {
-			const newSet = new Set();
-			for (const f of friends) {
+			friends.forEach(f => {
 				if (f && typeof f.nickname === "string") {
 					const nick = f.nickname.trim().toLowerCase();
-					if (nick) newSet.add(nick);
+					if (nick) lunFriendNicknames.add(nick);
 				}
-			}
-			lunFriendNicknames = newSet;
+			});
 			lunLastFriendFetchTime = Date.now();
+			if (window.localStorage) {
+				try {
+					localStorage.setItem("spkmod-friend-cache", JSON.stringify([...lunFriendNicknames]));
+				} catch(e) {}
+			}
 		}
-	}).catch(e => {
-		console.warn("[SpeakiMod+] Failed to fetch friend list:", e);
+	};
+
+	fetch(targetUrl, {
+		method: "GET",
+		headers: headers,
+		mode: "cors"
+	}).then(async res => {
+		if (!res.ok) {
+			return fetch("/api/friend/list", { method: "GET", headers: headers, mode: "cors" })
+				.then(r => r.ok ? r.json() : null)
+				.then(d => d && applyFriendData(d));
+		}
+		const data = await res.json();
+		applyFriendData(data);
+	}).catch(() => {
+		fetch("/api/friend/list", { method: "GET", headers: headers, mode: "cors" })
+			.then(r => r.ok ? r.json() : null)
+			.then(d => d && applyFriendData(d))
+			.catch(err => {
+				console.warn("[SpeakiMod+] Failed to fetch friend list:", err);
+			});
 	}).finally(() => {
 		lunFriendFetchInProgress = false;
 	});
@@ -1260,6 +1292,24 @@ window.fetch = async function(...args) {
                     cachedBlockedNames.add(n);
                     if (data.blockId) cachedBlockIds.set(String(data.blockId), n);
                     if (typeof updateKnownBotVisibility === 'function') updateKnownBotVisibility();
+                }
+            }).catch(() => {});
+        }
+        if (url.includes('/api/friend/list')) {
+            response.clone().json().then(data => {
+                const friends = data?.friends;
+                if (Array.isArray(friends)) {
+                    friends.forEach(f => {
+                        if (f && typeof f.nickname === "string") {
+                            const nick = f.nickname.trim().toLowerCase();
+                            if (nick) lunFriendNicknames.add(nick);
+                        }
+                    });
+                    if (window.localStorage) {
+                        try {
+                            localStorage.setItem("spkmod-friend-cache", JSON.stringify([...lunFriendNicknames]));
+                        } catch(e) {}
+                    }
                 }
             }).catch(() => {});
         }
@@ -7314,7 +7364,93 @@ window.spkmodResetNames = function() {
 	console.log(`[SpeakiMod+] Reset ${count} names to their original values`);
 };
 
+window.spkmodSetTeam = function(team, targetPlayer) {
+	if (typeof gameState === 'undefined' || !gameState) {
+		if (typeof chatLog === 'function') chatLog("[Soccer] Game is not loaded yet.");
+		return;
+	}
 
+	let teamNum = 0;
+	if (typeof team === 'number') {
+		teamNum = team;
+	} else if (typeof team === 'string') {
+		const s = team.trim().toLowerCase();
+		if (s === 'red' || s === '1' || s === 'r' || s === 'redteam') teamNum = 1;
+		else if (s === 'blue' || s === '2' || s === 'b' || s === 'blueteam') teamNum = 2;
+		else if (s === 'none' || s === '0' || s === 'off' || s === 'reset' || s === 'clear' || s === 'default') teamNum = 0;
+		else {
+			const parsed = parseInt(s, 10);
+			if (!isNaN(parsed)) teamNum = parsed;
+			else {
+				if (typeof chatLog === 'function') chatLog("[Soccer] Unknown team. Options: red (1), blue (2), none (0)");
+				return;
+			}
+		}
+	}
+
+	const teamNames = { 0: "Default (None)", 1: "Red Team", 2: "Blue Team" };
+	const label = teamNames[teamNum] || ("Team " + teamNum);
+
+	// If targeting a specific player (or all players)
+	if (targetPlayer) {
+		const targetLower = String(targetPlayer).trim().toLowerCase();
+		let affectedCount = 0;
+
+		if (targetLower === "all" || targetLower === "*") {
+			if (typeof gameState.setLocalSoccerTeam === 'function') {
+				gameState.setLocalSoccerTeam(teamNum);
+				affectedCount++;
+			}
+			if (gameState.remotePlayers && gameState.remotePlayers.remotePlayers) {
+				for (const [id] of gameState.remotePlayers.remotePlayers.entries()) {
+					if (typeof gameState.remotePlayers.applySoccerTeam === 'function') {
+						gameState.remotePlayers.applySoccerTeam(id, teamNum);
+						affectedCount++;
+					}
+				}
+			}
+			if (typeof chatLog === 'function') chatLog(`[Soccer] Applied ${label} to all players (${affectedCount}).`);
+			return;
+		}
+
+		if (targetLower === "me" || (gameState.myPlayerName && gameState.myPlayerName.toLowerCase() === targetLower)) {
+			if (typeof gameState.setLocalSoccerTeam === 'function') {
+				gameState.setLocalSoccerTeam(teamNum);
+				if (typeof chatLog === 'function') chatLog(`[Soccer] Uniform set to ${label}.`);
+			}
+			return;
+		}
+
+		if (gameState.remotePlayers && gameState.remotePlayers.remotePlayers) {
+			for (const [id, rp] of gameState.remotePlayers.remotePlayers.entries()) {
+				const curName = (rp.info && rp.info.name ? rp.info.name : "").toLowerCase();
+				const origName = (rp.info && rp.info.__spkmodOrigName ? rp.info.__spkmodOrigName : "").toLowerCase();
+				if (curName === targetLower || origName === targetLower || String(id) === targetLower) {
+					if (typeof gameState.remotePlayers.applySoccerTeam === 'function') {
+						gameState.remotePlayers.applySoccerTeam(id, teamNum);
+						affectedCount++;
+						if (typeof chatLog === 'function') chatLog(`[Soccer] Set ${rp.info?.name || id} to ${label}.`);
+					}
+				}
+			}
+		}
+
+		if (affectedCount === 0 && typeof chatLog === 'function') {
+			chatLog(`[Soccer] Player "${targetPlayer}" not found.`);
+		}
+		return;
+	}
+
+	// Default: Apply to local player
+	if (typeof gameState.setLocalSoccerTeam === 'function') {
+		gameState.setLocalSoccerTeam(teamNum);
+		if (typeof chatLog === 'function') {
+			chatLog(`[Soccer] Character uniform set to: ${label}`);
+		}
+	} else {
+		console.warn("[SpeakiMod+] gameState.setLocalSoccerTeam not available.");
+	}
+};
 
 window.spkmodUpdatePresetListUI = function() {
     if (typeof lunPanelElements === 'undefined' || !lunPanelElements.presetList) return;
@@ -10727,11 +10863,11 @@ function hookAvatarLabel(entity) {
 				}
 				const pName = (t.info?.name || "").trim().toLowerCase();
 				const origName = (t.info?.__spkmodOrigName || "").trim().toLowerCase();
-				sprite.visible = partyNames.has(pName) || (origName && partyNames.has(origName));
+				sprite.visible = partyNames.has(pName) || (Boolean(origName) && partyNames.has(origName));
 			} else if (lunNametagMode === 2) {
 				const pName = (t.info?.name || "").trim().toLowerCase();
 				const origName = (t.info?.__spkmodOrigName || "").trim().toLowerCase();
-				sprite.visible = lunFriendNicknames.has(pName) || (origName && lunFriendNicknames.has(origName));
+				sprite.visible = lunFriendNicknames.has(pName) || (Boolean(origName) && lunFriendNicknames.has(origName));
 			}
 		}
 	});
@@ -11071,7 +11207,7 @@ function hookGameStateOnce() {
 	if (typeof gameState.trySendChat === "function" && !gameState.__speakiTrySendChatHooked) {
 		const origTrySendChat = gameState.trySendChat.bind(gameState);
 		gameState.trySendChat = (msg) => {
-			if (msg && msg.startsWith("!")) {
+			if (msg && (msg.startsWith("!") || msg.startsWith("/"))) {
 				const cmd = msg.substring(1).split(" ");
 				if (window.spkmodDebug) spkmodDebug.log("Chat command executed:", cmd[0], cmd.slice(1));
 				switch (cmd[0]) {
@@ -11206,6 +11342,27 @@ function hookGameStateOnce() {
 							}
 						} else {
 							chatLog(t("speedUsageMsg"));
+						}
+						break;
+					case "team":
+					case "soccer":
+					case "jersey":
+						if (!cmd[1]) {
+							chatLog("Usage: /team [red|blue|none] [optional: player_name|all]");
+							return;
+						}
+						if (typeof window.spkmodSetTeam === "function") {
+							window.spkmodSetTeam(cmd[1], cmd.slice(2).join(" "));
+						}
+						break;
+					case "red":
+						if (typeof window.spkmodSetTeam === "function") {
+							window.spkmodSetTeam(1, cmd.slice(1).join(" "));
+						}
+						break;
+					case "blue":
+						if (typeof window.spkmodSetTeam === "function") {
+							window.spkmodSetTeam(2, cmd.slice(1).join(" "));
 						}
 						break;
 					default:
