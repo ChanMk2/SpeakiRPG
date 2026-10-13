@@ -7733,6 +7733,8 @@ function spkmodSetFbxMaterialsPristine(isPristine) {
 		if (isPristine) {
 			if (child.userData.__spkmodOrigMat) {
 				child.material = child.userData.__spkmodOrigMat;
+			} else if (child.userData.__spkmodBadAppleOrigMat) {
+				child.material = child.userData.__spkmodBadAppleOrigMat;
 			} else if (window.__spkmodBasePristineMaterials.has(child.name)) {
 				const mats = window.__spkmodBasePristineMaterials.get(child.name);
 				child.material = Array.isArray(child.material) ? mats.map(m => spkmodCloneMaterialSafely(m) || m) : (spkmodCloneMaterialSafely(mats[0]) || mats[0]);
@@ -7750,6 +7752,9 @@ function spkmodSetFbxMaterialsPristine(isPristine) {
 }
 
 window.spkmodSanitizeRemotePlayers = function() {
+	if (window.spkmodAvatarColorMode === "rainbow_all" || 
+	    window.spkmodAvatarColorMode === "rainbow_random" || 
+	    window.spkmodAvatarColorMode === "bad_apple") return;
 	if (typeof gameState === 'undefined' || !gameState || !gameState.remotePlayers || !gameState.remotePlayers.remotePlayers) return;
 	for (const rp of gameState.remotePlayers.remotePlayers.values()) {
 		if (!rp) continue;
@@ -8132,10 +8137,7 @@ window.spkmodApplyBadAppleMode = function() {
 		return;
 	}
 
-	if (window.spkmodAvatarColorMode === "bad_apple") {
-		window.spkmodResetAvatarColors();
-		return;
-	}
+	const wasAlreadyActive = window.spkmodAvatarColorMode === "bad_apple";
 
 	window.hookRemotePlayerRebuildIsolation();
 	spkmodEnsurePristineMaterials();
@@ -8249,8 +8251,18 @@ window.spkmodApplyBadAppleMode = function() {
 		}
 	}
 
-	if (typeof chatLog === 'function') chatLog("[FX] 🍎 Bad Apple Monochrome Mode activated!");
+	if (!wasAlreadyActive && typeof chatLog === 'function') {
+		chatLog("[FX] 🍎 Bad Apple Monochrome Mode activated!");
+	}
 	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
+};
+
+window.spkmodToggleBadAppleMode = function() {
+	if (window.spkmodAvatarColorMode === "bad_apple") {
+		window.spkmodResetAvatarColors();
+	} else {
+		window.spkmodApplyBadAppleMode();
+	}
 };
 
 window.spkmodToggleDropping = function(enabled) {
@@ -8960,7 +8972,8 @@ document.body.appendChild(
 							innerText: "🍎 " + (t("dyeBtnBadApple") || "Bad Apple"),
 							title: "Iconic monochrome silhouette mode (pitch-black silhouettes on pure white background)",
 							onclick: () => {
-								if (window.spkmodApplyBadAppleMode) window.spkmodApplyBadAppleMode();
+								if (window.spkmodToggleBadAppleMode) window.spkmodToggleBadAppleMode();
+								else if (window.spkmodApplyBadAppleMode) window.spkmodApplyBadAppleMode();
 								updateLocalEditsUI();
 							}
 						})
@@ -12660,7 +12673,9 @@ function hookGameStateOnce() {
 						break;
 					case "badapple":
 					case "apple":
-						if (typeof window.spkmodApplyBadAppleMode === "function") {
+						if (typeof window.spkmodToggleBadAppleMode === "function") {
+							window.spkmodToggleBadAppleMode();
+						} else if (typeof window.spkmodApplyBadAppleMode === "function") {
 							window.spkmodApplyBadAppleMode();
 						}
 						break;
