@@ -6136,7 +6136,7 @@ function triggerHearts() {
 			gameState.bloomEffects.spawnHearts(gameState.playerContainer);
 		}
 		if (lunFollowTargetName && gameState.remotePlayers && gameState.remotePlayers.remotePlayers) {
-			const tp = Array.from(gameState.remotePlayers.remotePlayers.values()).find(t => t.info && t.info.name === lunFollowTargetName);
+			const tp = Array.from(gameState.remotePlayers.remotePlayers.values()).find(t => t.info && (t.info.name === lunFollowTargetName || t.info.__spkmodOrigName === lunFollowTargetName));
 			if (tp && tp.container && tp.container !== gameState.playerContainer) {
 				gameState.bloomEffects.spawnHearts(tp.container);
 			}
@@ -6332,7 +6332,7 @@ function togglePartnerDance(btn) {
 	if (window.PartnerDanceState > 0) {
 		if (window.PartnerDanceState === 1) {
 			if (lunFollowTargetName && typeof gameState !== "undefined" && gameState?.remotePlayers?.remotePlayers) {
-				const tp = Array.from(gameState.remotePlayers.remotePlayers.values()).find(t => t.info && t.info.name === lunFollowTargetName);
+				const tp = Array.from(gameState.remotePlayers.remotePlayers.values()).find(t => t.info && (t.info.name === lunFollowTargetName || t.info.__spkmodOrigName === lunFollowTargetName));
 				if (tp && tp.container) {
 					const myPos = getPlayerPos();
 					partnerDanceCenter = {
@@ -7226,8 +7226,12 @@ window.spkmodRenamePlayer = function(oldName, newName, newLevel) {
 	function processMap(map) {
 		if (!map || typeof map.values !== 'function') return;
 		for (const entity of map.values()) {
-			if (entity.info && entity.info.name && entity.info.name.toLowerCase().trim() === oldLower) {
-				if (hijackAndRename(entity, newName, newLevel)) count++;
+			if (entity.info) {
+				const currentName = (entity.info.name || "").toLowerCase().trim();
+				const origName = (entity.info.__spkmodOrigName || "").toLowerCase().trim();
+				if (currentName === oldLower || origName === oldLower) {
+					if (hijackAndRename(entity, newName, newLevel)) count++;
+				}
 			}
 		}
 	}
@@ -7263,9 +7267,13 @@ window.spkmodTriggerDeathTarget = function(name) {
 	const lowerName = name.toLowerCase().trim();
 	if (gameState.remotePlayers && gameState.remotePlayers.remotePlayers) {
 		for (const player of gameState.remotePlayers.remotePlayers.values()) {
-			if (player.info && player.info.name && player.info.name.toLowerCase().trim() === lowerName) {
-				if (player.avatar && player.avatar.animationController) {
-					spkmodPlayDeath(player.avatar.animationController, player.info.name);
+			if (player.info) {
+				const currentName = (player.info.name || "").toLowerCase().trim();
+				const origName = (player.info.__spkmodOrigName || "").toLowerCase().trim();
+				if (currentName === lowerName || origName === lowerName) {
+					if (player.avatar && player.avatar.animationController) {
+						spkmodPlayDeath(player.avatar.animationController, player.info.name);
+					}
 				}
 			}
 		}
@@ -10718,10 +10726,12 @@ function hookAvatarLabel(entity) {
 					partyNames = new Set(Array.from(document.querySelectorAll('.sr-party__name')).map(el => el.innerText.trim().toLowerCase()));
 				}
 				const pName = (t.info?.name || "").trim().toLowerCase();
-				sprite.visible = partyNames.has(pName);
+				const origName = (t.info?.__spkmodOrigName || "").trim().toLowerCase();
+				sprite.visible = partyNames.has(pName) || (origName && partyNames.has(origName));
 			} else if (lunNametagMode === 2) {
 				const pName = (t.info?.name || "").trim().toLowerCase();
-				sprite.visible = lunFriendNicknames.has(pName);
+				const origName = (t.info?.__spkmodOrigName || "").trim().toLowerCase();
+				sprite.visible = lunFriendNicknames.has(pName) || (origName && lunFriendNicknames.has(origName));
 			}
 		}
 	});
@@ -10987,7 +10997,7 @@ function hookGameStateOnce() {
 			}
 
 			if (lunFollowTargetName && gameState.remotePlayers && gameState.remotePlayers.remotePlayers) {
-				const targetPlayer = Array.from(gameState.remotePlayers.remotePlayers.values()).find(t => t.info && t.info.name === lunFollowTargetName);
+				const targetPlayer = Array.from(gameState.remotePlayers.remotePlayers.values()).find(t => t.info && (t.info.name === lunFollowTargetName || t.info.__spkmodOrigName === lunFollowTargetName));
 				if (targetPlayer && targetPlayer.container) {
 					const pp = getPlayerPos();
 					const tp = targetPlayer.container.position;
