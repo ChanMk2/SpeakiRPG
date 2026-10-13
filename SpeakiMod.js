@@ -7367,61 +7367,8 @@ window.spkmodResetNames = function() {
 	console.log(`[SpeakiMod+] Reset ${count} names to their original values`);
 };
 
-window.spkmodIsPlayerInTown = function() {
-	if (typeof gameState === 'undefined' || !gameState) return false;
-	const z = Number(gameState.visualZoneId ?? gameState.zoneId);
-	if (isNaN(z)) return false;
-	return (z % 10000) === 1;
-};
-
-window.spkmodWarpSoccerField = function(target) {
-	if (typeof gameState === 'undefined' || !gameState || !gameState.playerContainer) {
-		if (typeof chatLog === 'function') chatLog("[Soccer] Game is not loaded yet.");
-		return;
-	}
-	if (!window.spkmodIsPlayerInTown()) {
-		if (typeof chatLog === 'function') chatLog("[Soccer] You must be in Town (Zone 1) to warp to the soccer field.");
-		return;
-	}
-
-	let targetX = 78; // Midfield Center
-	let targetZ = 82;
-	let desc = "Center";
-
-	if (typeof target === 'string') {
-		const t = target.trim().toLowerCase();
-		if (t === 'red' || t === '1' || t === 'r') {
-			targetX = 72;
-			desc = "Red Team side";
-		} else if (t === 'blue' || t === '2' || t === 'b') {
-			targetX = 84;
-			desc = "Blue Team side";
-		} else if (t === 'out' || t === 'exit' || t === 'leave' || t === 'plaza') {
-			targetX = 58;
-			desc = "outside field";
-		}
-	} else if (target === 1) {
-		targetX = 72;
-		desc = "Red Team side";
-	} else if (target === 2) {
-		targetX = 84;
-		desc = "Blue Team side";
-	}
-
-	const curY = (gameState.playerContainer.position && !isNaN(gameState.playerContainer.position.y)) ? gameState.playerContainer.position.y : 0;
-	gameState.playerContainer.position.set(targetX, curY, targetZ);
-	if (gameState.lastSent) {
-		gameState.lastSent.x = targetX;
-		gameState.lastSent.z = targetZ;
-	}
-	if (gameState.socket && typeof gameState.socket.sendMove === 'function') {
-		gameState.socket.sendMove(0 /* P_IDLE */, targetX, curY, targetZ, gameState.playerContainer.rotation?.y || 0);
-	}
-	if (typeof chatLog === 'function') chatLog(`[Soccer] Teleported to soccer field (${desc}).`);
-};
-
 window.spkmodActiveSoccerTeam = window.spkmodActiveSoccerTeam || 0;
-window.spkmodSetTeam = function(team, targetPlayer) {
+window.spkmodSetTeam = function(team) {
 	if (typeof gameState === 'undefined' || !gameState) {
 		if (typeof chatLog === 'function') chatLog("[Soccer] Game is not loaded yet.");
 		return;
@@ -7447,55 +7394,9 @@ window.spkmodSetTeam = function(team, targetPlayer) {
 
 	const teamNames = { 0: "Default (None)", 1: "Red Team", 2: "Blue Team" };
 	const label = teamNames[teamNum] || ("Team " + teamNum);
-
-	// If targeting a specific remote player (or all players)
-	if (targetPlayer) {
-		const targetLower = String(targetPlayer).trim().toLowerCase();
-		let affectedCount = 0;
-
-		if (targetLower === "all" || targetLower === "*") {
-			if (typeof gameState.setLocalSoccerTeam === 'function') {
-				gameState.setLocalSoccerTeam(teamNum);
-				affectedCount++;
-			}
-			if (gameState.remotePlayers && gameState.remotePlayers.remotePlayers) {
-				for (const [id] of gameState.remotePlayers.remotePlayers.entries()) {
-					if (typeof gameState.remotePlayers.applySoccerTeam === 'function') {
-						gameState.remotePlayers.applySoccerTeam(id, teamNum);
-						affectedCount++;
-					}
-				}
-			}
-			if (typeof chatLog === 'function') chatLog(`[Soccer] Applied ${label} to all players locally (${affectedCount}).`);
-			return;
-		}
-
-		if (targetLower !== "me" && (!gameState.myPlayerName || gameState.myPlayerName.toLowerCase() !== targetLower)) {
-			if (gameState.remotePlayers && gameState.remotePlayers.remotePlayers) {
-				for (const [id, rp] of gameState.remotePlayers.remotePlayers.entries()) {
-					const curName = (rp.info && rp.info.name ? rp.info.name : "").toLowerCase();
-					const origName = (rp.info && rp.info.__spkmodOrigName ? rp.info.__spkmodOrigName : "").toLowerCase();
-					if (curName === targetLower || origName === targetLower || String(id) === targetLower) {
-						if (typeof gameState.remotePlayers.applySoccerTeam === 'function') {
-							gameState.remotePlayers.applySoccerTeam(id, teamNum);
-							affectedCount++;
-							if (typeof chatLog === 'function') chatLog(`[Soccer] Set ${rp.info?.name || id} to ${label} locally.`);
-						}
-					}
-				}
-			}
-
-			if (affectedCount === 0 && typeof chatLog === 'function') {
-				chatLog(`[Soccer] Player "${targetPlayer}" not found.`);
-			}
-			return;
-		}
-	}
-
-	// Target is Local Player (Me):
 	window.spkmodActiveSoccerTeam = teamNum;
 
-	// 1. Immediately apply locally for instant visual responsiveness
+	// Apply locally for instant visual rendering
 	if (typeof gameState.setLocalSoccerTeam === 'function') {
 		gameState.setLocalSoccerTeam(teamNum);
 	}
@@ -7513,84 +7414,10 @@ window.spkmodSetTeam = function(team, targetPlayer) {
 		};
 	}
 
-	// 2. Server-wide Network Sync:
-	if (!window.spkmodIsPlayerInTown()) {
-		if (typeof chatLog === 'function') {
-			chatLog(`[Soccer] Uniform set to ${label} locally. Note: Server-wide sync requires being in Town (Zone 1).`);
-		}
-		return;
+	if (typeof chatLog === 'function') {
+		chatLog(`[Soccer] Uniform set to ${label} (Local).`);
 	}
-
-	if (!gameState.socket || typeof gameState.socket.sendMove !== 'function' || !gameState.playerContainer) {
-		if (typeof chatLog === 'function') {
-			chatLog(`[Soccer] Uniform set to ${label} locally (network socket unavailable).`);
-		}
-		return;
-	}
-
-	// Hook socket.sendMove to enable suppression during spoof window
-	if (!gameState.socket.__spkmodSendMoveHooked) {
-		gameState.socket.__spkmodSendMoveHooked = true;
-		const rawSendMove = gameState.socket.sendMove.bind(gameState.socket);
-		gameState.socket.__spkmodRawSendMove = rawSendMove;
-		gameState.socket.sendMove = function(state, x, y, z, yaw) {
-			if (window.__spkmodSuppressMoveSend) return;
-			return rawSendMove(state, x, y, z, yaw);
-		};
-	}
-
-	const origPos = {
-		x: gameState.playerContainer.position.x,
-		y: gameState.playerContainer.position.y || 0,
-		z: gameState.playerContainer.position.z,
-		yaw: gameState.playerContainer.rotation?.y || 0
-	};
-
-	let targetX = 72; // Red half
-	if (teamNum === 2) targetX = 84; // Blue half
-	else if (teamNum === 0) targetX = 58; // Outside field (Default/None)
-	const targetZ = 82;
-
-	try {
-		// Suppress 60fps loop from immediately sending back the old position
-		window.__spkmodSuppressMoveSend = true;
-		const rawSend = gameState.socket.__spkmodRawSendMove || gameState.socket.sendMove.bind(gameState.socket);
-		rawSend(0 /* P_IDLE */, targetX, origPos.y, targetZ, origPos.yaw);
-		if (gameState.lastSent) {
-			gameState.lastSent.x = targetX;
-			gameState.lastSent.z = targetZ;
-		}
-
-		if (typeof chatLog === 'function') {
-			chatLog(`[Soccer] Syncing ${label} with server...`);
-		}
-
-		// Restore position packet after server processes field trigger (350ms)
-		setTimeout(() => {
-			try {
-				if (gameState && gameState.socket) {
-					rawSend(0 /* P_IDLE */, origPos.x, origPos.y, origPos.z, origPos.yaw);
-					if (gameState.lastSent) {
-						gameState.lastSent.x = origPos.x;
-						gameState.lastSent.z = origPos.z;
-					}
-					window.__spkmodSuppressMoveSend = false;
-					if (typeof chatLog === 'function') {
-						chatLog(`[Soccer] Server sync complete! Uniform: ${label}`);
-					}
-				}
-			} catch (restoreErr) {
-				window.__spkmodSuppressMoveSend = false;
-				console.error("[SpeakiMod] Failed restoring position after soccer sync:", restoreErr);
-			}
-		}, 350);
-	} catch (syncErr) {
-		window.__spkmodSuppressMoveSend = false;
-		console.error("[SpeakiMod] Soccer server sync failed:", syncErr);
-		if (typeof chatLog === 'function') {
-			chatLog(`[Soccer] Uniform set to ${label} locally (sync error).`);
-		}
-	}
+	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
 };
 
 window.spkmodUpdatePresetListUI = function() {
@@ -7709,6 +7536,84 @@ window.spkmodAvatarDroppingActive = Boolean(window.spkmodAvatarDroppingActive);
 window.spkmodAvatarHeartDropActive = Boolean(window.spkmodAvatarHeartDropActive);
 window.__spkmodRainbowAnimId = null;
 
+// Registry of pristine base materials snapshot (to prevent shared FBX template pollution)
+window.__spkmodBasePristineMaterials = window.__spkmodBasePristineMaterials || new Map();
+window.spkmodActiveDyedMaterials = window.spkmodActiveDyedMaterials || new Map();
+
+function spkmodEnsurePristineMaterials() {
+	if (typeof gameState === 'undefined' || !gameState || !gameState.localAvatar || !gameState.localAvatar.root) return;
+	gameState.localAvatar.root.traverse(child => {
+		if (child.isMesh && child.material && !child.userData.__spkmodClonedMat) {
+			if (!window.__spkmodBasePristineMaterials.has(child.name)) {
+				const mats = Array.isArray(child.material) ? child.material : [child.material];
+				window.__spkmodBasePristineMaterials.set(child.name, mats.map(m => m.clone()));
+			}
+		}
+	});
+}
+
+function spkmodSetFbxMaterialsPristine(isPristine) {
+	if (typeof gameState === 'undefined' || !gameState || !gameState.localAvatar || !gameState.localAvatar.root) return;
+	gameState.localAvatar.root.traverse(child => {
+		if (!child.isMesh) return;
+		if (isPristine) {
+			if (child.userData.__spkmodOrigMat) {
+				child.material = child.userData.__spkmodOrigMat;
+			} else if (window.__spkmodBasePristineMaterials.has(child.name)) {
+				const mats = window.__spkmodBasePristineMaterials.get(child.name);
+				child.material = Array.isArray(child.material) ? mats.map(m => m.clone()) : mats[0].clone();
+			}
+		} else {
+			if (window.spkmodActiveDyedMaterials.has(child)) {
+				child.material = window.spkmodActiveDyedMaterials.get(child);
+			}
+		}
+	});
+}
+
+window.spkmodSanitizeRemotePlayers = function() {
+	if (typeof gameState === 'undefined' || !gameState || !gameState.remotePlayers || !gameState.remotePlayers.remotePlayers) return;
+	for (const rp of gameState.remotePlayers.remotePlayers.values()) {
+		if (!rp || !rp.avatar || !rp.avatar.root) continue;
+		rp.avatar.root.traverse(child => {
+			if (!child.isMesh) return;
+			if (child.userData.__spkmodClonedMat || child.userData.__spkmodOrigMat) {
+				if (child.userData.__spkmodOrigMat) {
+					child.material = child.userData.__spkmodOrigMat;
+				} else if (window.__spkmodBasePristineMaterials && window.__spkmodBasePristineMaterials.has(child.name)) {
+					const prist = window.__spkmodBasePristineMaterials.get(child.name);
+					child.material = Array.isArray(child.material) ? prist.map(m => m.clone()) : prist[0].clone();
+				}
+				delete child.userData.__spkmodClonedMat;
+				delete child.userData.__spkmodOrigMat;
+			}
+		});
+	}
+};
+
+window.hookRemotePlayerRebuildIsolation = function() {
+	if (typeof gameState === 'undefined' || !gameState || !gameState.remotePlayers) return;
+	if (typeof gameState.remotePlayers.rebuildAvatar !== 'function') return;
+	if (gameState.remotePlayers.__spkmodRebuildIsolated) return;
+	gameState.remotePlayers.__spkmodRebuildIsolated = true;
+
+	const origRebuild = gameState.remotePlayers.rebuildAvatar.bind(gameState.remotePlayers);
+	gameState.remotePlayers.rebuildAvatar = function(id) {
+		if (window.spkmodAvatarColorMode && window.spkmodAvatarColorMode !== "none") {
+			spkmodSetFbxMaterialsPristine(true);
+			try {
+				return origRebuild(id);
+			} finally {
+				Promise.resolve().then(() => {
+					spkmodSetFbxMaterialsPristine(false);
+					window.spkmodSanitizeRemotePlayers();
+				});
+			}
+		}
+		return origRebuild(id);
+	};
+};
+
 window.spkmodSetAvatarColorScope = function(scope) {
 	window.spkmodAvatarColorScope = scope === "body" ? "body" : "all";
 	if (typeof chatLog === 'function') {
@@ -7731,6 +7636,9 @@ window.spkmodApplyAvatarColor = function(hexColor) {
 		return;
 	}
 
+	window.hookRemotePlayerRebuildIsolation();
+	spkmodEnsurePristineMaterials();
+
 	if (window.__spkmodRainbowAnimId) {
 		cancelAnimationFrame(window.__spkmodRainbowAnimId);
 		window.__spkmodRainbowAnimId = null;
@@ -7738,6 +7646,7 @@ window.spkmodApplyAvatarColor = function(hexColor) {
 
 	window.spkmodAvatarColorMode = "color";
 	window.spkmodAvatarColorHex = hexColor || "#ffffff";
+	window.spkmodActiveDyedMaterials.clear();
 
 	const root = gameState.localAvatar.root;
 	if (!root) return;
@@ -7781,8 +7690,10 @@ window.spkmodApplyAvatarColor = function(hexColor) {
 				m.emissive.set(hexColor).multiplyScalar(0.18);
 			}
 		}
+		window.spkmodActiveDyedMaterials.set(child, child.material);
 	});
 
+	window.spkmodSanitizeRemotePlayers();
 	if (typeof chatLog === 'function') chatLog(`[FX] Applied color dye: ${hexColor}`);
 	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
 };
@@ -7793,12 +7704,16 @@ window.spkmodStartRainbowWave = function() {
 		return;
 	}
 
+	window.hookRemotePlayerRebuildIsolation();
+	spkmodEnsurePristineMaterials();
+
 	if (window.__spkmodRainbowAnimId) {
 		cancelAnimationFrame(window.__spkmodRainbowAnimId);
 		window.__spkmodRainbowAnimId = null;
 	}
 
 	window.spkmodAvatarColorMode = "rainbow";
+	window.spkmodActiveDyedMaterials.clear();
 
 	const root = gameState.localAvatar.root;
 	if (!root) return;
@@ -7826,7 +7741,10 @@ window.spkmodStartRainbowWave = function() {
 				: child.material.clone();
 			child.userData.__spkmodClonedMat = true;
 		}
+		window.spkmodActiveDyedMaterials.set(child, child.material);
 	});
+
+	window.spkmodSanitizeRemotePlayers();
 
 	function rainbowLoop() {
 		if (window.spkmodAvatarColorMode !== "rainbow") return;
@@ -7858,12 +7776,16 @@ window.spkmodApplyShadowMode = function() {
 		return;
 	}
 
+	window.hookRemotePlayerRebuildIsolation();
+	spkmodEnsurePristineMaterials();
+
 	if (window.__spkmodRainbowAnimId) {
 		cancelAnimationFrame(window.__spkmodRainbowAnimId);
 		window.__spkmodRainbowAnimId = null;
 	}
 
 	window.spkmodAvatarColorMode = "shadow";
+	window.spkmodActiveDyedMaterials.clear();
 
 	const root = gameState.localAvatar.root;
 	if (!root) return;
@@ -7888,8 +7810,10 @@ window.spkmodApplyShadowMode = function() {
 			}
 			if (m && m.roughness !== undefined) m.roughness = 0.95;
 		}
+		window.spkmodActiveDyedMaterials.set(child, child.material);
 	});
 
+	window.spkmodSanitizeRemotePlayers();
 	if (typeof chatLog === 'function') chatLog("[FX] 👤 Void Shadow Mode activated!");
 	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
 };
@@ -7960,6 +7884,7 @@ window.spkmodResetAvatarColors = function() {
 	window.spkmodAvatarColorHex = "#ffffff";
 	window.spkmodAvatarDroppingActive = false;
 	window.spkmodAvatarHeartDropActive = false;
+	if (window.spkmodActiveDyedMaterials) window.spkmodActiveDyedMaterials.clear();
 
 	if (typeof gameState !== 'undefined' && gameState && gameState.localAvatar && gameState.localAvatar.root) {
 		gameState.localAvatar.root.traverse(child => {
@@ -7973,9 +7898,14 @@ window.spkmodResetAvatarColors = function() {
 					const arr = Array.isArray(cloned) ? cloned : [cloned];
 					for (const c of arr) if (c && typeof c.dispose === 'function') c.dispose();
 				}
+			} else if (window.__spkmodBasePristineMaterials && window.__spkmodBasePristineMaterials.has(child.name)) {
+				const prist = window.__spkmodBasePristineMaterials.get(child.name);
+				child.material = Array.isArray(child.material) ? prist.map(m => m.clone()) : prist[0].clone();
+				delete child.userData.__spkmodClonedMat;
 			}
 		});
 	}
+	window.spkmodSanitizeRemotePlayers();
 	if (typeof chatLog === 'function') chatLog("[FX] Reset all avatar custom dyes and effects.");
 	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
 };
@@ -11981,43 +11911,21 @@ function hookGameStateOnce() {
 					case "soccer":
 					case "jersey":
 						if (!cmd[1]) {
-							chatLog("Usage: /team [red|blue|none|warp] [optional: player_name|all]");
+							chatLog("Usage: /team [red|blue|none]");
 							return;
 						}
-						{
-							const sub = cmd[1].toLowerCase();
-							if (sub === "warp" || sub === "field" || sub === "tp") {
-								if (typeof window.spkmodWarpSoccerField === "function") {
-									window.spkmodWarpSoccerField(cmd[2]);
-								}
-								return;
-							}
-							if (typeof window.spkmodSetTeam === "function") {
-								window.spkmodSetTeam(cmd[1], cmd.slice(2).join(" "));
-							}
+						if (typeof window.spkmodSetTeam === "function") {
+							window.spkmodSetTeam(cmd[1]);
 						}
 						break;
 					case "red":
-						if (cmd[1] && (cmd[1].toLowerCase() === "warp" || cmd[1].toLowerCase() === "tp")) {
-							if (typeof window.spkmodWarpSoccerField === "function") window.spkmodWarpSoccerField("red");
-						} else if (typeof window.spkmodSetTeam === "function") {
-							window.spkmodSetTeam(1, cmd.slice(1).join(" "));
+						if (typeof window.spkmodSetTeam === "function") {
+							window.spkmodSetTeam(1);
 						}
 						break;
 					case "blue":
-						if (cmd[1] && (cmd[1].toLowerCase() === "warp" || cmd[1].toLowerCase() === "tp")) {
-							if (typeof window.spkmodWarpSoccerField === "function") window.spkmodWarpSoccerField("blue");
-						} else if (typeof window.spkmodSetTeam === "function") {
-							window.spkmodSetTeam(2, cmd.slice(1).join(" "));
-						}
-						break;
-					case "warp":
-					case "tp":
-						if (cmd[1] && (cmd[1].toLowerCase() === "soccer" || cmd[1].toLowerCase() === "field" || cmd[1].toLowerCase() === "football")) {
-							if (typeof window.spkmodWarpSoccerField === "function") {
-								window.spkmodWarpSoccerField(cmd[2]);
-							}
-							return;
+						if (typeof window.spkmodSetTeam === "function") {
+							window.spkmodSetTeam(2);
 						}
 						break;
 					case "color":
@@ -12230,6 +12138,8 @@ function hookGameStateOnce() {
 
 	hookBlockedUserVoice();
 	hookRemotePlayersOnce();
+	if (typeof window.hookRemotePlayerRebuildIsolation === "function") window.hookRemotePlayerRebuildIsolation();
+	if (typeof window.spkmodSanitizeRemotePlayers === "function") window.spkmodSanitizeRemotePlayers();
 	if (typeof refreshI18n === "function") refreshI18n();
 	if (window.spkmodDebug) spkmodDebug.log("In-game GameState hooks successfully installed.");
 	return true;
@@ -12339,6 +12249,9 @@ function hookRemotePlayersOnce() {
 			value.info.name = filterName(value.info.name);
 		}
 		hookKnownBotPlayerEmotes(value);
+		if (typeof window.spkmodSanitizeRemotePlayers === "function") {
+			window.spkmodSanitizeRemotePlayers();
+		}
 		return hkRemotePlayersSet(key, value);
 	};
 
@@ -12349,6 +12262,8 @@ function hookRemotePlayersOnce() {
 	});
 	hookKnownBotHeartEmotes();
 	hookKnownBotPlayerEmotesForAll();
+	if (typeof window.hookRemotePlayerRebuildIsolation === "function") window.hookRemotePlayerRebuildIsolation();
+	if (typeof window.spkmodSanitizeRemotePlayers === "function") window.spkmodSanitizeRemotePlayers();
 }
 hookRemotePlayersOnce();
 
