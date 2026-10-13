@@ -835,7 +835,7 @@ var spkmodFallbackTranslations = {
 	"en": {
 		"soccerHeader": "Soccer Uniform", "soccerBtnRed": "Red Team", "soccerBtnBlue": "Blue Team", "soccerBtnNone": "Default",
 		"avatarDyeHeader": "Character Dye & FX (Local Only)", "dyeScopeBody": "Outfit Only", "dyeScopeAll": "Full Avatar",
-		"dyeCustomColor": "Custom Color:", "dyeRainbowSpeed": "Rainbow Speed:", "dyeBtnRainbow": "Rainbow", "dyeBtnRainbowAll": "Rainbow ALL", "dyeBtnShadow": "Void Shadow", "dyeReset": "Reset Character Dye & FX",
+		"dyeCustomColor": "Custom Color:", "dyeRainbowSpeed": "Rainbow Speed:", "dyeBtnRainbow": "Rainbow", "dyeBtnRainbowAll": "Rainbow ALL", "dyeBtnRainbowRandom": "Random Rainbow", "dyeBtnShadow": "Void Shadow", "dyeReset": "Reset Character Dye & FX",
 		"dyeColorCrimson": "Crimson", "dyeColorBlue": "Blue", "dyeColorEmerald": "Emerald", "dyeColorGold": "Gold", "dyeColorPurple": "Purple", "dyeColorHotPink": "Hot Pink",
 		"dyeColorCyan": "Cyan", "dyeColorOrange": "Orange", "dyeColorMint": "Mint", "dyeColorAmber": "Amber", "dyeColorPearl": "Pearl", "dyeColorObsidian": "Obsidian",
 		"dyeColorMagenta": "Magenta", "dyeColorIce": "Ice", "dyeColorSepia": "Sepia", "dyeColorLavender": "Lavender", "dyeColorLime": "Lime", "dyeColorIndigo": "Indigo"
@@ -843,7 +843,7 @@ var spkmodFallbackTranslations = {
 	"ja": {
 		"soccerHeader": "サッカーユニフォーム", "soccerBtnRed": "レッドチーム", "soccerBtnBlue": "ブルーチーム", "soccerBtnNone": "デフォルト",
 		"avatarDyeHeader": "キャラ染色＆エフェクト (ローカルのみ)", "dyeScopeBody": "衣装のみ", "dyeScopeAll": "全体",
-		"dyeCustomColor": "カスタム色:", "dyeRainbowSpeed": "レインボー速度:", "dyeBtnRainbow": "レインボー", "dyeBtnRainbowAll": "全員レインボー", "dyeBtnShadow": "ヴォイドシャドウ", "dyeReset": "キャラ染色＆FXをリセット",
+		"dyeCustomColor": "カスタム色:", "dyeRainbowSpeed": "レインボー速度:", "dyeBtnRainbow": "レインボー", "dyeBtnRainbowAll": "全員レインボー", "dyeBtnRainbowRandom": "ランダムレインボー", "dyeBtnShadow": "ヴォイドシャドウ", "dyeReset": "キャラ染色＆FXをリセット",
 		"dyeColorCrimson": "クリムゾン", "dyeColorBlue": "ブルー", "dyeColorEmerald": "エメラルド", "dyeColorGold": "ゴールド", "dyeColorPurple": "パープル", "dyeColorHotPink": "ホットピンク",
 		"dyeColorCyan": "シアン", "dyeColorOrange": "オレンジ", "dyeColorMint": "ミント", "dyeColorAmber": "アンバー", "dyeColorPearl": "パール", "dyeColorObsidian": "オブシディアン",
 		"dyeColorMagenta": "マゼンタ", "dyeColorIce": "アイス", "dyeColorSepia": "セピア", "dyeColorLavender": "ラベンダー", "dyeColorLime": "ライム", "dyeColorIndigo": "インディゴ"
@@ -851,7 +851,7 @@ var spkmodFallbackTranslations = {
 	"ko": {
 		"soccerHeader": "축구 유니폼", "soccerBtnRed": "레드팀", "soccerBtnBlue": "블루팀", "soccerBtnNone": "기본",
 		"avatarDyeHeader": "캐릭터 염색 & 효과 (로컬 전용)", "dyeScopeBody": "의상만", "dyeScopeAll": "전체",
-		"dyeCustomColor": "사용자 지정 색상:", "dyeRainbowSpeed": "무지개 속도:", "dyeBtnRainbow": "무지개", "dyeBtnRainbowAll": "전원 무지개", "dyeBtnShadow": "보이드 섀도우", "dyeReset": "캐릭터 염색 및 효과 초기화",
+		"dyeCustomColor": "사용자 지정 색상:", "dyeRainbowSpeed": "무지개 속도:", "dyeBtnRainbow": "무지개", "dyeBtnRainbowAll": "전원 무지개", "dyeBtnRainbowRandom": "랜덤 무지개", "dyeBtnShadow": "보이드 섀도우", "dyeReset": "캐릭터 염색 및 효과 초기화",
 		"dyeColorCrimson": "크림슨", "dyeColorBlue": "블루", "dyeColorEmerald": "에메랄드", "dyeColorGold": "골드", "dyeColorPurple": "퍼플", "dyeColorHotPink": "핫핑크",
 		"dyeColorCyan": "시안", "dyeColorOrange": "오렌지", "dyeColorMint": "민트", "dyeColorAmber": "앰버", "dyeColorPearl": "펄", "dyeColorObsidian": "흑요석",
 		"dyeColorMagenta": "마젠타", "dyeColorIce": "아이스", "dyeColorSepia": "세피아", "dyeColorLavender": "라벤더", "dyeColorLime": "라임", "dyeColorIndigo": "인디고"
@@ -859,7 +859,7 @@ var spkmodFallbackTranslations = {
 	"zh-TW": {
 		"soccerHeader": "足球隊服", "soccerBtnRed": "紅隊", "soccerBtnBlue": "藍隊", "soccerBtnNone": "預設",
 		"avatarDyeHeader": "角色染色與特效 (僅本地)", "dyeScopeBody": "僅服裝", "dyeScopeAll": "全角色",
-		"dyeCustomColor": "自訂顏色:", "dyeRainbowSpeed": "彩虹速度:", "dyeBtnRainbow": "彩虹", "dyeBtnRainbowAll": "全員彩虹", "dyeBtnShadow": "虛空暗影", "dyeReset": "重設角色染色與特效",
+		"dyeCustomColor": "自訂顏色:", "dyeRainbowSpeed": "彩虹速度:", "dyeBtnRainbow": "彩虹", "dyeBtnRainbowAll": "全員彩虹", "dyeBtnRainbowRandom": "隨機彩虹", "dyeBtnShadow": "虛空暗影", "dyeReset": "重設角色染色與特效",
 		"dyeColorCrimson": "緋紅", "dyeColorBlue": "寶藍", "dyeColorEmerald": "翡翠綠", "dyeColorGold": "金黃", "dyeColorPurple": "紫色", "dyeColorHotPink": "亮粉",
 		"dyeColorCyan": "青藍", "dyeColorOrange": "橙橘", "dyeColorMint": "薄荷綠", "dyeColorAmber": "琥珀", "dyeColorPearl": "珍珠白", "dyeColorObsidian": "黑曜石",
 		"dyeColorMagenta": "洋紅", "dyeColorIce": "冰藍", "dyeColorSepia": "深褐", "dyeColorLavender": "薰衣草", "dyeColorLime": "萊姆綠", "dyeColorIndigo": "靛藍"
@@ -867,7 +867,7 @@ var spkmodFallbackTranslations = {
 	"zh-CN": {
 		"soccerHeader": "足球队服", "soccerBtnRed": "红队", "soccerBtnBlue": "蓝队", "soccerBtnNone": "默认",
 		"avatarDyeHeader": "角色染色与特效 (仅本地)", "dyeScopeBody": "仅服装", "dyeScopeAll": "全角色",
-		"dyeCustomColor": "自定义颜色:", "dyeRainbowSpeed": "彩虹速度:", "dyeBtnRainbow": "彩虹", "dyeBtnRainbowAll": "全员彩虹", "dyeBtnShadow": "虚空暗影", "dyeReset": "重置角色染色与特效",
+		"dyeCustomColor": "自定义颜色:", "dyeRainbowSpeed": "彩虹速度:", "dyeBtnRainbow": "彩虹", "dyeBtnRainbowAll": "全员彩虹", "dyeBtnRainbowRandom": "随机彩虹", "dyeBtnShadow": "虚空暗影", "dyeReset": "重置角色染色与特效",
 		"dyeColorCrimson": "绯红", "dyeColorBlue": "宝蓝", "dyeColorEmerald": "翡翠绿", "dyeColorGold": "金黄", "dyeColorPurple": "紫色", "dyeColorHotPink": "亮粉",
 		"dyeColorCyan": "青蓝", "dyeColorOrange": "橙橘", "dyeColorMint": "薄荷绿", "dyeColorAmber": "琥珀", "dyeColorPearl": "珍珠白", "dyeColorObsidian": "黑曜石",
 		"dyeColorMagenta": "洋红", "dyeColorIce": "冰蓝", "dyeColorSepia": "深褐", "dyeColorLavender": "薰衣草", "dyeColorLime": "莱姆绿", "dyeColorIndigo": "靛蓝"
@@ -875,7 +875,7 @@ var spkmodFallbackTranslations = {
 	"es-419": {
 		"soccerHeader": "Uniforme de Fútbol", "soccerBtnRed": "Equipo Rojo", "soccerBtnBlue": "Equipo Azul", "soccerBtnNone": "Predeterminado",
 		"avatarDyeHeader": "Tinte y Efectos de Personaje (Solo Local)", "dyeScopeBody": "Solo Atuendo", "dyeScopeAll": "Avatar Completo",
-		"dyeCustomColor": "Color Personalizado:", "dyeRainbowSpeed": "Velocidad de Arcoíris:", "dyeBtnRainbow": "Arcoíris", "dyeBtnRainbowAll": "Arcoíris TODOS", "dyeBtnShadow": "Sombra del Vacío", "dyeReset": "Restablecer Tinte y Efectos",
+		"dyeCustomColor": "Color Personalizado:", "dyeRainbowSpeed": "Velocidad de Arcoíris:", "dyeBtnRainbow": "Arcoíris", "dyeBtnRainbowAll": "Arcoíris TODOS", "dyeBtnRainbowRandom": "Arcoíris Aleatorio", "dyeBtnShadow": "Sombra del Vacío", "dyeReset": "Restablecer Tinte y Efectos",
 		"dyeColorCrimson": "Carmesí", "dyeColorBlue": "Azul", "dyeColorEmerald": "Esmeralda", "dyeColorGold": "Dorado", "dyeColorPurple": "Púrpura", "dyeColorHotPink": "Rosa Brillante",
 		"dyeColorCyan": "Cian", "dyeColorOrange": "Naranja", "dyeColorMint": "Menta", "dyeColorAmber": "Ámbar", "dyeColorPearl": "Perla", "dyeColorObsidian": "Obsidiana",
 		"dyeColorMagenta": "Magenta", "dyeColorIce": "Hielo", "dyeColorSepia": "Sepia", "dyeColorLavender": "Lavanda", "dyeColorLime": "Lima", "dyeColorIndigo": "Índigo"
@@ -7692,7 +7692,9 @@ function spkmodSetFbxMaterialsPristine(isPristine) {
 window.spkmodSanitizeRemotePlayers = function() {
 	if (typeof gameState === 'undefined' || !gameState || !gameState.remotePlayers || !gameState.remotePlayers.remotePlayers) return;
 	for (const rp of gameState.remotePlayers.remotePlayers.values()) {
-		if (!rp || !rp.avatar || !rp.avatar.root) continue;
+		if (!rp) continue;
+		delete rp.__spkmodRainbowOffset;
+		if (!rp.avatar || !rp.avatar.root) continue;
 		rp.avatar.root.traverse(child => {
 			if (!child.isMesh) return;
 			if (child.userData.__spkmodClonedMat || child.userData.__spkmodOrigMat) {
@@ -7741,7 +7743,11 @@ window.spkmodSetAvatarColorScope = function(scope) {
 	if (window.spkmodAvatarColorMode === "color" && window.spkmodAvatarColorHex) {
 		window.spkmodApplyAvatarColor(window.spkmodAvatarColorHex);
 	} else if (window.spkmodAvatarColorMode === "rainbow") {
-		window.spkmodStartRainbowWave();
+		window.spkmodStartRainbowWave(false);
+	} else if (window.spkmodAvatarColorMode === "rainbow_all") {
+		window.spkmodStartRainbowWave(true);
+	} else if (window.spkmodAvatarColorMode === "rainbow_random") {
+		window.spkmodStartRainbowWave("random");
 	} else if (window.spkmodAvatarColorMode === "shadow") {
 		window.spkmodApplyShadowMode();
 	}
@@ -7826,7 +7832,7 @@ window.spkmodRainbowSpeed = (function() {
 	return 1.0;
 })();
 
-window.spkmodStartRainbowWave = function(targetAll, customSpeed) {
+window.spkmodStartRainbowWave = function(targetMode, customSpeed) {
 	if (typeof gameState === 'undefined' || !gameState || !gameState.localAvatar) {
 		if (typeof chatLog === 'function') chatLog("[FX] Game avatar is not loaded yet.");
 		return;
@@ -7845,9 +7851,26 @@ window.spkmodStartRainbowWave = function(targetAll, customSpeed) {
 		window.__spkmodRainbowAnimId = null;
 	}
 
-	const isAll = Boolean(targetAll);
-	window.spkmodAvatarColorMode = isAll ? "rainbow_all" : "rainbow";
+	const isRandom = targetMode === "random" || targetMode === "rand";
+	const isAll = !isRandom && (targetMode === true || targetMode === "all");
+	window.spkmodAvatarColorMode = isRandom ? "rainbow_random" : (isAll ? "rainbow_all" : "rainbow");
 	window.spkmodActiveDyedMaterials.clear();
+
+	if (isRandom) {
+		window.__spkmodLocalRainbowOffset = Math.random();
+		if (gameState && gameState.remotePlayers && gameState.remotePlayers.remotePlayers) {
+			for (const rp of gameState.remotePlayers.remotePlayers.values()) {
+				if (rp) rp.__spkmodRainbowOffset = Math.random();
+			}
+		}
+	} else {
+		delete window.__spkmodLocalRainbowOffset;
+		if (gameState && gameState.remotePlayers && gameState.remotePlayers.remotePlayers) {
+			for (const rp of gameState.remotePlayers.remotePlayers.values()) {
+				if (rp) delete rp.__spkmodRainbowOffset;
+			}
+		}
+	}
 
 	const root = gameState.localAvatar.root;
 	if (root) {
@@ -7878,19 +7901,25 @@ window.spkmodStartRainbowWave = function(targetAll, customSpeed) {
 		});
 	}
 
-	if (!isAll) {
+	if (!isAll && !isRandom) {
 		window.spkmodSanitizeRemotePlayers();
 	}
 
 	window.spkmodRainbowLastTime = performance.now();
 	function rainbowLoop() {
-		if (window.spkmodAvatarColorMode !== "rainbow" && window.spkmodAvatarColorMode !== "rainbow_all") return;
+		if (window.spkmodAvatarColorMode !== "rainbow" && 
+			window.spkmodAvatarColorMode !== "rainbow_all" && 
+			window.spkmodAvatarColorMode !== "rainbow_random") return;
 		const now = performance.now();
 		const dt = Math.min((now - (window.spkmodRainbowLastTime || now)) / 1000, 0.1);
 		window.spkmodRainbowLastTime = now;
 		const speed = typeof window.spkmodRainbowSpeed === 'number' ? window.spkmodRainbowSpeed : 1.0;
 		window.spkmodRainbowPhase = ((window.spkmodRainbowPhase || 0) + dt * 0.6 * speed) % 1.0;
-		const hue = window.spkmodRainbowPhase;
+
+		const isRand = window.spkmodAvatarColorMode === "rainbow_random";
+		const localHue = isRand
+			? ((window.spkmodRainbowPhase + (window.__spkmodLocalRainbowOffset || 0)) % 1.0)
+			: window.spkmodRainbowPhase;
 
 		// 1. Local avatar
 		if (gameState && gameState.localAvatar && gameState.localAvatar.root) {
@@ -7899,19 +7928,26 @@ window.spkmodStartRainbowWave = function(targetAll, customSpeed) {
 				const currentMats = Array.isArray(child.material) ? child.material : [child.material];
 				for (const m of currentMats) {
 					if (m && m.color && typeof m.color.setHSL === 'function') {
-						m.color.setHSL(hue, 1.0, 0.65);
+						m.color.setHSL(localHue, 1.0, 0.65);
 					}
 					if (m && m.emissive && typeof m.emissive.setHSL === 'function') {
-						m.emissive.setHSL(hue, 1.0, 0.25);
+						m.emissive.setHSL(localHue, 1.0, 0.25);
 					}
 				}
 			});
 		}
 
-		// 2. Remote avatars if rainbow_all
-		if (window.spkmodAvatarColorMode === "rainbow_all" && gameState && gameState.remotePlayers && gameState.remotePlayers.remotePlayers) {
+		// 2. Remote avatars if rainbow_all or rainbow_random
+		if ((window.spkmodAvatarColorMode === "rainbow_all" || isRand) && gameState && gameState.remotePlayers && gameState.remotePlayers.remotePlayers) {
 			for (const rp of gameState.remotePlayers.remotePlayers.values()) {
 				if (!rp || !rp.avatar || !rp.avatar.root) continue;
+				if (isRand && typeof rp.__spkmodRainbowOffset !== 'number') {
+					rp.__spkmodRainbowOffset = Math.random();
+				}
+				const rpHue = isRand
+					? ((window.spkmodRainbowPhase + rp.__spkmodRainbowOffset) % 1.0)
+					: window.spkmodRainbowPhase;
+
 				rp.avatar.root.traverse(child => {
 					if (!child.isMesh) return;
 					if (!child.userData.__spkmodClonedMat) {
@@ -7924,10 +7960,10 @@ window.spkmodStartRainbowWave = function(targetAll, customSpeed) {
 					const currentMats = Array.isArray(child.material) ? child.material : [child.material];
 					for (const m of currentMats) {
 						if (m && m.color && typeof m.color.setHSL === 'function') {
-							m.color.setHSL(hue, 1.0, 0.65);
+							m.color.setHSL(rpHue, 1.0, 0.65);
 						}
 						if (m && m.emissive && typeof m.emissive.setHSL === 'function') {
-							m.emissive.setHSL(hue, 1.0, 0.25);
+							m.emissive.setHSL(rpHue, 1.0, 0.25);
 						}
 					}
 				});
@@ -7939,7 +7975,13 @@ window.spkmodStartRainbowWave = function(targetAll, customSpeed) {
 	window.__spkmodRainbowAnimId = requestAnimationFrame(rainbowLoop);
 	if (typeof chatLog === 'function') {
 		const spd = typeof window.spkmodRainbowSpeed === 'number' ? window.spkmodRainbowSpeed.toFixed(1) : "1.0";
-		chatLog(isAll ? `[FX] 🌟 Rainbow ALL activated! (${spd}x)` : `[FX] 🌈 Rainbow Wave activated! (${spd}x)`);
+		if (isRandom) {
+			chatLog(`[FX] 🔀 Random Rainbow activated! (${spd}x)`);
+		} else if (isAll) {
+			chatLog(`[FX] 🌟 Rainbow ALL activated! (${spd}x)`);
+		} else {
+			chatLog(`[FX] 🌈 Rainbow Wave activated! (${spd}x)`);
+		}
 	}
 	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
 };
@@ -8023,7 +8065,7 @@ window.spkmodEmitDropParticle = function() {
 
 	if (gameState.skillParticles && typeof gameState.skillParticles.emit === 'function') {
 		let dropColor = window.spkmodAvatarColorHex || '#ffdd44';
-		if (window.spkmodAvatarColorMode === 'rainbow' || window.spkmodAvatarColorMode === 'rainbow_all') {
+		if (window.spkmodAvatarColorMode === 'rainbow' || window.spkmodAvatarColorMode === 'rainbow_all' || window.spkmodAvatarColorMode === 'rainbow_random') {
 			dropColor = `hsl(${Math.round((performance.now() * 0.08) % 360)}, 100%, 65%)`;
 		} else if (window.spkmodAvatarColorMode === 'shadow') {
 			dropColor = '#8b5cf6';
@@ -8056,6 +8098,7 @@ window.spkmodResetAvatarColors = function() {
 	}
 	window.spkmodAvatarColorMode = "none";
 	window.spkmodAvatarColorHex = "#ffffff";
+	delete window.__spkmodLocalRainbowOffset;
 	window.spkmodAvatarDroppingActive = false;
 	window.spkmodAvatarHeartDropActive = false;
 	if (window.spkmodActiveDyedMaterials) window.spkmodActiveDyedMaterials.clear();
@@ -8572,8 +8615,8 @@ document.body.appendChild(
 							}
 						})
 					]),
-					// Special FX Controls Row (Rainbow, Rainbow ALL, and Void Shadow)
-					buildElement("div", { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 2px;" }, [
+					// Special FX Controls Row (Rainbow, Rainbow ALL, Random Rainbow, and Void Shadow)
+					buildElement("div", { style: "display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-top: 2px;" }, [
 						editsModalElements.dyeBtnRainbow = buildElement("button", {
 							className: "spkmod-panel-btn",
 							style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #ec4899; font-weight: bold;",
@@ -8591,6 +8634,16 @@ document.body.appendChild(
 							title: "Animate real-time rainbow wave on ALL players",
 							onclick: () => {
 								if (window.spkmodStartRainbowWave) window.spkmodStartRainbowWave(true);
+								updateLocalEditsUI();
+							}
+						}),
+						editsModalElements.dyeBtnRainbowRandom = buildElement("button", {
+							className: "spkmod-panel-btn",
+							style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #38bdf8; font-weight: bold;",
+							innerText: "🔀 " + (t("dyeBtnRainbowRandom") || "Random Rainbow"),
+							title: "Animate desynchronized rainbow wave on all players with random colors",
+							onclick: () => {
+								if (window.spkmodStartRainbowWave) window.spkmodStartRainbowWave("random");
 								updateLocalEditsUI();
 							}
 						}),
@@ -9012,6 +9065,16 @@ function updateLocalEditsUI() {
 		} else {
 			editsModalElements.dyeBtnRainbowAll.style.borderColor = "#555";
 			editsModalElements.dyeBtnRainbowAll.style.background = "";
+		}
+	}
+	if (editsModalElements.dyeBtnRainbowRandom) {
+		setText(editsModalElements.dyeBtnRainbowRandom, "🔀 " + (t("dyeBtnRainbowRandom") || "Random Rainbow"));
+		if (window.spkmodAvatarColorMode === "rainbow_random") {
+			editsModalElements.dyeBtnRainbowRandom.style.borderColor = "var(--spkmod-accent, #ffd54a)";
+			editsModalElements.dyeBtnRainbowRandom.style.background = "rgba(56, 189, 248, 0.25)";
+		} else {
+			editsModalElements.dyeBtnRainbowRandom.style.borderColor = "#555";
+			editsModalElements.dyeBtnRainbowRandom.style.background = "";
 		}
 	}
 	if (editsModalElements.dyeBtnShadow) {
@@ -12245,14 +12308,16 @@ function hookGameStateOnce() {
 						break;
 					case "rainbow":
 						if (typeof window.spkmodStartRainbowWave === "function") {
-							let isAll = false;
+							let rainbowMode = false;
 							let parsedSpeed = null;
 							for (let i = 1; i < cmd.length; i++) {
 								const arg = (cmd[i] || "").toLowerCase().trim();
 								if (arg === "all" || arg === "*") {
-									isAll = true;
+									rainbowMode = true;
+								} else if (arg === "random" || arg === "rand" || arg === "desync" || arg === "chaos") {
+									rainbowMode = "random";
 								} else if (arg === "me" || arg === "self") {
-									isAll = false;
+									rainbowMode = false;
 								} else {
 									const num = parseFloat(arg);
 									if (!isNaN(num) && num > 0) {
@@ -12265,7 +12330,7 @@ function hookGameStateOnce() {
 								if (window.localStorage) localStorage.setItem("spkmod-rainbow-speed", parsedSpeed);
 								if (typeof updateLocalEditsUI === "function") updateLocalEditsUI();
 							}
-							window.spkmodStartRainbowWave(isAll);
+							window.spkmodStartRainbowWave(rainbowMode);
 						}
 						break;
 					case "shadow":
