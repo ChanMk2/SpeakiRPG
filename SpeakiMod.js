@@ -7364,27 +7364,60 @@ window.spkmodResetNames = function() {
 	console.log(`[SpeakiMod+] Reset ${count} names to their original values`);
 };
 
-window.spkmodWarpSoccerField = function() {
+window.spkmodIsPlayerInTown = function() {
+	if (typeof gameState === 'undefined' || !gameState) return false;
+	const z = Number(gameState.visualZoneId ?? gameState.zoneId);
+	if (isNaN(z)) return false;
+	return (z % 10000) === 1;
+};
+
+window.spkmodWarpSoccerField = function(target) {
 	if (typeof gameState === 'undefined' || !gameState || !gameState.playerContainer) {
 		if (typeof chatLog === 'function') chatLog("[Soccer] Game is not loaded yet.");
 		return;
 	}
-	const currentZone = gameState.visualZoneId ?? gameState.zoneId;
-	if (currentZone !== 1) {
+	if (!window.spkmodIsPlayerInTown()) {
 		if (typeof chatLog === 'function') chatLog("[Soccer] You must be in Town (Zone 1) to warp to the soccer field.");
 		return;
 	}
-	gameState.playerContainer.position.set(78, 0, 82);
-	if (gameState.socket && typeof gameState.socket.sendMove === 'function') {
-		gameState.socket.sendMove(0, 78, 0, 82, gameState.playerContainer.rotation?.y || 0);
-		if (gameState.lastSent) {
-			gameState.lastSent.x = 78;
-			gameState.lastSent.z = 82;
+
+	let targetX = 78; // Midfield Center
+	let targetZ = 82;
+	let desc = "Center";
+
+	if (typeof target === 'string') {
+		const t = target.trim().toLowerCase();
+		if (t === 'red' || t === '1' || t === 'r') {
+			targetX = 72;
+			desc = "Red Team side";
+		} else if (t === 'blue' || t === '2' || t === 'b') {
+			targetX = 84;
+			desc = "Blue Team side";
+		} else if (t === 'out' || t === 'exit' || t === 'leave' || t === 'plaza') {
+			targetX = 58;
+			desc = "outside field";
 		}
+	} else if (target === 1) {
+		targetX = 72;
+		desc = "Red Team side";
+	} else if (target === 2) {
+		targetX = 84;
+		desc = "Blue Team side";
 	}
-	if (typeof chatLog === 'function') chatLog("[Soccer] Teleported to soccer field center.");
+
+	const curY = (gameState.playerContainer.position && !isNaN(gameState.playerContainer.position.y)) ? gameState.playerContainer.position.y : 0;
+	gameState.playerContainer.position.set(targetX, curY, targetZ);
+	if (gameState.lastSent) {
+		gameState.lastSent.x = targetX;
+		gameState.lastSent.z = targetZ;
+	}
+	if (gameState.socket && typeof gameState.socket.sendMove === 'function') {
+		gameState.socket.sendMove(0 /* P_IDLE */, targetX, curY, targetZ, gameState.playerContainer.rotation?.y || 0);
+	}
+	if (typeof chatLog === 'function') chatLog(`[Soccer] Teleported to soccer field (${desc}).`);
 };
 
+window.spkmodActiveSoccerTeam = window.spkmodActiveSoccerTeam || 0;
 window.spkmodSetTeam = function(team, targetPlayer) {
 	if (typeof gameState === 'undefined' || !gameState) {
 		if (typeof chatLog === 'function') chatLog("[Soccer] Game is not loaded yet.");
@@ -7457,17 +7490,28 @@ window.spkmodSetTeam = function(team, targetPlayer) {
 	}
 
 	// Target is Local Player (Me):
+	window.spkmodActiveSoccerTeam = teamNum;
+
 	// 1. Immediately apply locally for instant visual responsiveness
 	if (typeof gameState.setLocalSoccerTeam === 'function') {
 		gameState.setLocalSoccerTeam(teamNum);
 	}
 
+	// Hook handleSoccerTeam to prevent server from wiping the uniform if user locked it
+	if (typeof gameState.handleSoccerTeam === 'function' && !gameState.__spkmodHandleSoccerTeamHooked) {
+		gameState.__spkmodHandleSoccerTeamHooked = true;
+		const origHandleSoccerTeam = gameState.handleSoccerTeam.bind(gameState);
+		gameState.handleSoccerTeam = function(e) {
+			const tVal = e.team ?? 0;
+			if (e.playerId === this.myPlayerId && window.spkmodActiveSoccerTeam && tVal === 0) {
+				return; // Preserve user's active uniform
+			}
+			return origHandleSoccerTeam(e);
+		};
+	}
+
 	// 2. Server-wide Network Sync:
-	// The server triggers soccerTeam when the player's position enters the soccer field (Zone 1).
-	// Field bounds: minX: 65.5, maxX: 90.5, minZ: 74, maxZ: 90 (center: 78, 82).
-	// Red side: ~72, 82. Blue side: ~84, 82. Outside: ~55, 82.
-	const currentZone = gameState.visualZoneId ?? gameState.zoneId;
-	if (currentZone !== 1) {
+	if (!window.spkmodIsPlayerInTown()) {
 		if (typeof chatLog === 'function') {
 			chatLog(`[Soccer] Uniform set to ${label} locally. Note: Server-wide sync requires being in Town (Zone 1).`);
 		}
@@ -7481,6 +7525,17 @@ window.spkmodSetTeam = function(team, targetPlayer) {
 		return;
 	}
 
+	// Hook socket.sendMove to enable suppression during spoof window
+	if (!gameState.socket.__spkmodSendMoveHooked) {
+		gameState.socket.__spkmodSendMoveHooked = true;
+		const rawSendMove = gameState.socket.sendMove.bind(gameState.socket);
+		gameState.socket.__spkmodRawSendMove = rawSendMove;
+		gameState.socket.sendMove = function(state, x, y, z, yaw) {
+			if (window.__spkmodSuppressMoveSend) return;
+			return rawSendMove(state, x, y, z, yaw);
+		};
+	}
+
 	const origPos = {
 		x: gameState.playerContainer.position.x,
 		y: gameState.playerContainer.position.y || 0,
@@ -7490,12 +7545,14 @@ window.spkmodSetTeam = function(team, targetPlayer) {
 
 	let targetX = 72; // Red half
 	if (teamNum === 2) targetX = 84; // Blue half
-	else if (teamNum === 0) targetX = 55; // Outside field (Default/None)
+	else if (teamNum === 0) targetX = 58; // Outside field (Default/None)
 	const targetZ = 82;
 
 	try {
-		// Send a spoofed move to the field position so the server registers the team trigger
-		gameState.socket.sendMove(0 /* P_IDLE */, targetX, 0, targetZ, origPos.yaw);
+		// Suppress 60fps loop from immediately sending back the old position
+		window.__spkmodSuppressMoveSend = true;
+		const rawSend = gameState.socket.__spkmodRawSendMove || gameState.socket.sendMove.bind(gameState.socket);
+		rawSend(0 /* P_IDLE */, targetX, origPos.y, targetZ, origPos.yaw);
 		if (gameState.lastSent) {
 			gameState.lastSent.x = targetX;
 			gameState.lastSent.z = targetZ;
@@ -7505,25 +7562,27 @@ window.spkmodSetTeam = function(team, targetPlayer) {
 			chatLog(`[Soccer] Syncing ${label} with server...`);
 		}
 
-		// Restore original position after server processes the zone packet (250ms)
+		// Restore position packet after server processes field trigger (350ms)
 		setTimeout(() => {
 			try {
-				if (gameState && gameState.playerContainer && gameState.socket && typeof gameState.socket.sendMove === 'function') {
-					gameState.playerContainer.position.set(origPos.x, origPos.y, origPos.z);
-					gameState.socket.sendMove(0 /* P_IDLE */, origPos.x, origPos.y, origPos.z, origPos.yaw);
+				if (gameState && gameState.socket) {
+					rawSend(0 /* P_IDLE */, origPos.x, origPos.y, origPos.z, origPos.yaw);
 					if (gameState.lastSent) {
 						gameState.lastSent.x = origPos.x;
 						gameState.lastSent.z = origPos.z;
 					}
+					window.__spkmodSuppressMoveSend = false;
 					if (typeof chatLog === 'function') {
 						chatLog(`[Soccer] Server sync complete! Uniform: ${label}`);
 					}
 				}
 			} catch (restoreErr) {
+				window.__spkmodSuppressMoveSend = false;
 				console.error("[SpeakiMod] Failed restoring position after soccer sync:", restoreErr);
 			}
-		}, 250);
+		}, 350);
 	} catch (syncErr) {
+		window.__spkmodSuppressMoveSend = false;
 		console.error("[SpeakiMod] Soccer server sync failed:", syncErr);
 		if (typeof chatLog === 'function') {
 			chatLog(`[Soccer] Uniform set to ${label} locally (sync error).`);
@@ -8581,7 +8640,7 @@ function updateLocalEditsUI() {
 	if (editsModalElements.soccerBtnWarp) setText(editsModalElements.soccerBtnWarp, "⚡ " + (t("soccerBtnWarp") || "Warp Field"));
 	if (editsModalElements.soccerHint) setText(editsModalElements.soccerHint, t("soccerHint") || "Network-synced to other players (requires Town / Zone 1)");
 
-	const myTeam = (typeof gameState !== 'undefined' && gameState) ? (gameState.mySoccerTeam || 0) : 0;
+	const myTeam = (typeof gameState !== 'undefined' && gameState ? gameState.mySoccerTeam : 0) || window.spkmodActiveSoccerTeam || 0;
 	if (editsModalElements.soccerBtnRed) {
 		if (myTeam === 1) {
 			editsModalElements.soccerBtnRed.style.borderColor = "#ff5555";
@@ -11830,8 +11889,9 @@ function hookGameStateOnce() {
 		gameState.trySendChat = (msg) => {
 			if (msg && (msg.startsWith("!") || msg.startsWith("/"))) {
 				const cmd = msg.substring(1).split(" ");
-				if (window.spkmodDebug) spkmodDebug.log("Chat command executed:", cmd[0], cmd.slice(1));
-				switch (cmd[0]) {
+				const cmdName = (cmd[0] || "").toLowerCase();
+				if (window.spkmodDebug) spkmodDebug.log("Chat command executed:", cmdName, cmd.slice(1));
+				switch (cmdName) {
 					case "watch":
 						watchPlayer(cmd[1]);
 						break;
@@ -11972,24 +12032,40 @@ function hookGameStateOnce() {
 							chatLog("Usage: /team [red|blue|none|warp] [optional: player_name|all]");
 							return;
 						}
-						if (cmd[1].toLowerCase() === "warp" || cmd[1].toLowerCase() === "field") {
-							if (typeof window.spkmodWarpSoccerField === "function") {
-								window.spkmodWarpSoccerField();
+						{
+							const sub = cmd[1].toLowerCase();
+							if (sub === "warp" || sub === "field" || sub === "tp") {
+								if (typeof window.spkmodWarpSoccerField === "function") {
+									window.spkmodWarpSoccerField(cmd[2]);
+								}
+								return;
 							}
-							return;
-						}
-						if (typeof window.spkmodSetTeam === "function") {
-							window.spkmodSetTeam(cmd[1], cmd.slice(2).join(" "));
+							if (typeof window.spkmodSetTeam === "function") {
+								window.spkmodSetTeam(cmd[1], cmd.slice(2).join(" "));
+							}
 						}
 						break;
 					case "red":
-						if (typeof window.spkmodSetTeam === "function") {
+						if (cmd[1] && (cmd[1].toLowerCase() === "warp" || cmd[1].toLowerCase() === "tp")) {
+							if (typeof window.spkmodWarpSoccerField === "function") window.spkmodWarpSoccerField("red");
+						} else if (typeof window.spkmodSetTeam === "function") {
 							window.spkmodSetTeam(1, cmd.slice(1).join(" "));
 						}
 						break;
 					case "blue":
-						if (typeof window.spkmodSetTeam === "function") {
+						if (cmd[1] && (cmd[1].toLowerCase() === "warp" || cmd[1].toLowerCase() === "tp")) {
+							if (typeof window.spkmodWarpSoccerField === "function") window.spkmodWarpSoccerField("blue");
+						} else if (typeof window.spkmodSetTeam === "function") {
 							window.spkmodSetTeam(2, cmd.slice(1).join(" "));
+						}
+						break;
+					case "warp":
+					case "tp":
+						if (cmd[1] && (cmd[1].toLowerCase() === "soccer" || cmd[1].toLowerCase() === "field" || cmd[1].toLowerCase() === "football")) {
+							if (typeof window.spkmodWarpSoccerField === "function") {
+								window.spkmodWarpSoccerField(cmd[2]);
+							}
+							return;
 						}
 						break;
 					case "color":
