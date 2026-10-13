@@ -7637,6 +7637,287 @@ window.spkmodApplyNamePresets = function() {
     if (typeof chatLog !== 'undefined') chatLog(`Applied ${count} name presets.`);
 };
 
+// ==========================================
+// Local Avatar Custom Dye & Special FX Engine
+// ==========================================
+window.spkmodAvatarColorMode = window.spkmodAvatarColorMode || "none"; // "color", "rainbow", "shadow", "none"
+window.spkmodAvatarColorHex = window.spkmodAvatarColorHex || "#ffffff";
+window.spkmodAvatarColorScope = window.spkmodAvatarColorScope || "all"; // "all" or "body"
+window.spkmodAvatarDroppingActive = Boolean(window.spkmodAvatarDroppingActive);
+window.spkmodAvatarHeartDropActive = Boolean(window.spkmodAvatarHeartDropActive);
+window.__spkmodRainbowAnimId = null;
+
+window.spkmodSetAvatarColorScope = function(scope) {
+	window.spkmodAvatarColorScope = scope === "body" ? "body" : "all";
+	if (typeof chatLog === 'function') {
+		chatLog(`[FX] Color scope set to: ${window.spkmodAvatarColorScope === "body" ? "Outfit/Body Only" : "Full Avatar"}`);
+	}
+	// Re-apply current mode if active
+	if (window.spkmodAvatarColorMode === "color" && window.spkmodAvatarColorHex) {
+		window.spkmodApplyAvatarColor(window.spkmodAvatarColorHex);
+	} else if (window.spkmodAvatarColorMode === "rainbow") {
+		window.spkmodStartRainbowWave();
+	} else if (window.spkmodAvatarColorMode === "shadow") {
+		window.spkmodApplyShadowMode();
+	}
+	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
+};
+
+window.spkmodApplyAvatarColor = function(hexColor) {
+	if (typeof gameState === 'undefined' || !gameState || !gameState.localAvatar) {
+		if (typeof chatLog === 'function') chatLog("[FX] Game avatar is not loaded yet.");
+		return;
+	}
+
+	if (window.__spkmodRainbowAnimId) {
+		cancelAnimationFrame(window.__spkmodRainbowAnimId);
+		window.__spkmodRainbowAnimId = null;
+	}
+
+	window.spkmodAvatarColorMode = "color";
+	window.spkmodAvatarColorHex = hexColor || "#ffffff";
+
+	const root = gameState.localAvatar.root;
+	if (!root) return;
+
+	root.traverse(child => {
+		if (!child.isMesh) return;
+		const mats = Array.isArray(child.material) ? child.material : [child.material];
+		
+		const matName = (mats[0]?.name || "").toLowerCase();
+		const meshName = (child.name || "").toLowerCase();
+		if (window.spkmodAvatarColorScope === "body") {
+			const isBody = matName.includes("body") || meshName.includes("body") || matName.includes("costume");
+			if (!isBody) {
+				// Restore if it was previously tinted
+				if (child.userData.__spkmodOrigMat) {
+					child.material = child.userData.__spkmodOrigMat;
+					delete child.userData.__spkmodOrigMat;
+					delete child.userData.__spkmodClonedMat;
+				}
+				return;
+			}
+		}
+
+		if (!child.userData.__spkmodOrigMat) {
+			child.userData.__spkmodOrigMat = child.material;
+		}
+
+		if (!child.userData.__spkmodClonedMat) {
+			child.material = Array.isArray(child.material) 
+				? child.material.map(m => m.clone()) 
+				: child.material.clone();
+			child.userData.__spkmodClonedMat = true;
+		}
+
+		const currentMats = Array.isArray(child.material) ? child.material : [child.material];
+		for (const m of currentMats) {
+			if (m && m.color && typeof m.color.set === 'function') {
+				m.color.set(hexColor);
+			}
+			if (m && m.emissive && typeof m.emissive.set === 'function') {
+				m.emissive.set(hexColor).multiplyScalar(0.18);
+			}
+		}
+	});
+
+	if (typeof chatLog === 'function') chatLog(`[FX] Applied color dye: ${hexColor}`);
+	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
+};
+
+window.spkmodStartRainbowWave = function() {
+	if (typeof gameState === 'undefined' || !gameState || !gameState.localAvatar) {
+		if (typeof chatLog === 'function') chatLog("[FX] Game avatar is not loaded yet.");
+		return;
+	}
+
+	if (window.__spkmodRainbowAnimId) {
+		cancelAnimationFrame(window.__spkmodRainbowAnimId);
+		window.__spkmodRainbowAnimId = null;
+	}
+
+	window.spkmodAvatarColorMode = "rainbow";
+
+	const root = gameState.localAvatar.root;
+	if (!root) return;
+
+	root.traverse(child => {
+		if (!child.isMesh) return;
+		const mats = Array.isArray(child.material) ? child.material : [child.material];
+		const matName = (mats[0]?.name || "").toLowerCase();
+		const meshName = (child.name || "").toLowerCase();
+		if (window.spkmodAvatarColorScope === "body") {
+			const isBody = matName.includes("body") || meshName.includes("body") || matName.includes("costume");
+			if (!isBody) {
+				if (child.userData.__spkmodOrigMat) {
+					child.material = child.userData.__spkmodOrigMat;
+					delete child.userData.__spkmodOrigMat;
+					delete child.userData.__spkmodClonedMat;
+				}
+				return;
+			}
+		}
+		if (!child.userData.__spkmodOrigMat) child.userData.__spkmodOrigMat = child.material;
+		if (!child.userData.__spkmodClonedMat) {
+			child.material = Array.isArray(child.material) 
+				? child.material.map(m => m.clone()) 
+				: child.material.clone();
+			child.userData.__spkmodClonedMat = true;
+		}
+	});
+
+	function rainbowLoop() {
+		if (window.spkmodAvatarColorMode !== "rainbow") return;
+		if (gameState && gameState.localAvatar && gameState.localAvatar.root) {
+			const hue = (performance.now() * 0.0006) % 1.0;
+			gameState.localAvatar.root.traverse(child => {
+				if (!child.isMesh || !child.userData.__spkmodClonedMat) return;
+				const currentMats = Array.isArray(child.material) ? child.material : [child.material];
+				for (const m of currentMats) {
+					if (m && m.color && typeof m.color.setHSL === 'function') {
+						m.color.setHSL(hue, 1.0, 0.65);
+					}
+					if (m && m.emissive && typeof m.emissive.setHSL === 'function') {
+						m.emissive.setHSL(hue, 1.0, 0.25);
+					}
+				}
+			});
+		}
+		window.__spkmodRainbowAnimId = requestAnimationFrame(rainbowLoop);
+	}
+	window.__spkmodRainbowAnimId = requestAnimationFrame(rainbowLoop);
+	if (typeof chatLog === 'function') chatLog("[FX] 🌈 Rainbow Wave activated!");
+	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
+};
+
+window.spkmodApplyShadowMode = function() {
+	if (typeof gameState === 'undefined' || !gameState || !gameState.localAvatar) {
+		if (typeof chatLog === 'function') chatLog("[FX] Game avatar is not loaded yet.");
+		return;
+	}
+
+	if (window.__spkmodRainbowAnimId) {
+		cancelAnimationFrame(window.__spkmodRainbowAnimId);
+		window.__spkmodRainbowAnimId = null;
+	}
+
+	window.spkmodAvatarColorMode = "shadow";
+
+	const root = gameState.localAvatar.root;
+	if (!root) return;
+
+	root.traverse(child => {
+		if (!child.isMesh) return;
+		if (!child.userData.__spkmodOrigMat) child.userData.__spkmodOrigMat = child.material;
+		if (!child.userData.__spkmodClonedMat) {
+			child.material = Array.isArray(child.material) 
+				? child.material.map(m => m.clone()) 
+				: child.material.clone();
+			child.userData.__spkmodClonedMat = true;
+		}
+
+		const currentMats = Array.isArray(child.material) ? child.material : [child.material];
+		for (const m of currentMats) {
+			if (m && m.color && typeof m.color.setHex === 'function') {
+				m.color.setHex(0x0a0a0a);
+			}
+			if (m && m.emissive && typeof m.emissive.setHex === 'function') {
+				m.emissive.setHex(0x1a0628); // Subtle dark eldritch purple aura
+			}
+			if (m && m.roughness !== undefined) m.roughness = 0.95;
+		}
+	});
+
+	if (typeof chatLog === 'function') chatLog("[FX] 👤 Void Shadow Mode activated!");
+	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
+};
+
+window.spkmodToggleDropping = function(enabled) {
+	if (enabled === undefined) {
+		window.spkmodAvatarDroppingActive = !window.spkmodAvatarDroppingActive;
+	} else {
+		window.spkmodAvatarDroppingActive = Boolean(enabled);
+	}
+	if (typeof chatLog === 'function') {
+		chatLog(`[FX] ✨ Dropping Trail: ${window.spkmodAvatarDroppingActive ? "ON" : "OFF"}`);
+	}
+	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
+};
+
+window.spkmodToggleHeartDropping = function(enabled) {
+	if (enabled === undefined) {
+		window.spkmodAvatarHeartDropActive = !window.spkmodAvatarHeartDropActive;
+	} else {
+		window.spkmodAvatarHeartDropActive = Boolean(enabled);
+	}
+	if (typeof chatLog === 'function') {
+		chatLog(`[FX] 💖 Heart Dropper: ${window.spkmodAvatarHeartDropActive ? "ON" : "OFF"}`);
+	}
+	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
+};
+
+window.spkmodEmitDropParticle = function() {
+	if (typeof gameState === 'undefined' || !gameState || !gameState.playerContainer) return;
+	const pos = gameState.playerContainer.position;
+	if (!pos) return;
+
+	if (gameState.skillParticles && typeof gameState.skillParticles.emit === 'function') {
+		let dropColor = window.spkmodAvatarColorHex || '#ffdd44';
+		if (window.spkmodAvatarColorMode === 'rainbow') {
+			dropColor = `hsl(${Math.round((performance.now() * 0.08) % 360)}, 100%, 65%)`;
+		} else if (window.spkmodAvatarColorMode === 'shadow') {
+			dropColor = '#8b5cf6';
+		}
+		try {
+			gameState.skillParticles.emit({
+				count: 2,
+				texture: 'star4',
+				color: dropColor,
+				speedMinMps: 0.1,
+				speedMaxMps: 0.6,
+				gravityMps2: 4.2,
+				sizeM: 0.26,
+				lifeSecMin: 0.5,
+				lifeSecMax: 1.0,
+				spawnJitterSec: 0.04
+			}, {
+				x: pos.x + (Math.random() - 0.5) * 0.35,
+				y: (pos.y || 0) + 0.75,
+				z: pos.z + (Math.random() - 0.5) * 0.35
+			});
+		} catch (e) {}
+	}
+};
+
+window.spkmodResetAvatarColors = function() {
+	if (window.__spkmodRainbowAnimId) {
+		cancelAnimationFrame(window.__spkmodRainbowAnimId);
+		window.__spkmodRainbowAnimId = null;
+	}
+	window.spkmodAvatarColorMode = "none";
+	window.spkmodAvatarColorHex = "#ffffff";
+	window.spkmodAvatarDroppingActive = false;
+	window.spkmodAvatarHeartDropActive = false;
+
+	if (typeof gameState !== 'undefined' && gameState && gameState.localAvatar && gameState.localAvatar.root) {
+		gameState.localAvatar.root.traverse(child => {
+			if (!child.isMesh) return;
+			if (child.userData.__spkmodOrigMat) {
+				const cloned = child.material;
+				child.material = child.userData.__spkmodOrigMat;
+				delete child.userData.__spkmodOrigMat;
+				delete child.userData.__spkmodClonedMat;
+				if (cloned) {
+					const arr = Array.isArray(cloned) ? cloned : [cloned];
+					for (const c of arr) if (c && typeof c.dispose === 'function') c.dispose();
+				}
+			}
+		});
+	}
+	if (typeof chatLog === 'function') chatLog("[FX] Reset all avatar custom dyes and effects.");
+	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
+};
+
 
 
 
@@ -8291,6 +8572,92 @@ function updateLocalEditsUI() {
 			}
 		}
 	}
+
+	// Soccer Uniform Buttons
+	if (editsModalElements.soccerHeader) setText(editsModalElements.soccerHeader, "⚽ " + (t("soccerHeader") || "Soccer Uniform (Server Sync)"));
+	if (editsModalElements.soccerBtnRed) setText(editsModalElements.soccerBtnRed, "🔴 " + (t("soccerBtnRed") || "Red Team"));
+	if (editsModalElements.soccerBtnBlue) setText(editsModalElements.soccerBtnBlue, "🔵 " + (t("soccerBtnBlue") || "Blue Team"));
+	if (editsModalElements.soccerBtnNone) setText(editsModalElements.soccerBtnNone, "⚪ " + (t("soccerBtnNone") || "Default"));
+	if (editsModalElements.soccerBtnWarp) setText(editsModalElements.soccerBtnWarp, "⚡ " + (t("soccerBtnWarp") || "Warp Field"));
+	if (editsModalElements.soccerHint) setText(editsModalElements.soccerHint, t("soccerHint") || "Network-synced to other players (requires Town / Zone 1)");
+
+	const myTeam = (typeof gameState !== 'undefined' && gameState) ? (gameState.mySoccerTeam || 0) : 0;
+	if (editsModalElements.soccerBtnRed) {
+		if (myTeam === 1) {
+			editsModalElements.soccerBtnRed.style.borderColor = "#ff5555";
+			editsModalElements.soccerBtnRed.style.background = "rgba(255, 85, 85, 0.25)";
+		} else {
+			editsModalElements.soccerBtnRed.style.borderColor = "#555";
+			editsModalElements.soccerBtnRed.style.background = "";
+		}
+	}
+	if (editsModalElements.soccerBtnBlue) {
+		if (myTeam === 2) {
+			editsModalElements.soccerBtnBlue.style.borderColor = "#5599ff";
+			editsModalElements.soccerBtnBlue.style.background = "rgba(85, 153, 255, 0.25)";
+		} else {
+			editsModalElements.soccerBtnBlue.style.borderColor = "#555";
+			editsModalElements.soccerBtnBlue.style.background = "";
+		}
+	}
+	if (editsModalElements.soccerBtnNone) {
+		if (myTeam === 0) {
+			editsModalElements.soccerBtnNone.style.borderColor = "var(--spkmod-accent, #ffd54a)";
+			editsModalElements.soccerBtnNone.style.background = "rgba(255, 255, 255, 0.2)";
+		} else {
+			editsModalElements.soccerBtnNone.style.borderColor = "#555";
+			editsModalElements.soccerBtnNone.style.background = "";
+		}
+	}
+
+	// Character Dye & FX Buttons
+	if (editsModalElements.avatarDyeHeader) setText(editsModalElements.avatarDyeHeader, "🎨 " + (t("avatarDyeHeader") || "Character Dye & FX (Local Only)"));
+	if (editsModalElements.dyeScopeBtn) {
+		setText(editsModalElements.dyeScopeBtn, window.spkmodAvatarColorScope === "body" ? (t("dyeScopeBody") || "Outfit Only") : (t("dyeScopeAll") || "Full Avatar"));
+	}
+	if (editsModalElements.dyeBtnReset) setText(editsModalElements.dyeBtnReset, "↺ " + (t("dyeReset") || "Reset Character Dye & FX"));
+
+	if (editsModalElements.dyeBtnRainbow) {
+		if (window.spkmodAvatarColorMode === "rainbow") {
+			editsModalElements.dyeBtnRainbow.style.borderColor = "var(--spkmod-accent, #ffd54a)";
+			editsModalElements.dyeBtnRainbow.style.background = "rgba(236, 72, 153, 0.25)";
+		} else {
+			editsModalElements.dyeBtnRainbow.style.borderColor = "#555";
+			editsModalElements.dyeBtnRainbow.style.background = "";
+		}
+	}
+	if (editsModalElements.dyeBtnShadow) {
+		if (window.spkmodAvatarColorMode === "shadow") {
+			editsModalElements.dyeBtnShadow.style.borderColor = "#c084fc";
+			editsModalElements.dyeBtnShadow.style.background = "rgba(192, 132, 252, 0.25)";
+		} else {
+			editsModalElements.dyeBtnShadow.style.borderColor = "#555";
+			editsModalElements.dyeBtnShadow.style.background = "";
+		}
+	}
+	if (editsModalElements.dyeBtnDropping) {
+		setText(editsModalElements.dyeBtnDropping, window.spkmodAvatarDroppingActive ? "✨ Dropping: ON" : "✨ Dropping: OFF");
+		if (window.spkmodAvatarDroppingActive) {
+			editsModalElements.dyeBtnDropping.style.borderColor = "#55ff55";
+			editsModalElements.dyeBtnDropping.style.background = "rgba(85, 255, 85, 0.2)";
+		} else {
+			editsModalElements.dyeBtnDropping.style.borderColor = "#555";
+			editsModalElements.dyeBtnDropping.style.background = "";
+		}
+	}
+	if (editsModalElements.dyeBtnHeartDrop) {
+		setText(editsModalElements.dyeBtnHeartDrop, window.spkmodAvatarHeartDropActive ? "💖 Hearts: ON" : "💖 Hearts: OFF");
+		if (window.spkmodAvatarHeartDropActive) {
+			editsModalElements.dyeBtnHeartDrop.style.borderColor = "#ff55aa";
+			editsModalElements.dyeBtnHeartDrop.style.background = "rgba(255, 85, 170, 0.2)";
+		} else {
+			editsModalElements.dyeBtnHeartDrop.style.borderColor = "#555";
+			editsModalElements.dyeBtnHeartDrop.style.background = "";
+		}
+	}
+	if (editsModalElements.dyeColorPicker && window.spkmodAvatarColorHex) {
+		editsModalElements.dyeColorPicker.value = window.spkmodAvatarColorHex;
+	}
 }
 
 function toggleLocalEditsModal() {
@@ -8556,7 +8923,170 @@ document.body.appendChild(
 				])
 			]),
 
-			// Section 4: Camera Effects (Filters & Hotkeys)
+			// Section 4: Soccer Uniform (Server Sync)
+			buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid #555; padding-bottom: 8px;" }, [
+				editsModalElements.soccerHeader = buildElement("div", {
+					className: "spkmod-panel-cat-header",
+					innerText: "⚽ " + (t("soccerHeader") || "Soccer Uniform (Server Sync)"),
+					style: "margin-top: 0px;"
+				}),
+				buildElement("div", { style: "display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;" }, [
+					editsModalElements.soccerBtnRed = buildElement("button", {
+						className: "spkmod-panel-btn",
+						style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #ff5555; font-weight: bold;",
+						innerText: "🔴 " + (t("soccerBtnRed") || "Red Team"),
+						title: "Syncs with server so everyone sees Team Red (Zone 1 Town)",
+						onclick: () => { if (window.spkmodSetTeam) window.spkmodSetTeam("red"); updateLocalEditsUI(); }
+					}),
+					editsModalElements.soccerBtnBlue = buildElement("button", {
+						className: "spkmod-panel-btn",
+						style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #5599ff; font-weight: bold;",
+						innerText: "🔵 " + (t("soccerBtnBlue") || "Blue Team"),
+						title: "Syncs with server so everyone sees Team Blue (Zone 1 Town)",
+						onclick: () => { if (window.spkmodSetTeam) window.spkmodSetTeam("blue"); updateLocalEditsUI(); }
+					}),
+					editsModalElements.soccerBtnNone = buildElement("button", {
+						className: "spkmod-panel-btn",
+						style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #eeeeee;",
+						innerText: "⚪ " + (t("soccerBtnNone") || "Default"),
+						title: "Reset soccer uniform to default",
+						onclick: () => { if (window.spkmodSetTeam) window.spkmodSetTeam("none"); updateLocalEditsUI(); }
+					}),
+					editsModalElements.soccerBtnWarp = buildElement("button", {
+						className: "spkmod-panel-btn",
+						style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #ffd54a;",
+						innerText: "⚡ " + (t("soccerBtnWarp") || "Warp Field"),
+						title: "Teleport directly to the soccer field in Town",
+						onclick: () => { if (window.spkmodWarpSoccerField) window.spkmodWarpSoccerField(); }
+					})
+				]),
+				editsModalElements.soccerHint = buildElement("div", {
+					style: "font-size: 9px; color: #888; text-align: center; padding-top: 2px;",
+					innerText: t("soccerHint") || "Network-synced to other players (requires Town / Zone 1)"
+				})
+			]),
+
+			// Section 5: Character Dye & FX (Local Only)
+			buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid #555; padding-bottom: 8px;" }, [
+				buildElement("div", { style: "display: flex; justify-content: space-between; align-items: center;" }, [
+					editsModalElements.avatarDyeHeader = buildElement("div", {
+						className: "spkmod-panel-cat-header",
+						innerText: "🎨 " + (t("avatarDyeHeader") || "Character Dye & FX (Local Only)"),
+						style: "margin-top: 0px;"
+					}),
+					editsModalElements.dyeScopeBtn = buildElement("button", {
+						className: "spkmod-panel-btn",
+						style: "padding: 3px 6px; font-size: 9px; color: #ffd54a; border-color: #ffd54a;",
+						innerText: window.spkmodAvatarColorScope === "body" ? (t("dyeScopeBody") || "Outfit Only") : (t("dyeScopeAll") || "Full Avatar"),
+						title: "Toggle whether to color the whole avatar or outfit/body only",
+						onclick: () => {
+							if (window.spkmodSetAvatarColorScope) {
+								window.spkmodSetAvatarColorScope(window.spkmodAvatarColorScope === "body" ? "all" : "body");
+							}
+						}
+					})
+				]),
+				// Color Grid: 18 vivid colors
+				buildElement("div", { style: "display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px;" }, [
+					...[
+						{ name: "Crimson", hex: "#ff2a4b", emoji: "🔴" },
+						{ name: "Blue", hex: "#2563eb", emoji: "🔵" },
+						{ name: "Emerald", hex: "#10b981", emoji: "🟢" },
+						{ name: "Gold", hex: "#facc15", emoji: "🟡" },
+						{ name: "Purple", hex: "#8b5cf6", emoji: "🟣" },
+						{ name: "Hot Pink", hex: "#ec4899", emoji: "🌸" },
+						{ name: "Cyan", hex: "#06b6d4", emoji: "🩵" },
+						{ name: "Orange", hex: "#f97316", emoji: "🧡" },
+						{ name: "Mint", hex: "#14b8a6", emoji: "🌿" },
+						{ name: "Amber", hex: "#d97706", emoji: "🪙" },
+						{ name: "Pearl", hex: "#ffffff", emoji: "⚪" },
+						{ name: "Obsidian", hex: "#18181b", emoji: "⚫" },
+						{ name: "Magenta", hex: "#f43f5e", emoji: "🍇" },
+						{ name: "Ice", hex: "#38bdf8", emoji: "🧊" },
+						{ name: "Sepia", hex: "#b45309", emoji: "☕" },
+						{ name: "Lavender", hex: "#a78bfa", emoji: "🔮" },
+						{ name: "Lime", hex: "#84cc16", emoji: "🍀" },
+						{ name: "Indigo", hex: "#4f46e5", emoji: "🫐" }
+					].map(c => {
+						const btn = buildElement("button", {
+							className: "spkmod-panel-btn",
+							style: `padding: 5px 2px; font-size: 9.5px; text-align: center; color: ${c.hex === "#ffffff" ? "#eee" : c.hex};`,
+							innerText: `${c.emoji} ${c.name}`,
+							title: `Apply ${c.name} Dye (${c.hex})`,
+							onclick: () => {
+								if (window.spkmodApplyAvatarColor) window.spkmodApplyAvatarColor(c.hex);
+							}
+						});
+						editsModalElements["dyeBtn_" + c.name] = btn;
+						return btn;
+					})
+				]),
+				// Custom Color Picker row
+				buildElement("div", { style: "display: flex; gap: 4px; align-items: center; margin-top: 2px;" }, [
+					buildElement("span", { style: "font-size: 10px; color: #ccc;", innerText: "Custom Color:" }),
+					editsModalElements.dyeColorPicker = buildElement("input", {
+						type: "color",
+						value: window.spkmodAvatarColorHex || "#ffffff",
+						style: "flex: 1; height: 26px; border: 1px solid #555; background: #222; border-radius: 4px; cursor: pointer; padding: 1px;",
+						onchange: (e) => {
+							if (window.spkmodApplyAvatarColor) window.spkmodApplyAvatarColor(e.target.value);
+						}
+					})
+				]),
+				// Special FX Controls Row
+				buildElement("div", { style: "display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 2px;" }, [
+					editsModalElements.dyeBtnRainbow = buildElement("button", {
+						className: "spkmod-panel-btn",
+						style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #ec4899; font-weight: bold;",
+						innerText: "🌈 Rainbow",
+						title: "Animate real-time smooth cycling through rainbow spectrum",
+						onclick: () => {
+							if (window.spkmodStartRainbowWave) window.spkmodStartRainbowWave();
+						}
+					}),
+					editsModalElements.dyeBtnShadow = buildElement("button", {
+						className: "spkmod-panel-btn",
+						style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #c084fc; font-weight: bold;",
+						innerText: "👤 Void Shadow",
+						title: "Dark obsidian silhouette with subtle void aura",
+						onclick: () => {
+							if (window.spkmodApplyShadowMode) window.spkmodApplyShadowMode();
+						}
+					}),
+					editsModalElements.dyeBtnDropping = buildElement("button", {
+						className: "spkmod-panel-btn",
+						style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #ffd54a; font-weight: bold;",
+						innerText: window.spkmodAvatarDroppingActive ? "✨ Dropping: ON" : "✨ Dropping: OFF",
+						title: "Drop trailing star sparks/afterimages as you walk or stand",
+						onclick: () => {
+							if (window.spkmodToggleDropping) window.spkmodToggleDropping();
+						}
+					}),
+					editsModalElements.dyeBtnHeartDrop = buildElement("button", {
+						className: "spkmod-panel-btn",
+						style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #ff55aa; font-weight: bold;",
+						innerText: window.spkmodAvatarHeartDropActive ? "💖 Hearts: ON" : "💖 Hearts: OFF",
+						title: "Spawns floating heart bursts as you move/idle",
+						onclick: () => {
+							if (window.spkmodToggleHeartDropping) window.spkmodToggleHeartDropping();
+						}
+					})
+				]),
+				// Reset Button
+				buildElement("div", { style: "display: flex; gap: 4px; margin-top: 2px;" }, [
+					editsModalElements.dyeBtnReset = buildElement("button", {
+						className: "spkmod-panel-btn",
+						style: "width: 100%; padding: 6px; font-size: 10.5px; text-align: center; color: #ffaaaa;",
+						innerText: "↺ " + (t("dyeReset") || "Reset Character Dye & FX"),
+						title: "Restore avatar to original appearance",
+						onclick: () => {
+							if (window.spkmodResetAvatarColors) window.spkmodResetAvatarColors();
+						}
+					})
+				])
+			]),
+
+			// Section 6: Camera Effects (Filters & Hotkeys)
 			buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px;" }, [
 				editsModalElements.cameraHeader = buildElement("div", {
 					className: "spkmod-panel-cat-header",
@@ -10455,6 +10985,18 @@ function tick() {
 		hookChatEmojiButton();
 	}
 
+	// Local Avatar Special FX Loops
+	if (window.spkmodAvatarDroppingActive && lunTickCount % 8 === 0) {
+		if (typeof window.spkmodEmitDropParticle === 'function') {
+			window.spkmodEmitDropParticle();
+		}
+	}
+	if (window.spkmodAvatarHeartDropActive && lunTickCount % 45 === 0) {
+		if (gameState.bloomEffects && typeof gameState.bloomEffects.spawnHearts === 'function' && gameState.playerContainer) {
+			gameState.bloomEffects.spawnHearts(gameState.playerContainer);
+		}
+	}
+
 	if (lunTickCount % (lunTPS * 5) === 0 && typeof findBotsRadar === "function") {
 		findBotsRadar(true);
 	}
@@ -11448,6 +11990,69 @@ function hookGameStateOnce() {
 					case "blue":
 						if (typeof window.spkmodSetTeam === "function") {
 							window.spkmodSetTeam(2, cmd.slice(1).join(" "));
+						}
+						break;
+					case "color":
+					case "dye":
+						if (!cmd[1]) {
+							chatLog("Usage: /color [hex|name] (e.g. /color #ff2a4b or /color crimson, blue, emerald, gold, purple, pink, cyan, orange, mint, amber, pearl, obsidian, magenta, ice, sepia, lavender, lime, indigo)");
+							return;
+						}
+						{
+							const colorPresets = {
+								crimson: "#ff2a4b", red: "#ff2a4b",
+								blue: "#2563eb", royal: "#2563eb",
+								emerald: "#10b981", green: "#10b981",
+								gold: "#facc15", yellow: "#facc15",
+								purple: "#8b5cf6", violet: "#8b5cf6",
+								pink: "#ec4899", hotpink: "#ec4899",
+								cyan: "#06b6d4", teal: "#06b6d4",
+								orange: "#f97316",
+								mint: "#14b8a6",
+								amber: "#d97706",
+								pearl: "#ffffff", white: "#ffffff",
+								obsidian: "#18181b", black: "#18181b",
+								magenta: "#f43f5e",
+								ice: "#38bdf8",
+								sepia: "#b45309",
+								lavender: "#a78bfa",
+								lime: "#84cc16",
+								indigo: "#4f46e5"
+							};
+							const cKey = cmd[1].toLowerCase().replace(/^#/, "");
+							const targetColor = colorPresets[cKey] || (cmd[1].startsWith("#") ? cmd[1] : "#" + cmd[1]);
+							if (typeof window.spkmodApplyAvatarColor === "function") {
+								window.spkmodApplyAvatarColor(targetColor);
+							}
+						}
+						break;
+					case "rainbow":
+						if (typeof window.spkmodStartRainbowWave === "function") {
+							window.spkmodStartRainbowWave();
+						}
+						break;
+					case "shadow":
+					case "void":
+						if (typeof window.spkmodApplyShadowMode === "function") {
+							window.spkmodApplyShadowMode();
+						}
+						break;
+					case "drop":
+					case "dropping":
+						if (typeof window.spkmodToggleDropping === "function") {
+							window.spkmodToggleDropping();
+						}
+						break;
+					case "heartdrop":
+					case "heartsdrop":
+						if (typeof window.spkmodToggleHeartDropping === "function") {
+							window.spkmodToggleHeartDropping();
+						}
+						break;
+					case "resetcolor":
+					case "cleardye":
+						if (typeof window.spkmodResetAvatarColors === "function") {
+							window.spkmodResetAvatarColors();
 						}
 						break;
 					default:
