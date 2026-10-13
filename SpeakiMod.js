@@ -7696,19 +7696,30 @@ function spkmodIsOutlineMaterial(mat) {
 
 function spkmodCloneMaterialSafely(mat) {
 	if (!mat) return mat;
+	if (Array.isArray(mat)) {
+		return mat.map(m => spkmodCloneMaterialSafely(m) || m);
+	}
+	if (typeof mat !== 'object' || typeof mat.clone !== 'function') {
+		return mat; // Non-cloneable or custom material, keep reference safely
+	}
 	if (mat.type === 'OutlineEffect' || mat.name === 'OutlineEffect') {
 		return null; // Do not clone temporary OutlineEffect materials
 	}
 	spkmodEnsureMaterialPrototypeSafety(mat);
-	const cloned = mat.clone();
-	if (!cloned.userData) cloned.userData = {};
-	if (!mat.userData) mat.userData = {};
-	if (mat.userData.outlineParameters) {
-		try {
-			cloned.userData.outlineParameters = Object.assign({}, mat.userData.outlineParameters);
-		} catch (_) {}
-	}
-	return cloned;
+	try {
+		const cloned = mat.clone();
+		if (cloned) {
+			if (!cloned.userData) cloned.userData = {};
+			if (!mat.userData) mat.userData = {};
+			if (mat.userData.outlineParameters) {
+				try {
+					cloned.userData.outlineParameters = Object.assign({}, mat.userData.outlineParameters);
+				} catch (_) {}
+			}
+			return cloned;
+		}
+	} catch (_) {}
+	return mat;
 }
 
 function spkmodEnsurePristineMaterials() {
