@@ -552,7 +552,8 @@
         "dyeColorSepia": "Sepia",
         "dyeColorLavender": "Lavender",
         "dyeColorLime": "Lime",
-        "dyeColorIndigo": "Indigo"
+        "dyeColorIndigo": "Indigo",
+        "dyeRainbowSpeed": "Rainbow Speed:"
     },
     "ja": {
         "langName": "日本語",
@@ -1137,7 +1138,8 @@
         "dyeColorSepia": "セピア",
         "dyeColorLavender": "ラベンダー",
         "dyeColorLime": "ライム",
-        "dyeColorIndigo": "インディゴ"
+        "dyeColorIndigo": "インディゴ",
+        "dyeRainbowSpeed": "レインボー速度:"
     },
     "ko": {
         "langName": "한국어",
@@ -1692,7 +1694,8 @@
         "dyeColorSepia": "세피아",
         "dyeColorLavender": "라벤더",
         "dyeColorLime": "ライム",
-        "dyeColorIndigo": "인디고"
+        "dyeColorIndigo": "인디고",
+        "dyeRainbowSpeed": "무지개 속도:"
     },
     "zh-TW": {
         "langName": "繁體中文",
@@ -2242,7 +2245,8 @@
         "dyeColorSepia": "深褐",
         "dyeColorLavender": "薰衣草",
         "dyeColorLime": "萊姆綠",
-        "dyeColorIndigo": "靛藍"
+        "dyeColorIndigo": "靛藍",
+        "dyeRainbowSpeed": "彩虹速度:"
     },
     "zh-CN": {
         "langName": "简体中文",
@@ -2792,7 +2796,8 @@
         "dyeColorSepia": "深褐",
         "dyeColorLavender": "薰衣草",
         "dyeColorLime": "莱姆绿",
-        "dyeColorIndigo": "靛蓝"
+        "dyeColorIndigo": "靛蓝",
+        "dyeRainbowSpeed": "彩虹速度:"
     },
     "es-419": {
         "langName": "Español",
@@ -3342,6 +3347,7 @@
         "dyeColorSepia": "Sepia",
         "dyeColorLavender": "Lavanda",
         "dyeColorLime": "Lima",
-        "dyeColorIndigo": "Índigo"
+        "dyeColorIndigo": "Índigo",
+        "dyeRainbowSpeed": "Velocidad de Arcoíris:"
     }
 }

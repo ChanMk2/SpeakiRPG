@@ -835,7 +835,7 @@ var spkmodFallbackTranslations = {
 	"en": {
 		"soccerHeader": "Soccer Uniform", "soccerBtnRed": "Red Team", "soccerBtnBlue": "Blue Team", "soccerBtnNone": "Default",
 		"avatarDyeHeader": "Character Dye & FX (Local Only)", "dyeScopeBody": "Outfit Only", "dyeScopeAll": "Full Avatar",
-		"dyeCustomColor": "Custom Color:", "dyeBtnRainbow": "Rainbow", "dyeBtnRainbowAll": "Rainbow ALL", "dyeBtnShadow": "Void Shadow", "dyeReset": "Reset Character Dye & FX",
+		"dyeCustomColor": "Custom Color:", "dyeRainbowSpeed": "Rainbow Speed:", "dyeBtnRainbow": "Rainbow", "dyeBtnRainbowAll": "Rainbow ALL", "dyeBtnShadow": "Void Shadow", "dyeReset": "Reset Character Dye & FX",
 		"dyeColorCrimson": "Crimson", "dyeColorBlue": "Blue", "dyeColorEmerald": "Emerald", "dyeColorGold": "Gold", "dyeColorPurple": "Purple", "dyeColorHotPink": "Hot Pink",
 		"dyeColorCyan": "Cyan", "dyeColorOrange": "Orange", "dyeColorMint": "Mint", "dyeColorAmber": "Amber", "dyeColorPearl": "Pearl", "dyeColorObsidian": "Obsidian",
 		"dyeColorMagenta": "Magenta", "dyeColorIce": "Ice", "dyeColorSepia": "Sepia", "dyeColorLavender": "Lavender", "dyeColorLime": "Lime", "dyeColorIndigo": "Indigo"
@@ -843,7 +843,7 @@ var spkmodFallbackTranslations = {
 	"ja": {
 		"soccerHeader": "サッカーユニフォーム", "soccerBtnRed": "レッドチーム", "soccerBtnBlue": "ブルーチーム", "soccerBtnNone": "デフォルト",
 		"avatarDyeHeader": "キャラ染色＆エフェクト (ローカルのみ)", "dyeScopeBody": "衣装のみ", "dyeScopeAll": "全体",
-		"dyeCustomColor": "カスタム色:", "dyeBtnRainbow": "レインボー", "dyeBtnRainbowAll": "全員レインボー", "dyeBtnShadow": "ヴォイドシャドウ", "dyeReset": "キャラ染色＆FXをリセット",
+		"dyeCustomColor": "カスタム色:", "dyeRainbowSpeed": "レインボー速度:", "dyeBtnRainbow": "レインボー", "dyeBtnRainbowAll": "全員レインボー", "dyeBtnShadow": "ヴォイドシャドウ", "dyeReset": "キャラ染色＆FXをリセット",
 		"dyeColorCrimson": "クリムゾン", "dyeColorBlue": "ブルー", "dyeColorEmerald": "エメラルド", "dyeColorGold": "ゴールド", "dyeColorPurple": "パープル", "dyeColorHotPink": "ホットピンク",
 		"dyeColorCyan": "シアン", "dyeColorOrange": "オレンジ", "dyeColorMint": "ミント", "dyeColorAmber": "アンバー", "dyeColorPearl": "パール", "dyeColorObsidian": "オブシディアン",
 		"dyeColorMagenta": "マゼンタ", "dyeColorIce": "アイス", "dyeColorSepia": "セピア", "dyeColorLavender": "ラベンダー", "dyeColorLime": "ライム", "dyeColorIndigo": "インディゴ"
@@ -851,7 +851,7 @@ var spkmodFallbackTranslations = {
 	"ko": {
 		"soccerHeader": "축구 유니폼", "soccerBtnRed": "레드팀", "soccerBtnBlue": "블루팀", "soccerBtnNone": "기본",
 		"avatarDyeHeader": "캐릭터 염색 & 효과 (로컬 전용)", "dyeScopeBody": "의상만", "dyeScopeAll": "전체",
-		"dyeCustomColor": "사용자 지정 색상:", "dyeBtnRainbow": "무지개", "dyeBtnRainbowAll": "전원 무지개", "dyeBtnShadow": "보이드 섀도우", "dyeReset": "캐릭터 염색 및 효과 초기화",
+		"dyeCustomColor": "사용자 지정 색상:", "dyeRainbowSpeed": "무지개 속도:", "dyeBtnRainbow": "무지개", "dyeBtnRainbowAll": "전원 무지개", "dyeBtnShadow": "보이드 섀도우", "dyeReset": "캐릭터 염색 및 효과 초기화",
 		"dyeColorCrimson": "크림슨", "dyeColorBlue": "블루", "dyeColorEmerald": "에메랄드", "dyeColorGold": "골드", "dyeColorPurple": "퍼플", "dyeColorHotPink": "핫핑크",
 		"dyeColorCyan": "시안", "dyeColorOrange": "오렌지", "dyeColorMint": "민트", "dyeColorAmber": "앰버", "dyeColorPearl": "펄", "dyeColorObsidian": "흑요석",
 		"dyeColorMagenta": "마젠타", "dyeColorIce": "아이스", "dyeColorSepia": "세피아", "dyeColorLavender": "라벤더", "dyeColorLime": "라임", "dyeColorIndigo": "인디고"
@@ -859,7 +859,7 @@ var spkmodFallbackTranslations = {
 	"zh-TW": {
 		"soccerHeader": "足球隊服", "soccerBtnRed": "紅隊", "soccerBtnBlue": "藍隊", "soccerBtnNone": "預設",
 		"avatarDyeHeader": "角色染色與特效 (僅本地)", "dyeScopeBody": "僅服裝", "dyeScopeAll": "全角色",
-		"dyeCustomColor": "自訂顏色:", "dyeBtnRainbow": "彩虹", "dyeBtnRainbowAll": "全員彩虹", "dyeBtnShadow": "虛空暗影", "dyeReset": "重設角色染色與特效",
+		"dyeCustomColor": "自訂顏色:", "dyeRainbowSpeed": "彩虹速度:", "dyeBtnRainbow": "彩虹", "dyeBtnRainbowAll": "全員彩虹", "dyeBtnShadow": "虛空暗影", "dyeReset": "重設角色染色與特效",
 		"dyeColorCrimson": "緋紅", "dyeColorBlue": "寶藍", "dyeColorEmerald": "翡翠綠", "dyeColorGold": "金黃", "dyeColorPurple": "紫色", "dyeColorHotPink": "亮粉",
 		"dyeColorCyan": "青藍", "dyeColorOrange": "橙橘", "dyeColorMint": "薄荷綠", "dyeColorAmber": "琥珀", "dyeColorPearl": "珍珠白", "dyeColorObsidian": "黑曜石",
 		"dyeColorMagenta": "洋紅", "dyeColorIce": "冰藍", "dyeColorSepia": "深褐", "dyeColorLavender": "薰衣草", "dyeColorLime": "萊姆綠", "dyeColorIndigo": "靛藍"
@@ -867,7 +867,7 @@ var spkmodFallbackTranslations = {
 	"zh-CN": {
 		"soccerHeader": "足球队服", "soccerBtnRed": "红队", "soccerBtnBlue": "蓝队", "soccerBtnNone": "默认",
 		"avatarDyeHeader": "角色染色与特效 (仅本地)", "dyeScopeBody": "仅服装", "dyeScopeAll": "全角色",
-		"dyeCustomColor": "自定义颜色:", "dyeBtnRainbow": "彩虹", "dyeBtnRainbowAll": "全员彩虹", "dyeBtnShadow": "虚空暗影", "dyeReset": "重置角色染色与特效",
+		"dyeCustomColor": "自定义颜色:", "dyeRainbowSpeed": "彩虹速度:", "dyeBtnRainbow": "彩虹", "dyeBtnRainbowAll": "全员彩虹", "dyeBtnShadow": "虚空暗影", "dyeReset": "重置角色染色与特效",
 		"dyeColorCrimson": "绯红", "dyeColorBlue": "宝蓝", "dyeColorEmerald": "翡翠绿", "dyeColorGold": "金黄", "dyeColorPurple": "紫色", "dyeColorHotPink": "亮粉",
 		"dyeColorCyan": "青蓝", "dyeColorOrange": "橙橘", "dyeColorMint": "薄荷绿", "dyeColorAmber": "琥珀", "dyeColorPearl": "珍珠白", "dyeColorObsidian": "黑曜石",
 		"dyeColorMagenta": "洋红", "dyeColorIce": "冰蓝", "dyeColorSepia": "深褐", "dyeColorLavender": "薰衣草", "dyeColorLime": "莱姆绿", "dyeColorIndigo": "靛蓝"
@@ -875,7 +875,7 @@ var spkmodFallbackTranslations = {
 	"es-419": {
 		"soccerHeader": "Uniforme de Fútbol", "soccerBtnRed": "Equipo Rojo", "soccerBtnBlue": "Equipo Azul", "soccerBtnNone": "Predeterminado",
 		"avatarDyeHeader": "Tinte y Efectos de Personaje (Solo Local)", "dyeScopeBody": "Solo Atuendo", "dyeScopeAll": "Avatar Completo",
-		"dyeCustomColor": "Color Personalizado:", "dyeBtnRainbow": "Arcoíris", "dyeBtnRainbowAll": "Arcoíris TODOS", "dyeBtnShadow": "Sombra del Vacío", "dyeReset": "Restablecer Tinte y Efectos",
+		"dyeCustomColor": "Color Personalizado:", "dyeRainbowSpeed": "Velocidad de Arcoíris:", "dyeBtnRainbow": "Arcoíris", "dyeBtnRainbowAll": "Arcoíris TODOS", "dyeBtnShadow": "Sombra del Vacío", "dyeReset": "Restablecer Tinte y Efectos",
 		"dyeColorCrimson": "Carmesí", "dyeColorBlue": "Azul", "dyeColorEmerald": "Esmeralda", "dyeColorGold": "Dorado", "dyeColorPurple": "Púrpura", "dyeColorHotPink": "Rosa Brillante",
 		"dyeColorCyan": "Cian", "dyeColorOrange": "Naranja", "dyeColorMint": "Menta", "dyeColorAmber": "Ámbar", "dyeColorPearl": "Perla", "dyeColorObsidian": "Obsidiana",
 		"dyeColorMagenta": "Magenta", "dyeColorIce": "Hielo", "dyeColorSepia": "Sepia", "dyeColorLavender": "Lavanda", "dyeColorLime": "Lima", "dyeColorIndigo": "Índigo"
@@ -7816,10 +7816,25 @@ window.spkmodApplyAvatarColor = function(hexColor) {
 	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
 };
 
-window.spkmodStartRainbowWave = function(targetAll) {
+window.spkmodRainbowSpeed = (function() {
+	try {
+		if (window.localStorage) {
+			const s = parseFloat(localStorage.getItem("spkmod-rainbow-speed"));
+			if (!isNaN(s) && s > 0) return s;
+		}
+	} catch(_) {}
+	return 1.0;
+})();
+
+window.spkmodStartRainbowWave = function(targetAll, customSpeed) {
 	if (typeof gameState === 'undefined' || !gameState || !gameState.localAvatar) {
 		if (typeof chatLog === 'function') chatLog("[FX] Game avatar is not loaded yet.");
 		return;
+	}
+
+	if (typeof customSpeed === 'number' && customSpeed > 0) {
+		window.spkmodRainbowSpeed = customSpeed;
+		if (window.localStorage) localStorage.setItem("spkmod-rainbow-speed", customSpeed);
 	}
 
 	window.hookRemotePlayerRebuildIsolation();
@@ -7867,9 +7882,15 @@ window.spkmodStartRainbowWave = function(targetAll) {
 		window.spkmodSanitizeRemotePlayers();
 	}
 
+	window.spkmodRainbowLastTime = performance.now();
 	function rainbowLoop() {
 		if (window.spkmodAvatarColorMode !== "rainbow" && window.spkmodAvatarColorMode !== "rainbow_all") return;
-		const hue = (performance.now() * 0.0006) % 1.0;
+		const now = performance.now();
+		const dt = Math.min((now - (window.spkmodRainbowLastTime || now)) / 1000, 0.1);
+		window.spkmodRainbowLastTime = now;
+		const speed = typeof window.spkmodRainbowSpeed === 'number' ? window.spkmodRainbowSpeed : 1.0;
+		window.spkmodRainbowPhase = ((window.spkmodRainbowPhase || 0) + dt * 0.6 * speed) % 1.0;
+		const hue = window.spkmodRainbowPhase;
 
 		// 1. Local avatar
 		if (gameState && gameState.localAvatar && gameState.localAvatar.root) {
@@ -7917,7 +7938,8 @@ window.spkmodStartRainbowWave = function(targetAll) {
 	}
 	window.__spkmodRainbowAnimId = requestAnimationFrame(rainbowLoop);
 	if (typeof chatLog === 'function') {
-		chatLog(isAll ? "[FX] 🌟 Rainbow ALL activated!" : "[FX] 🌈 Rainbow Wave activated!");
+		const spd = typeof window.spkmodRainbowSpeed === 'number' ? window.spkmodRainbowSpeed.toFixed(1) : "1.0";
+		chatLog(isAll ? `[FX] 🌟 Rainbow ALL activated! (${spd}x)` : `[FX] 🌈 Rainbow Wave activated! (${spd}x)`);
 	}
 	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
 };
@@ -8529,6 +8551,27 @@ document.body.appendChild(
 							}
 						})
 					]),
+					// Rainbow Speed Slider row
+					buildElement("div", { style: "display: flex; flex-direction: column; gap: 2px; margin-top: 3px; background: rgba(0,0,0,0.25); padding: 4px 6px; border-radius: 4px; border: 1px solid #444;" }, [
+						buildElement("div", { style: "display: flex; justify-content: space-between; align-items: center;" }, [
+							editsModalElements.rainbowSpeedLabel = buildElement("span", { style: "font-size: 10px; color: #ec4899; font-weight: bold;", innerText: t("dyeRainbowSpeed") || "Rainbow Speed:" }),
+							editsModalElements.rainbowSpeedValue = buildElement("span", { style: "font-size: 10px; color: #ffd54a; font-weight: bold;", innerText: `x${(typeof window.spkmodRainbowSpeed === 'number' ? window.spkmodRainbowSpeed : 1.0).toFixed(1)}` })
+						]),
+						editsModalElements.rainbowSpeedSlider = buildElement("input", {
+							type: "range",
+							min: "0.2",
+							max: "5.0",
+							step: "0.1",
+							value: typeof window.spkmodRainbowSpeed === 'number' ? window.spkmodRainbowSpeed : 1.0,
+							style: "width: 100%; height: 4px; accent-color: #ec4899; cursor: pointer; margin: 2px 0;",
+							oninput: (e) => {
+								const val = parseFloat(e.target.value);
+								window.spkmodRainbowSpeed = val;
+								if (window.localStorage) localStorage.setItem("spkmod-rainbow-speed", val);
+								if (editsModalElements.rainbowSpeedValue) setText(editsModalElements.rainbowSpeedValue, `x${val.toFixed(1)}`);
+							}
+						})
+					]),
 					// Special FX Controls Row (Rainbow, Rainbow ALL, and Void Shadow)
 					buildElement("div", { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 2px;" }, [
 						editsModalElements.dyeBtnRainbow = buildElement("button", {
@@ -8983,6 +9026,16 @@ function updateLocalEditsUI() {
 	}
 	if (editsModalElements.dyeColorPicker && window.spkmodAvatarColorHex) {
 		editsModalElements.dyeColorPicker.value = window.spkmodAvatarColorHex;
+	}
+	if (editsModalElements.rainbowSpeedLabel) {
+		setText(editsModalElements.rainbowSpeedLabel, t("dyeRainbowSpeed") || "Rainbow Speed:");
+	}
+	if (editsModalElements.rainbowSpeedValue) {
+		const curSpeed = typeof window.spkmodRainbowSpeed === 'number' ? window.spkmodRainbowSpeed : 1.0;
+		setText(editsModalElements.rainbowSpeedValue, `x${curSpeed.toFixed(1)}`);
+	}
+	if (editsModalElements.rainbowSpeedSlider) {
+		editsModalElements.rainbowSpeedSlider.value = typeof window.spkmodRainbowSpeed === 'number' ? window.spkmodRainbowSpeed : 1.0;
 	}
 }
 
@@ -12192,7 +12245,26 @@ function hookGameStateOnce() {
 						break;
 					case "rainbow":
 						if (typeof window.spkmodStartRainbowWave === "function") {
-							const isAll = Boolean(cmd[1] && (cmd[1].toLowerCase() === "all" || cmd[1] === "*"));
+							let isAll = false;
+							let parsedSpeed = null;
+							for (let i = 1; i < cmd.length; i++) {
+								const arg = (cmd[i] || "").toLowerCase().trim();
+								if (arg === "all" || arg === "*") {
+									isAll = true;
+								} else if (arg === "me" || arg === "self") {
+									isAll = false;
+								} else {
+									const num = parseFloat(arg);
+									if (!isNaN(num) && num > 0) {
+										parsedSpeed = num;
+									}
+								}
+							}
+							if (parsedSpeed !== null) {
+								window.spkmodRainbowSpeed = parsedSpeed;
+								if (window.localStorage) localStorage.setItem("spkmod-rainbow-speed", parsedSpeed);
+								if (typeof updateLocalEditsUI === "function") updateLocalEditsUI();
+							}
 							window.spkmodStartRainbowWave(isAll);
 						}
 						break;
