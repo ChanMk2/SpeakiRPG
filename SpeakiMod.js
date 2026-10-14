@@ -96,7 +96,31 @@ if (!window.__speakiFetchHooked) {
 				window.speakiAuthToken = authHeader.trim();
 			}
 		}
-		return origFetch.apply(this, args);
+		const response = await origFetch.apply(this, args);
+		try {
+			const url = typeof resource === "string" ? resource : (resource?.url || "");
+			if (url.includes("/api/gamedata")) {
+				const clone = response.clone();
+				const json = await clone.json();
+				if (json) {
+					if (!Array.isArray(json.skins)) json.skins = [];
+					if (!json.skins.some(s => s && s.code === "SKIN_NER")) {
+						json.skins.push({ itemId: 99999, code: "SKIN_NER", name: "Ner" });
+					}
+					if (!json.skins.some(s => s && s.code === "SKIN_SPEAKI_PUREPUMPKIN")) {
+						json.skins.push({ itemId: 99998, code: "SKIN_SPEAKI_PUREPUMPKIN", name: "Pure Pumpkin Speaki" });
+					}
+					return new Response(JSON.stringify(json), {
+						status: response.status,
+						statusText: response.statusText,
+						headers: response.headers
+					});
+				}
+			}
+		} catch (e) {
+			console.warn("[SpeakiMod+] Failed to inject local skins into gamedata:", e);
+		}
+		return response;
 	};
 }
 
@@ -2868,6 +2892,7 @@ var lunHudBackground = (window.localStorage && localStorage.getItem("spkmod-hud-
 var lunChromaKeyColor = (window.localStorage && localStorage.getItem("spkmod-chroma-key")) || "none";
 var lunHideAllOtherPlayers = (window.localStorage && localStorage.getItem("spkmod-hide-all-players") === "true") || false;
 var lunLockedFacialExpression = (window.localStorage && localStorage.getItem("spkmod-locked-facial-expression")) || "none";
+var lunLocalSkin = (window.localStorage && localStorage.getItem("spkmod-local-skin")) || "none";
 
 var lunSpeedometerEnabled = window.localStorage ? (localStorage.getItem("spkmod-speedometer") !== "false") : true;
 
@@ -3060,6 +3085,43 @@ function maintainLockedFacialExpression() {
 	if (!fe) return;
 	if (typeof fe.beginOverride === "function") fe.beginOverride();
 	if (typeof fe.setOverrideExpression === "function") fe.setOverrideExpression(lunLockedFacialExpression);
+}
+
+function applyLocalSkinSelection(skinCode, allowToggle = true) {
+	if (allowToggle && skinCode !== "none" && lunLocalSkin === skinCode) {
+		skinCode = "none";
+	}
+	lunLocalSkin = skinCode || "none";
+	if (window.localStorage) {
+		localStorage.setItem("spkmod-local-skin", lunLocalSkin);
+	}
+
+	const itemId = lunLocalSkin === "SKIN_NER" ? 99999 : lunLocalSkin === "SKIN_SPEAKI_PUREPUMPKIN" ? 99998 : 0;
+
+	if (typeof gameState !== "undefined" && gameState && typeof gameState.setLocalSkin === "function") {
+		gameState.setLocalSkin(itemId);
+		if (itemId > 0) {
+			setTimeout(() => {
+				if (gameState && gameState.localSkinInstalledItemId !== itemId) {
+					if (typeof chatLog === "function") {
+						chatLog("ℹ️ Skin saved! Reload page (F5) once if model does not appear immediately.");
+					}
+				}
+			}, 700);
+		}
+	}
+
+	const skinLabels = {
+		none: "DEFAULT SPEAKI",
+		SKIN_NER: "NER",
+		SKIN_SPEAKI_PUREPUMPKIN: "PURE PUMPKIN"
+	};
+	if (typeof chatLog === "function") {
+		chatLog("Character Skin: " + (skinLabels[lunLocalSkin] || lunLocalSkin.toUpperCase()));
+	}
+	if (typeof updateLocalEditsUI === "function") {
+		updateLocalEditsUI();
+	}
 }
 
 function toggleStatsModal() {
@@ -10436,6 +10498,38 @@ document.body.appendChild(
 					])
 				]),
 
+				// Character Skins (Local Cosplay)
+				buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px; border-top: 1px solid #555; padding-top: 6px;" }, [
+					editsModalElements.skinsHeaderEffects = buildElement("div", {
+						className: "spkmod-panel-cat-header",
+						innerText: "🎭 " + (t("skinsHeader") || "Character Skin (Local Cosplay)"),
+						style: "margin-top: 0px;"
+					}),
+					buildElement("div", { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;" }, [
+						editsModalElements.skinBtnDefaultEffects = buildElement("button", {
+							className: "spkmod-panel-btn",
+							style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #ffffff;",
+							innerText: "⚪ " + (t("skinBtnDefault") || "Default"),
+							title: "Reset to default Speaki appearance",
+							onclick: () => applyLocalSkinSelection("none")
+						}),
+						editsModalElements.skinBtnNerEffects = buildElement("button", {
+							className: "spkmod-panel-btn",
+							style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #ffd54a; font-weight: bold;",
+							innerText: "🦊 " + (t("skinBtnNer") || "Ner"),
+							title: "Equip Ner skin locally (custom model, animations & staff)",
+							onclick: () => applyLocalSkinSelection("SKIN_NER", true)
+						}),
+						editsModalElements.skinBtnPurePumpkinEffects = buildElement("button", {
+							className: "spkmod-panel-btn",
+							style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #ff8833; font-weight: bold;",
+							innerText: "🎃 " + (t("skinBtnPurePumpkin") || "Pure Pumpkin"),
+							title: "Equip Pure Pumpkin Speaki skin locally",
+							onclick: () => applyLocalSkinSelection("SKIN_SPEAKI_PUREPUMPKIN", true)
+						})
+					])
+				]),
+
 				// 🍳 Cooking & Kitchen Animations
 				buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px; border-top: 1px solid #555; padding-top: 6px;" }, [
 					editsModalElements.cookingHeader = buildElement("div", {
@@ -11071,6 +11165,39 @@ function updateLocalEditsUI() {
 			}
 		}
 	}
+
+	// Character Skins (Local Cosplay)
+	if (editsModalElements.skinsHeader) setText(editsModalElements.skinsHeader, "🎭 " + (t("skinsHeader") || "Character Skin (Local Cosplay)"));
+	if (editsModalElements.skinsHeaderEffects) setText(editsModalElements.skinsHeaderEffects, "🎭 " + (t("skinsHeader") || "Character Skin (Local Cosplay)"));
+	if (editsModalElements.skinBtnDefault) setText(editsModalElements.skinBtnDefault, (t("skinBtnDefault") || "⚪ Default"));
+	if (editsModalElements.skinBtnDefaultEffects) setText(editsModalElements.skinBtnDefaultEffects, (t("skinBtnDefault") || "⚪ Default"));
+	if (editsModalElements.skinBtnNer) setText(editsModalElements.skinBtnNer, (t("skinBtnNer") || "🦊 Ner"));
+	if (editsModalElements.skinBtnNerEffects) setText(editsModalElements.skinBtnNerEffects, (t("skinBtnNer") || "🦊 Ner"));
+	if (editsModalElements.skinBtnPurePumpkin) setText(editsModalElements.skinBtnPurePumpkin, (t("skinBtnPurePumpkin") || "🎃 Pure Pumpkin"));
+	if (editsModalElements.skinBtnPurePumpkinEffects) setText(editsModalElements.skinBtnPurePumpkinEffects, (t("skinBtnPurePumpkin") || "🎃 Pure Pumpkin"));
+
+	const skinBtns = [
+		{ key: "none", btns: [editsModalElements.skinBtnDefault, editsModalElements.skinBtnDefaultEffects] },
+		{ key: "SKIN_NER", btns: [editsModalElements.skinBtnNer, editsModalElements.skinBtnNerEffects] },
+		{ key: "SKIN_SPEAKI_PUREPUMPKIN", btns: [editsModalElements.skinBtnPurePumpkin, editsModalElements.skinBtnPurePumpkinEffects] }
+	];
+	skinBtns.forEach(({ key, btns }) => {
+		const isActive = (typeof lunLocalSkin !== "undefined" ? lunLocalSkin : "none") === key;
+		btns.forEach(btn => {
+			if (!btn) return;
+			if (isActive) {
+				btn.style.borderColor = "var(--spkmod-accent, #ffd54a)";
+				btn.style.background = "rgba(255, 255, 255, 0.2)";
+				btn.style.boxShadow = "0 0 8px var(--spkmod-accent, #ffd54a)";
+				btn.style.fontWeight = "bold";
+			} else {
+				btn.style.borderColor = "#555";
+				btn.style.background = "";
+				btn.style.boxShadow = "none";
+				btn.style.fontWeight = "normal";
+			}
+		});
+	});
 
 	// Soccer Uniform Buttons
 	if (editsModalElements.soccerHeader) setText(editsModalElements.soccerHeader, "⚽ " + (t("soccerHeader") || "Soccer Uniform"));
@@ -11758,6 +11885,38 @@ document.body.appendChild(
 						style: "padding: 6px 4px; font-size: 10px; text-align: center; color: #fde047;",
 						innerText: "💥 " + (t("effectSupernova") || "Supernova"),
 						onclick: () => setCameraEffectLocal("supernova")
+					})
+				])
+			]),
+
+			// Section 5: Character Skins (Local Cosplay)
+			buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px; border-top: 1px solid #555; padding-top: 8px;" }, [
+				editsModalElements.skinsHeader = buildElement("div", {
+					className: "spkmod-panel-cat-header",
+					innerText: "🎭 " + (t("skinsHeader") || "Character Skin (Local Cosplay)"),
+					style: "margin-top: 0px;"
+				}),
+				buildElement("div", { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;" }, [
+					editsModalElements.skinBtnDefault = buildElement("button", {
+						className: "spkmod-panel-btn",
+						style: "padding: 6px 4px; font-size: 10px; text-align: center; color: #ffffff;",
+						innerText: "⚪ " + (t("skinBtnDefault") || "Default"),
+						title: "Reset to default Speaki appearance",
+						onclick: () => applyLocalSkinSelection("none")
+					}),
+					editsModalElements.skinBtnNer = buildElement("button", {
+						className: "spkmod-panel-btn",
+						style: "padding: 6px 4px; font-size: 10px; text-align: center; color: #ffd54a; font-weight: bold;",
+						innerText: "🦊 " + (t("skinBtnNer") || "Ner"),
+						title: "Equip Ner skin locally (custom model, animations & staff)",
+						onclick: () => applyLocalSkinSelection("SKIN_NER", true)
+					}),
+					editsModalElements.skinBtnPurePumpkin = buildElement("button", {
+						className: "spkmod-panel-btn",
+						style: "padding: 6px 4px; font-size: 10px; text-align: center; color: #ff8833; font-weight: bold;",
+						innerText: "🎃 " + (t("skinBtnPurePumpkin") || "Pure Pumpkin"),
+						title: "Equip Pure Pumpkin Speaki skin locally",
+						onclick: () => applyLocalSkinSelection("SKIN_SPEAKI_PUREPUMPKIN", true)
 					})
 				])
 			])
@@ -13935,6 +14094,9 @@ function hookAvatarLabel(entity) {
 	}
 	if (typeof lunLockedFacialExpression !== "undefined" && lunLockedFacialExpression !== "none" && typeof maintainLockedFacialExpression === "function") {
 		maintainLockedFacialExpression();
+	}
+	if (typeof lunLocalSkin !== "undefined" && lunLocalSkin !== "none" && typeof applyLocalSkinSelection === "function") {
+		applyLocalSkinSelection(lunLocalSkin, false);
 	}
 
 	if (gameState && gameState.myStat) {
