@@ -46,6 +46,8 @@
 * **Profanity Filter**: Automatically censors explicit or inappropriate language in chat to keep your in-game communication clean and friendly.
 
 * **World Map UI**: See exactly where you are and where you want to go
+<img width="1049" height="518" alt="image" src="https://github.com/user-attachments/assets/a86ab4b7-fbfe-4ffe-9a09-33ea1287bdee" />
+ 
 * **Custom Chat Emojis**: A fully interactive custom emoji picker panel with huge hover previews for your favorite Discord-style chat emotes.
 <img width="707" height="357" alt="image" src="https://github.com/user-attachments/assets/e07bbae1-835d-4eab-9d18-2706d3a5e233" />
 
