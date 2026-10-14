@@ -6468,6 +6468,231 @@ function renderInfoUI() {
     container.innerHTML = window.lunInfoData;
 }
 
+// ============================================================================
+// FLOATING ACTION BUTTONS (Right-Click to Summon / Clean)
+// ============================================================================
+
+window.spkmodActiveFloatingButtons = new Map(); // sourceElement -> floatingElement
+
+function spkmodSpawnFloatingButton(sourceBtn, initialX, initialY) {
+    if (!sourceBtn) return null;
+
+    // Toggle: If a floating copy already exists for this button, remove it
+    if (window.spkmodActiveFloatingButtons.has(sourceBtn)) {
+        const existing = window.spkmodActiveFloatingButtons.get(sourceBtn);
+        spkmodRemoveFloatingButton(existing);
+        return null;
+    }
+
+    // Determine initial coordinates
+    let spawnLeft = initialX || (window.innerWidth / 2 - 50);
+    let spawnTop = initialY || (window.innerHeight / 2 - 20);
+
+    if (initialX !== undefined && initialY !== undefined) {
+        spawnLeft = Math.max(10, Math.min(window.innerWidth - 150, initialX + 12));
+        spawnTop = Math.max(10, Math.min(window.innerHeight - 50, initialY + 8));
+    }
+
+    const floatingBtn = document.createElement("div");
+    floatingBtn.className = "spkmod-floating-button";
+    floatingBtn.dataset.spkmodFloating = "true";
+
+    const baseColor = sourceBtn.style.color || "#ffd54a";
+
+    floatingBtn.style.cssText = `
+        position: fixed;
+        left: ${spawnLeft}px;
+        top: ${spawnTop}px;
+        z-index: 100000;
+        background: rgba(18, 22, 28, 0.92);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 1px solid ${sourceBtn.style.borderColor || "rgba(255, 213, 74, 0.65)"};
+        border-radius: 6px;
+        padding: 6px 12px;
+        font-family: inherit;
+        font-size: 11px;
+        font-weight: bold;
+        color: ${baseColor};
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.65), 0 0 10px rgba(255, 213, 74, 0.25);
+        cursor: grab;
+        user-select: none;
+        touch-action: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: transform 0.1s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+        max-width: 250px;
+        white-space: nowrap;
+    `;
+
+    const rawTitle = sourceBtn.title || "";
+    floatingBtn.title = (rawTitle ? rawTitle + "\n" : "") + "📌 Left-click: Use | Drag: Move | Right-click: Dismiss";
+
+    // Text Label Container
+    const labelSpan = document.createElement("span");
+    labelSpan.innerText = (sourceBtn.innerText || sourceBtn.textContent || "Action").trim();
+    floatingBtn.appendChild(labelSpan);
+
+    // Subtle drag/pin badge
+    const pinBadge = document.createElement("span");
+    pinBadge.innerText = "📌";
+    pinBadge.style.cssText = "font-size: 9px; opacity: 0.65; cursor: grab;";
+    floatingBtn.appendChild(pinBadge);
+
+    // Dynamic state synchronizer: keep label and style updated in real-time
+    const observer = new MutationObserver(() => {
+        if (sourceBtn) {
+            labelSpan.innerText = (sourceBtn.innerText || sourceBtn.textContent || "Action").trim();
+            if (sourceBtn.style.color) {
+                floatingBtn.style.color = sourceBtn.style.color;
+            }
+            if (sourceBtn.style.borderColor) {
+                floatingBtn.style.borderColor = sourceBtn.style.borderColor;
+            }
+        }
+    });
+    observer.observe(sourceBtn, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+
+    floatingBtn.__spkmodSourceBtn = sourceBtn;
+    floatingBtn.__spkmodObserver = observer;
+    window.spkmodActiveFloatingButtons.set(sourceBtn, floatingBtn);
+
+    // Hover effect
+    floatingBtn.onmouseenter = () => {
+        floatingBtn.style.boxShadow = "0 6px 20px rgba(0, 0, 0, 0.8), 0 0 14px rgba(255, 213, 74, 0.5)";
+        floatingBtn.style.borderColor = "#ffd54a";
+    };
+    floatingBtn.onmouseleave = () => {
+        floatingBtn.style.boxShadow = "0 4px 16px rgba(0, 0, 0, 0.65), 0 0 10px rgba(255, 213, 74, 0.25)";
+        floatingBtn.style.borderColor = sourceBtn.style.borderColor || "rgba(255, 213, 74, 0.65)";
+    };
+
+    // Right-click: clean & dismiss
+    floatingBtn.oncontextmenu = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        spkmodRemoveFloatingButton(floatingBtn);
+    };
+
+    // Drag vs Click handlers
+    let isDragging = false;
+    let startX = 0, startY = 0;
+    let elemLeft = 0, elemTop = 0;
+
+    function onPointerMove(e) {
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        if (!isDragging && Math.hypot(dx, dy) > 4) {
+            isDragging = true;
+            floatingBtn.style.cursor = "grabbing";
+        }
+        if (isDragging) {
+            const newLeft = Math.max(0, Math.min(window.innerWidth - floatingBtn.offsetWidth, elemLeft + dx));
+            const newTop = Math.max(0, Math.min(window.innerHeight - floatingBtn.offsetHeight, elemTop + dy));
+            floatingBtn.style.left = newLeft + "px";
+            floatingBtn.style.top = newTop + "px";
+        }
+    }
+
+    function onPointerUp(e) {
+        window.removeEventListener("pointermove", onPointerMove);
+        window.removeEventListener("pointerup", onPointerUp);
+        floatingBtn.style.cursor = "grab";
+
+        if (!isDragging && e.button === 0) {
+            // Click animation
+            floatingBtn.style.transform = "scale(0.92)";
+            setTimeout(() => {
+                if (floatingBtn && floatingBtn.parentNode) floatingBtn.style.transform = "scale(1)";
+            }, 120);
+
+            // Execute action
+            if (typeof sourceBtn.onclick === "function") {
+                sourceBtn.onclick(e);
+            } else {
+                sourceBtn.click();
+            }
+        }
+    }
+
+    floatingBtn.onpointerdown = (e) => {
+        if (e.button !== 0) return; // Only primary mouse button
+        isDragging = false;
+        startX = e.clientX;
+        startY = e.clientY;
+        elemLeft = floatingBtn.offsetLeft;
+        elemTop = floatingBtn.offsetTop;
+        window.addEventListener("pointermove", onPointerMove);
+        window.addEventListener("pointerup", onPointerUp);
+    };
+
+    // Entrance animation
+    floatingBtn.style.transform = "scale(0.75)";
+    floatingBtn.style.opacity = "0";
+    document.body.appendChild(floatingBtn);
+
+    requestAnimationFrame(() => {
+        floatingBtn.style.transition = "transform 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.18s ease";
+        floatingBtn.style.transform = "scale(1)";
+        floatingBtn.style.opacity = "1";
+    });
+
+    const btnName = (sourceBtn.innerText || sourceBtn.textContent || "Button").trim();
+    if (typeof chatLog === 'function') {
+        chatLog(t("floatingBtnPinned", btnName) || `📌 Pinned "${btnName}" outside HUD! (Drag to move, Right-click to dismiss)`);
+    }
+
+    return floatingBtn;
+}
+
+function spkmodRemoveFloatingButton(floatingBtn) {
+    if (!floatingBtn) return;
+    if (floatingBtn.__spkmodObserver) {
+        floatingBtn.__spkmodObserver.disconnect();
+        floatingBtn.__spkmodObserver = null;
+    }
+    if (floatingBtn.__spkmodSourceBtn) {
+        window.spkmodActiveFloatingButtons.delete(floatingBtn.__spkmodSourceBtn);
+    }
+
+    floatingBtn.style.transition = "transform 0.15s ease, opacity 0.15s ease";
+    floatingBtn.style.transform = "scale(0.7)";
+    floatingBtn.style.opacity = "0";
+
+    const btnName = floatingBtn.innerText ? floatingBtn.innerText.replace("📌", "").trim() : "Button";
+
+    setTimeout(() => {
+        if (floatingBtn.parentNode) {
+            floatingBtn.parentNode.removeChild(floatingBtn);
+        }
+    }, 160);
+
+    if (typeof chatLog === 'function') {
+        chatLog(t("floatingBtnDismissed", btnName) || `🧹 Floating button "${btnName}" dismissed.`);
+    }
+}
+
+window.spkmodSpawnFloatingButton = spkmodSpawnFloatingButton;
+window.spkmodRemoveFloatingButton = spkmodRemoveFloatingButton;
+
+// Global Right-Click Delegate for summoning buttons outside HUD
+document.addEventListener("contextmenu", (e) => {
+    const btn = e.target.closest("button.spkmod-panel-btn, #spkmod-effects-modal button, #spkmod-hud button, .spkmod-quick-btn, .spkmod-floating-button");
+    if (!btn) return;
+    
+    // Ignore window close buttons, drag handles, or emoji picker items
+    if (btn.innerText === "✕" || btn.id === "spkmod-drag-btn" || btn.id === "spkmod-close-btn" || btn.closest("#spkmod-emoji-picker")) return;
+
+    // If right-clicked a floating button itself, handled by its own listener
+    if (btn.dataset.spkmodFloating === "true" || btn.classList.contains("spkmod-floating-button")) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    spkmodSpawnFloatingButton(btn, e.clientX, e.clientY);
+}, true);
+
+
 
 
 
@@ -8852,33 +9077,111 @@ async function spkmodLoadCookingAnimation(clipName) {
 	});
 }
 
-function spkmodFindAvatarBone(boneName) {
+function spkmodGetAvatarBone(side = 'right') {
 	const avatarRoot = gameState?.localAvatar?.root;
 	if (!avatarRoot) return null;
-	let found = null;
-	const lower = boneName.toLowerCase();
+
+	const isRight = (side === 'right' || side === 'rhand' || side === 'righthand');
+
+	// 1. For right hand: Check if the character's weapon/staff or weapon holder is attached to a bone
+	if (isRight) {
+		let staffBone = null;
+		avatarRoot.traverse((child) => {
+			if (staffBone) return;
+			if (child.userData && (child.userData.speakiMagicStaff || child.userData.speakovSharedAsset || child.name === "speakov-weapon" || child.name?.toLowerCase().includes("staff"))) {
+				let p = child.parent;
+				while (p && p !== avatarRoot) {
+					if (p.isBone || p.type === 'Bone' || (p.name && p.name.toLowerCase().includes('hand'))) {
+						staffBone = p;
+						break;
+					}
+					p = p.parent;
+				}
+				if (!staffBone && child.parent && child.parent !== avatarRoot) {
+					staffBone = child.parent;
+				}
+			}
+		});
+		if (staffBone) return staffBone;
+	}
+
+	// 2. Traverse avatarRoot and collect all bones or named nodes
+	const allBones = [];
 	avatarRoot.traverse((child) => {
-		if (found) return;
-		if (child.isBone && child.name && child.name.toLowerCase().includes(lower)) {
-			found = child;
+		if (child.isBone || child.type === 'Bone') {
+			allBones.push(child);
 		}
 	});
-	return found;
+	if (allBones.length === 0) {
+		avatarRoot.traverse((child) => {
+			if (child.name) allBones.push(child);
+		});
+	}
+
+	const sanitize = s => (s || '').toLowerCase().replace(/[^a-z]/g, '');
+	const targets = isRight
+		? ['righthand', 'rhand', 'handr', 'rightwrist', 'wristr']
+		: ['lefthand', 'lhand', 'handl', 'leftwrist', 'wristl'];
+
+	for (const target of targets) {
+		const found = allBones.find(b => {
+			const s = sanitize(b.name);
+			return s.includes(target) && !s.includes('finger') && !s.includes('thumb');
+		});
+		if (found) return found;
+	}
+
+	// 3. Fallback: match any node containing hand and r/l
+	for (const b of allBones) {
+		const lower = (b.name || '').toLowerCase();
+		if (isRight) {
+			if (lower.includes('hand') && (lower.includes('right') || lower.includes('_r') || lower.includes('.r') || lower.endsWith('r')) && !lower.includes('finger')) {
+				return b;
+			}
+		} else {
+			if (lower.includes('hand') && (lower.includes('left') || lower.includes('_l') || lower.includes('.l') || lower.endsWith('l')) && !lower.includes('finger')) {
+				return b;
+			}
+		}
+	}
+
+	return null;
+}
+
+function spkmodFindAvatarBone(boneName) {
+	const lower = (boneName || '').toLowerCase();
+	const isLeft = lower.includes('left') || lower.includes('lhand') || lower.includes('_l') || lower.includes('.l');
+	return spkmodGetAvatarBone(isLeft ? 'left' : 'right');
 }
 
 function spkmodAttachProp(prop, bone, pos, rot) {
-	if (!prop || !bone) return null;
+	if (!prop || !bone) {
+		console.warn("[SpeakiMod+] spkmodAttachProp failed: prop or bone missing", { prop: !!prop, bone: !!bone });
+		return null;
+	}
 	bone.updateWorldMatrix(true, false);
 	const scale = (typeof THREE !== 'undefined' && THREE.Vector3) ? bone.getWorldScale(new THREE.Vector3()) : { x: 1 };
 	const holder = new THREE.Group();
 	holder.name = "spkmod_cooking_prop_holder";
 	holder.userData.lunchPropHolder = true;
 	holder.userData.spkmodCookingProp = true;
-	if (scale.x > 0) {
-		holder.scale.setScalar(1 / scale.x);
-	}
+	
+	const s = (scale && scale.x > 0 && isFinite(scale.x)) ? scale.x : 1;
+	holder.scale.setScalar(1 / s);
+
 	if (pos) prop.position.set(pos.x, pos.y, pos.z);
 	if (rot) prop.rotation.set(rot.x, rot.y, rot.z);
+
+	prop.userData.lunchPropHolder = true;
+	prop.userData.spkmodCookingProp = true;
+	prop.traverse((child) => {
+		child.userData.lunchPropHolder = true;
+		child.userData.spkmodCookingProp = true;
+		if (child.isMesh) {
+			child.raycast = () => {};
+		}
+	});
+
 	holder.add(prop);
 	bone.add(holder);
 	window.spkmodCookingState.props.push(holder);
@@ -8889,17 +9192,27 @@ function spkmodCreateKnifeProp() {
 	if (typeof THREE === 'undefined') return null;
 	const group = new THREE.Group();
 	group.name = "spkmod_prop_knife";
-	const bladeMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.85, roughness: 0.2 });
-	const bladeGeom = new THREE.BoxGeometry(0.04, 0.25, 0.01);
-	const blade = new THREE.Mesh(bladeGeom, bladeMat);
-	blade.position.set(0, 0.15, 0);
-	group.add(blade);
-	const handleMat = new THREE.MeshStandardMaterial({ color: 0x4a2e18, roughness: 0.7 });
-	const handleGeom = new THREE.CylinderGeometry(0.02, 0.02, 0.12, 8);
-	const handle = new THREE.Mesh(handleGeom, handleMat);
-	handle.position.set(0, -0.04, 0);
+
+	// Handle: BoxGeometry(0.03, 0.03, 0.14) at z = -0.01, wood brown
+	const handleMat = new THREE.MeshBasicMaterial({ color: 0x6b4c2f, side: THREE.DoubleSide });
+	const handle = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.14), handleMat);
+	handle.position.set(0, 0, -0.01);
 	group.add(handle);
-	group.scale.set(1.4, 1.4, 1.4);
+
+	// Blade: BoxGeometry(0.05, 0.008, 0.24) at z = 0.18, steel silver
+	const bladeMat = new THREE.MeshBasicMaterial({ color: 0xd0d7de, side: THREE.DoubleSide });
+	const blade = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.008, 0.24), bladeMat);
+	blade.position.set(0, 0, 0.18);
+	group.add(blade);
+
+	// Blade edge: BoxGeometry(0.008, 0.01, 0.24) at x = 0.025, z = 0.18, white bright edge
+	const edgeMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+	const edge = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.01, 0.24), edgeMat);
+	edge.position.set(0.025, 0, 0.18);
+	group.add(edge);
+
+	// Game's exact hand alignment
+	group.position.x = 0.08;
 	return group;
 }
 
@@ -8907,17 +9220,28 @@ function spkmodCreatePanProp() {
 	if (typeof THREE === 'undefined') return null;
 	const group = new THREE.Group();
 	group.name = "spkmod_prop_pan";
-	const panMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.6, roughness: 0.4 });
-	const panGeom = new THREE.CylinderGeometry(0.22, 0.18, 0.08, 16);
-	const pan = new THREE.Mesh(panGeom, panMat);
-	group.add(pan);
-	const handleMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
-	const handleGeom = new THREE.CylinderGeometry(0.02, 0.02, 0.25, 8);
-	const handle = new THREE.Mesh(handleGeom, handleMat);
-	handle.rotation.z = Math.PI / 2;
-	handle.position.set(0.24, 0, 0);
+
+	// Handle: BoxGeometry(0.025, 0.02, 0.20) at z = -0.05
+	const handleMat = new THREE.MeshBasicMaterial({ color: 0x1f2937, side: THREE.DoubleSide });
+	const handle = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.02, 0.20), handleMat);
+	handle.position.set(0, 0, -0.05);
 	group.add(handle);
-	group.scale.set(1.1, 1.1, 1.1);
+
+	// Pan body: CylinderGeometry(0.12, 0.108, 0.035, 20) at z = -0.21, rotated 90 deg around Z
+	const panMat = new THREE.MeshBasicMaterial({ color: 0x3b4252, side: THREE.DoubleSide });
+	const pan = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.108, 0.035, 20), panMat);
+	pan.position.set(0, 0, -0.21);
+	pan.rotation.z = Math.PI / 2;
+	group.add(pan);
+
+	// Soup/food in pan
+	const soupMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b, side: THREE.DoubleSide });
+	const soup = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.10, 0.01, 16), soupMat);
+	soup.position.set(0, 0.01, -0.21);
+	soup.rotation.z = Math.PI / 2;
+	group.add(soup);
+
+	group.position.x = 0.08;
 	return group;
 }
 
@@ -8925,17 +9249,20 @@ function spkmodCreateLadleProp() {
 	if (typeof THREE === 'undefined') return null;
 	const group = new THREE.Group();
 	group.name = "spkmod_prop_ladle";
-	const mat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.7, roughness: 0.3 });
-	const handleGeom = new THREE.CylinderGeometry(0.015, 0.015, 0.26, 8);
-	const handle = new THREE.Mesh(handleGeom, mat);
-	handle.position.set(0, 0.1, 0);
+
+	// Handle: BoxGeometry(0.02, 0.02, 0.26) at z = -0.05
+	const mat = new THREE.MeshBasicMaterial({ color: 0xc4b5fd, side: THREE.DoubleSide });
+	const handle = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.26), mat);
+	handle.position.set(0, 0, -0.05);
 	group.add(handle);
-	const bowlGeom = new THREE.SphereGeometry(0.045, 12, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);
-	const bowl = new THREE.Mesh(bowlGeom, mat);
-	bowl.position.set(0, -0.03, 0.02);
-	bowl.rotation.x = Math.PI / 4;
+
+	// Bowl: SphereGeometry(0.055, 14, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2) at (0, 0, -0.2185)
+	const bowl = new THREE.Mesh(new THREE.SphereGeometry(0.055, 14, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), mat);
+	bowl.position.set(0, 0, -0.2185);
 	group.add(bowl);
-	group.scale.set(1.2, 1.2, 1.2);
+
+	group.position.x = 0.08;
+	group.quaternion.set(0.5706, -0.3466, -0.127, 0.7336);
 	return group;
 }
 
@@ -8943,16 +9270,26 @@ function spkmodCreatePlateProp() {
 	if (typeof THREE === 'undefined') return null;
 	const group = new THREE.Group();
 	group.name = "spkmod_prop_plate";
-	const plateMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
-	const plateGeom = new THREE.CylinderGeometry(0.2, 0.15, 0.03, 16);
-	const plate = new THREE.Mesh(plateGeom, plateMat);
+
+	// White porcelain plate
+	const plateMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+	const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.14, 0.025, 20), plateMat);
 	group.add(plate);
-	const foodMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.7 });
-	const foodGeom = new THREE.CylinderGeometry(0.12, 0.13, 0.02, 12);
-	const food = new THREE.Mesh(foodGeom, foodMat);
-	food.position.set(0, 0.02, 0);
+
+	// Food on plate
+	const foodMat = new THREE.MeshBasicMaterial({ color: 0xd97706, side: THREE.DoubleSide });
+	const food = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.13, 0.02, 16), foodMat);
+	food.position.set(0, 0.018, 0);
 	group.add(food);
-	group.scale.set(1.2, 1.2, 1.2);
+
+	// Green garnish
+	const garnishMat = new THREE.MeshBasicMaterial({ color: 0x10b981, side: THREE.DoubleSide });
+	const garnish = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.015, 0.04), garnishMat);
+	garnish.position.set(0.03, 0.03, 0.02);
+	group.add(garnish);
+
+	// In game: y4 = { x: .095, y: -.03, z: -.181 }
+	group.position.set(0.095, -0.03, -0.181);
 	return group;
 }
 
@@ -8960,23 +9297,37 @@ function spkmodCreateTrayProp() {
 	if (typeof THREE === 'undefined') return null;
 	const group = new THREE.Group();
 	group.name = "spkmod_prop_tray";
-	const trayMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.6 });
-	const tray = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.02, 0.22), trayMat);
+
+	// Wooden meal tray
+	const trayMat = new THREE.MeshBasicMaterial({ color: 0x8b5a2b, side: THREE.DoubleSide });
+	const tray = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.02, 0.24), trayMat);
 	group.add(tray);
-	const bowlMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
-	const bowl1 = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.035, 0.04, 12), bowlMat);
-	bowl1.position.set(-0.06, 0.025, 0);
+
+	// White ceramic bowls
+	const bowlMat = new THREE.MeshBasicMaterial({ color: 0xf8fafc, side: THREE.DoubleSide });
+	const bowl1 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.04, 0.045, 16), bowlMat);
+	bowl1.position.set(-0.08, 0.03, 0);
 	group.add(bowl1);
-	const food1 = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xfffdf0, roughness: 0.9 }));
-	food1.position.set(-0.06, 0.045, 0);
-	group.add(food1);
-	const bowl2 = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.03, 0.035, 12), bowlMat);
-	bowl2.position.set(0.06, 0.02, 0);
+
+	// Steaming rice
+	const riceMat = new THREE.MeshBasicMaterial({ color: 0xfffdf0, side: THREE.DoubleSide });
+	const rice = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 10, 0, Math.PI * 2, 0, Math.PI / 2), riceMat);
+	rice.position.set(-0.08, 0.05, 0);
+	group.add(rice);
+
+	// Soup bowl
+	const bowl2 = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.035, 0.04, 16), bowlMat);
+	bowl2.position.set(0.08, 0.028, 0);
 	group.add(bowl2);
-	const food2 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.005, 12), new THREE.MeshStandardMaterial({ color: 0xcc5522, roughness: 0.2 }));
-	food2.position.set(0.06, 0.038, 0);
-	group.add(food2);
-	group.scale.set(1.3, 1.3, 1.3);
+
+	// Soup broth
+	const soupMat = new THREE.MeshBasicMaterial({ color: 0xc2410c, side: THREE.DoubleSide });
+	const soup = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.048, 0.01, 16), soupMat);
+	soup.position.set(0.08, 0.045, 0);
+	group.add(soup);
+
+	// In game: y4 = { x: .095, y: -.03, z: -.181 }
+	group.position.set(0.095, -0.03, -0.181);
 	return group;
 }
 
@@ -8988,7 +9339,7 @@ function spkmodSetWeaponsVisible(visible) {
 			child.visible = visible;
 		}
 	});
-	const rHand = spkmodFindAvatarBone('rhand') || spkmodFindAvatarBone('righthand');
+	const rHand = spkmodGetAvatarBone('right');
 	if (rHand && rHand.children) {
 		for (const child of rHand.children) {
 			if (!child.isBone && !child.userData?.lunchPropHolder && !child.userData?.spkmodCookingProp) {
@@ -9032,15 +9383,15 @@ window.spkmodStartCooking = async function(type = 'chop') {
 	window.spkmodCookingState.active = true;
 	window.spkmodCookingState.type = type;
 
-	const rHand = spkmodFindAvatarBone('rhand') || spkmodFindAvatarBone('righthand');
-	const lHand = spkmodFindAvatarBone('lhand') || spkmodFindAvatarBone('lefthand');
+	const rHand = spkmodGetAvatarBone('right');
+	const lHand = spkmodGetAvatarBone('left');
 
 	if (type === 'chop') {
 		const clipName = 'lunch_chop';
 		await spkmodLoadCookingAnimation(clipName);
 		if (rHand) {
 			const knife = spkmodCreateKnifeProp();
-			spkmodAttachProp(knife, rHand, { x: 0.08, y: 0.04, z: -0.1 }, { x: 0, y: 0, z: Math.PI / 4 });
+			spkmodAttachProp(knife, rHand);
 		}
 		ctrl.playCastLoop(clipName);
 		if (typeof chatLog === 'function') chatLog("🔪 Fast chopping animation loop started!");
@@ -9049,11 +9400,11 @@ window.spkmodStartCooking = async function(type = 'chop') {
 		await spkmodLoadCookingAnimation(clipName);
 		if (lHand) {
 			const pan = spkmodCreatePanProp();
-			spkmodAttachProp(pan, lHand, { x: 0.08, y: 0.08, z: -0.12 }, { x: 0, y: 0, z: 0 });
+			spkmodAttachProp(pan, lHand);
 		}
 		if (rHand) {
 			const ladle = spkmodCreateLadleProp();
-			spkmodAttachProp(ladle, rHand, { x: 0.08, y: 0.04, z: -0.1 }, { x: 0, y: 0, z: Math.PI / 4 });
+			spkmodAttachProp(ladle, rHand);
 		}
 		ctrl.playCastLoop(clipName);
 		if (typeof chatLog === 'function') chatLog("🍳 Soup stirring animation loop started!");
@@ -9062,11 +9413,11 @@ window.spkmodStartCooking = async function(type = 'chop') {
 		await spkmodLoadCookingAnimation(clipName);
 		if (lHand) {
 			const plate = spkmodCreatePlateProp();
-			spkmodAttachProp(plate, lHand, { x: 0.08, y: 0.06, z: -0.1 }, { x: 0, y: 0, z: 0 });
+			spkmodAttachProp(plate, lHand);
 		}
 		if (rHand) {
 			const ladle = spkmodCreateLadleProp();
-			spkmodAttachProp(ladle, rHand, { x: 0.08, y: 0.04, z: -0.1 }, { x: 0, y: 0, z: Math.PI / 4 });
+			spkmodAttachProp(ladle, rHand);
 		}
 		ctrl.playCastLoop(clipName);
 		if (typeof chatLog === 'function') chatLog("🍽️ Plating dish animation loop started!");
@@ -9075,7 +9426,7 @@ window.spkmodStartCooking = async function(type = 'chop') {
 		await spkmodLoadCookingAnimation(clipName);
 		if (rHand) {
 			const dish = spkmodCreatePlateProp();
-			spkmodAttachProp(dish, rHand, { x: 0.08, y: 0.06, z: -0.12 }, { x: 0, y: 0, z: 0 });
+			spkmodAttachProp(dish, rHand);
 		}
 		if (typeof ctrl.playLunchServe === 'function') {
 			ctrl.playLunchServe();
@@ -9090,7 +9441,7 @@ window.spkmodStartCooking = async function(type = 'chop') {
 		]);
 		if (rHand) {
 			const tray = spkmodCreateTrayProp();
-			spkmodAttachProp(tray, rHand, { x: 0.09, y: -0.03, z: -0.18 }, { x: 0, y: 0, z: 0 });
+			spkmodAttachProp(tray, rHand);
 		}
 		ctrl.setCarrying(true);
 		if (typeof ctrl.crossFadeToLocomotion === 'function') {
@@ -9103,6 +9454,8 @@ window.spkmodStartCooking = async function(type = 'chop') {
 window.spkmodStopCooking = function() {
 	window.spkmodCookingState.active = false;
 	window.spkmodCookingState.type = null;
+	window.spkmodSpellDanceActive = false;
+	window.spkmodGatherActive = false;
 	spkmodClearCookingProps();
 	const ctrl = gameState?.localAnimationController;
 	if (ctrl) {
@@ -9155,19 +9508,47 @@ window.spkmodToggleCopterHat = function(scope = 'self') {
 	}
 };
 
+window.spkmodSpellDanceActive = false;
 window.spkmodPlaySpellDance = function() {
 	const ctrl = gameState?.localAnimationController;
-	if (ctrl && typeof ctrl.playReturnCastDance === 'function') {
-		ctrl.playReturnCastDance();
+	if (!ctrl) return;
+	window.spkmodSpellDanceActive = !window.spkmodSpellDanceActive;
+	if (window.spkmodSpellDanceActive) {
+		if (typeof ctrl.playReturnCastDance === 'function') {
+			ctrl.playReturnCastDance();
+		}
 		if (typeof chatLog === 'function') chatLog("✨🌀 Magical portal spell dance activated!");
+	} else {
+		if (typeof ctrl.stopCastLoop === 'function') {
+			ctrl.stopCastLoop();
+		}
+		if (typeof ctrl.crossFadeToLocomotion === 'function') {
+			ctrl.crossFadeToLocomotion();
+		}
+		if (typeof chatLog === 'function') chatLog("✨ Spell dance stopped.");
 	}
 };
 
+window.spkmodGatherActive = false;
 window.spkmodPlayGather = function() {
 	const ctrl = gameState?.localAnimationController;
-	if (ctrl && typeof ctrl.playGatherAnim === 'function') {
-		ctrl.playGatherAnim();
-		if (typeof chatLog === 'function') chatLog("🌿 Foraging / gathering loop activated! (Move or click Stop to cancel)");
+	if (!ctrl) return;
+	window.spkmodGatherActive = !window.spkmodGatherActive;
+	if (window.spkmodGatherActive) {
+		if (typeof ctrl.playGatherAnim === 'function') {
+			ctrl.playGatherAnim();
+		}
+		if (typeof chatLog === 'function') chatLog("🌿 Foraging / gathering loop activated! (Press again or move to stop)");
+	} else {
+		if (typeof ctrl.exitGatherAnim === 'function') {
+			ctrl.exitGatherAnim();
+		} else if (typeof ctrl.stopCastLoop === 'function') {
+			ctrl.stopCastLoop();
+		}
+		if (typeof ctrl.crossFadeToLocomotion === 'function') {
+			ctrl.crossFadeToLocomotion();
+		}
+		if (typeof chatLog === 'function') chatLog("🌿 Gathering loop stopped.");
 	}
 };
 
@@ -9282,11 +9663,14 @@ window.spkmodSetTrailType = function(type) {
 	}
 };
 
-window.spkmodBurstTrail = function() {
+window.spkmodBurstSpamActive = false;
+window.spkmodBurstSpamInterval = null;
+
+window.spkmodBurstTrail = function(silent = false) {
 	if (!gameState?.playerContainer?.position) return;
 	if (gameState.skillParticles) {
 		gameState.skillParticles.emit({
-			count: 50,
+			count: silent ? 35 : 50,
 			texture: 'star4',
 			color: '#ffd700',
 			axis: 'sphere',
@@ -9302,8 +9686,38 @@ window.spkmodBurstTrail = function() {
 	if (gameState.bloomEffects && gameState.localAvatar?.root) {
 		gameState.bloomEffects.burst(gameState.localAvatar.root);
 	}
-	if (typeof chatLog === 'function') chatLog("💥 Starburst Explosion triggered!");
+	if (!silent && typeof chatLog === 'function') chatLog("💥 Starburst Explosion triggered!");
 };
+
+window.spkmodToggleBurstSpam = function(forceState) {
+	const newState = forceState !== undefined ? forceState : !window.spkmodBurstSpamActive;
+	window.spkmodBurstSpamActive = newState;
+
+	if (window.spkmodBurstSpamInterval) {
+		clearInterval(window.spkmodBurstSpamInterval);
+		window.spkmodBurstSpamInterval = null;
+	}
+
+	if (window.spkmodBurstSpamActive) {
+		// Immediately fire first burst
+		window.spkmodBurstTrail(true);
+		// Fast loop: every 110ms
+		window.spkmodBurstSpamInterval = setInterval(() => {
+			if (!window.spkmodBurstSpamActive) {
+				clearInterval(window.spkmodBurstSpamInterval);
+				window.spkmodBurstSpamInterval = null;
+				return;
+			}
+			window.spkmodBurstTrail(true);
+		}, 110);
+		if (typeof chatLog === 'function') chatLog("⚡ Starburst fast spam loop ACTIVATED! (Click again to pause)");
+	} else {
+		if (typeof chatLog === 'function') chatLog("⏸️ Starburst fast spam loop PAUSED.");
+	}
+
+	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
+};
+
 
 
 const mapModalElements = {};
@@ -10029,22 +10443,32 @@ document.body.appendChild(
 						innerText: "✨ " + (t("stepTrailHeader") || "Step Particle Trail"),
 						style: "margin-top: 0px;"
 					}),
-					buildElement("div", { style: "display: flex; gap: 4px;" }, [
+					buildElement("div", { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px;" }, [
 						editsModalElements.stepTrailToggleBtn = buildElement("button", {
 							className: "spkmod-panel-btn",
-							style: "flex: 1; padding: 5px 2px; font-size: 10px; text-align: center; font-weight: bold; color: " + (window.spkmodStepTrail?.enabled ? "#55ff55" : "#ffaaaa") + ";",
+							style: "padding: 5px 2px; font-size: 10px; text-align: center; font-weight: bold; color: " + (window.spkmodStepTrail?.enabled ? "#55ff55" : "#ffaaaa") + ";",
 							innerText: (t("stepTrailToggle") || "Trail: ") + (window.spkmodStepTrail?.enabled ? "ON" : "OFF"),
+							title: "Toggle step particle trail behind your character while moving (Right-click to pin outside HUD!)",
 							onclick: () => {
 								if (window.spkmodToggleStepTrail) window.spkmodToggleStepTrail();
 							}
 						}),
 						editsModalElements.stepTrailBurstBtn = buildElement("button", {
 							className: "spkmod-panel-btn",
-							style: "flex: 1; padding: 5px 2px; font-size: 10px; text-align: center; color: #ffd54a; font-weight: bold;",
+							style: "padding: 5px 2px; font-size: 10px; text-align: center; color: #ffd54a; font-weight: bold;",
 							innerText: t("stepTrailBurst") || "💥 Starburst Explosion",
-							title: "Trigger 50-star firework burst and avatar squash & stretch",
+							title: "Trigger 50-star firework burst and avatar squash & stretch (Right-click to pin outside HUD!)",
 							onclick: () => {
 								if (window.spkmodBurstTrail) window.spkmodBurstTrail();
+							}
+						}),
+						editsModalElements.stepTrailBurstSpamBtn = buildElement("button", {
+							className: "spkmod-panel-btn",
+							style: "padding: 5px 2px; font-size: 10px; text-align: center; font-weight: bold; color: " + (window.spkmodBurstSpamActive ? "#55ff55" : "#ffd54a") + ";",
+							innerText: (t("stepTrailBurstSpam") || "⚡ Spam: ") + (window.spkmodBurstSpamActive ? (t("burstSpamOn") || "ON") : (t("burstSpamOff") || "OFF")),
+							title: "Pausable / reusable fast burst spam loop (Right-click to pin outside HUD!)",
+							onclick: () => {
+								if (window.spkmodToggleBurstSpam) window.spkmodToggleBurstSpam();
 							}
 						})
 					]),
@@ -10468,6 +10892,25 @@ function updateLocalEditsUI() {
 		editsModalElements.stepTrailToggleBtn.style.borderColor = isEnabled ? "#55ff55" : "#555";
 	}
 	if (editsModalElements.stepTrailBurstBtn) setText(editsModalElements.stepTrailBurstBtn, t("stepTrailBurst") || "💥 Starburst Explosion");
+	if (editsModalElements.stepTrailBurstSpamBtn) {
+		const isSpam = window.spkmodBurstSpamActive;
+		setText(editsModalElements.stepTrailBurstSpamBtn, (t("stepTrailBurstSpam") || "⚡ Spam: ") + (isSpam ? (t("burstSpamOn") || "ON") : (t("burstSpamOff") || "OFF")));
+		editsModalElements.stepTrailBurstSpamBtn.style.color = isSpam ? "#55ff55" : "#ffd54a";
+		editsModalElements.stepTrailBurstSpamBtn.style.borderColor = isSpam ? "#55ff55" : "#555";
+		editsModalElements.stepTrailBurstSpamBtn.style.background = isSpam ? "rgba(85, 255, 85, 0.2)" : "";
+	}
+	if (editsModalElements.spellDanceBtn) {
+		const isDancing = window.spkmodSpellDanceActive;
+		setText(editsModalElements.spellDanceBtn, isDancing ? "🛑 Stop Dance" : (t("spellDanceBtn") || "✨🌀 Spell Dance"));
+		editsModalElements.spellDanceBtn.style.color = isDancing ? "#f87171" : "#c084fc";
+		editsModalElements.spellDanceBtn.style.borderColor = isDancing ? "#f87171" : "#555";
+	}
+	if (editsModalElements.gatherAnimBtn) {
+		const isGathering = window.spkmodGatherActive;
+		setText(editsModalElements.gatherAnimBtn, isGathering ? "🛑 Stop Gather" : (t("gatherAnimBtn") || "🌿 Gather Loop"));
+		editsModalElements.gatherAnimBtn.style.color = isGathering ? "#f87171" : "#84cc16";
+		editsModalElements.gatherAnimBtn.style.borderColor = isGathering ? "#f87171" : "#555";
+	}
 	if (editsModalElements.stepTrailStarsBtn) setText(editsModalElements.stepTrailStarsBtn, t("stepTrailStars") || "⭐ Stars");
 	if (editsModalElements.stepTrailRainbowBtn) setText(editsModalElements.stepTrailRainbowBtn, t("stepTrailRainbow") || "🌈 Rainbow");
 	if (editsModalElements.stepTrailHeartsBtn) setText(editsModalElements.stepTrailHeartsBtn, t("stepTrailHearts") || "💖 Hearts");
@@ -13552,7 +13995,12 @@ function hookGameStateOnce() {
 						}
 						break;
 					case "burst":
-						if (window.spkmodBurstTrail) window.spkmodBurstTrail();
+					case "starburst":
+						if (cmd[1] && (cmd[1].toLowerCase() === "spam" || cmd[1].toLowerCase() === "loop" || cmd[1].toLowerCase() === "fast")) {
+							if (window.spkmodToggleBurstSpam) window.spkmodToggleBurstSpam();
+						} else {
+							if (window.spkmodBurstTrail) window.spkmodBurstTrail();
+						}
 						break;
 					case "copter":
 					case "hat":
