@@ -164,394 +164,744 @@ var lunCurrentSpeedMps = 0;
 
 
 
-const Portals = {
-	1: { 2: { portalId: 1, requiredQuestCode: null, pos: { x: 95, z: 50 } } },
-	2: {
-		1: { portalId: 2, requiredQuestCode: null, pos: { x: 105, z: 50 } },
-		3: { portalId: 7, requiredQuestCode: null, pos: { x: 196, z: 100 } },
-		101: { portalId: 19, requiredQuestCode: "MQ_BOSS_WORLDTREE", pos: { x: 150, z: 195 } },
-		201: { portalId: 37, requiredQuestCode: "MQ2_CORE3", pos: { x: 150, z: 5 } }
+// Default fallback portals and raids (offline / boot fallback)
+const DEFAULT_PORTALS = {
+	"1": {
+		"2": {
+			"portalId": 1,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 95,
+				"z": 50
+			}
+		}
 	},
-	3: {
-		2: {
-			portalId: 8, requiredQuestCode: null,
-			pos: {
-				x: 204,
-				z: 100
+	"2": {
+		"1": {
+			"portalId": 2,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 105,
+				"z": 50
 			}
 		},
-		4: {
-			portalId: 3, requiredQuestCode: null,
-			pos: {
-				x: 296,
-				z: 120
-			}
-		}
-	},
-	4: {
-		3: {
-			portalId: 4, requiredQuestCode: null,
-			pos: {
-				x: 306,
-				z: 120
+		"3": {
+			"portalId": 7,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 196,
+				"z": 100
 			}
 		},
-		5: {
-			portalId: 9, requiredQuestCode: null,
-			pos: {
-				x: 426,
-				z: 100
-			}
-		}
-	},
-	5: {
-		4: {
-			portalId: 10, requiredQuestCode: null,
-			pos: {
-				x: 434,
-				z: 100
+		"101": {
+			"portalId": 19,
+			"requiredQuestCode": "MQ_BOSS_WORLDTREE",
+			"pos": {
+				"x": 150,
+				"z": 195
 			}
 		},
-		6: {
-			portalId: 5, requiredQuestCode: null,
-			pos: {
-				x: 554,
-				z: 99
+		"201": {
+			"portalId": 37,
+			"requiredQuestCode": "MQ2_CORE3",
+			"pos": {
+				"x": 150,
+				"z": 5
 			}
 		}
 	},
-	6: {
-		5: {
-			portalId: 6, requiredQuestCode: null,
-			pos: {
-				x: 580,
-				z: 100
+	"3": {
+		"2": {
+			"portalId": 8,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 204,
+				"z": 100
 			}
 		},
-		7: {
-			portalId: 11, requiredQuestCode: null,
-			pos: {
-				x: 656,
-				z: 100
+		"4": {
+			"portalId": 3,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 296,
+				"z": 120
 			}
 		}
 	},
-	7: {
-		6: {
-			portalId: 12, requiredQuestCode: null,
-			pos: {
-				x: 664,
-				z: 100
+	"4": {
+		"3": {
+			"portalId": 4,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 306,
+				"z": 120
 			}
 		},
-		8: {
-			portalId: 13, requiredQuestCode: null,
-			pos: {
-				x: 756,
-				z: 100
+		"5": {
+			"portalId": 9,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 426,
+				"z": 100
 			}
 		}
 	},
-	8: {
-		7: {
-			portalId: 14, requiredQuestCode: null,
-			pos: {
-				x: 764,
-				z: 100
+	"5": {
+		"4": {
+			"portalId": 10,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 434,
+				"z": 100
 			}
 		},
-		9: {
-			portalId: 15, requiredQuestCode: null,
-			pos: {
-				x: 956,
-				z: 100
+		"6": {
+			"portalId": 5,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 554,
+				"z": 100
 			}
 		}
 	},
-	9: {
-		8: {
-			portalId: 16, requiredQuestCode: null,
-			pos: {
-				x: 964,
-				z: 100
+	"6": {
+		"5": {
+			"portalId": 6,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 580,
+				"z": 100
 			}
 		},
-		10: {
-			portalId: 17, requiredQuestCode: null,
-			pos: {
-				x: 1136,
-				z: 100
+		"7": {
+			"portalId": 11,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 656,
+				"z": 100
 			}
 		}
 	},
-	10: {
-		9: {
-			portalId: 18, requiredQuestCode: null,
-			pos: {
-				x: 1144,
-				z: 100
-			}
-		}
-	},
-	101: {
-		2: {
-			portalId: 20, requiredQuestCode: null,
-			pos: {
-				x: 150,
-				z: 205
+	"7": {
+		"6": {
+			"portalId": 12,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 664,
+				"z": 100
 			}
 		},
-		102: {
-			portalId: 21, requiredQuestCode: null,
-			pos: {
-				x: 295,
-				z: 300
+		"8": {
+			"portalId": 13,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 756,
+				"z": 100
 			}
 		}
 	},
-	102: {
-		101: {
-			portalId: 22, requiredQuestCode: null,
-			pos: {
-				x: 352.5,
-				z: 300
+	"8": {
+		"7": {
+			"portalId": 14,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 764,
+				"z": 100
 			}
 		},
-		103: {
-			portalId: 23, requiredQuestCode: null,
-			pos: {
-				x: 447.5,
-				z: 300
+		"9": {
+			"portalId": 15,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 956,
+				"z": 100
 			}
 		}
 	},
-	103: {
-		102: {
-			portalId: 24, requiredQuestCode: null,
-			pos: {
-				x: 552.5,
-				z: 300
+	"9": {
+		"8": {
+			"portalId": 16,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 964,
+				"z": 100
 			}
 		},
-		104: {
-			portalId: 25, requiredQuestCode: null,
-			pos: {
-				x: 647,
-				z: 250
+		"10": {
+			"portalId": 17,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 1136,
+				"z": 100
 			}
 		}
 	},
-	104: {
-		103: {
-			portalId: 26, requiredQuestCode: "MQ_BOSS_WORLDTREE",
-			pos: {
-				x: 716.25,
-				z: 250
+	"10": {
+		"9": {
+			"portalId": 18,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 1144,
+				"z": 100
+			}
+		}
+	},
+	"101": {
+		"2": {
+			"portalId": 20,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 150,
+				"z": 205
 			}
 		},
-		105: {
-			portalId: 27, requiredQuestCode: "MQ_BOSS_WORLDTREE",
-			pos: {
-				x: 784,
-				z: 250
+		"102": {
+			"portalId": 21,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 295,
+				"z": 300
 			}
 		}
 	},
-	105: {
-		104: {
-			portalId: 28, requiredQuestCode: null,
-			pos: {
-				x: 852.5,
-				z: 250
+	"102": {
+		"101": {
+			"portalId": 22,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 352.5,
+				"z": 300
 			}
 		},
-		106: {
-			portalId: 29, requiredQuestCode: null,
-			pos: {
-				x: 947.5,
-				z: 300
+		"103": {
+			"portalId": 23,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 447.5,
+				"z": 300
 			}
 		}
 	},
-	106: {
-		105: {
-			portalId: 30, requiredQuestCode: null,
-			pos: {
-				x: 1052.5,
-				z: 300
+	"103": {
+		"102": {
+			"portalId": 24,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 552.5,
+				"z": 300
 			}
 		},
-		107: {
-			portalId: 31, requiredQuestCode: null,
-			pos: {
-				x: 1147.5,
-				z: 300
+		"104": {
+			"portalId": 25,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 647.5,
+				"z": 250
 			}
 		}
 	},
-	107: {
-		106: {
-			portalId: 32, requiredQuestCode: null,
-			pos: {
-				x: 1252.5,
-				z: 300
+	"104": {
+		"103": {
+			"portalId": 26,
+			"requiredQuestCode": "MQ_BOSS_WORLDTREE",
+			"pos": {
+				"x": 716.25,
+				"z": 250
 			}
 		},
-		108: {
-			portalId: 33, requiredQuestCode: null,
-			pos: {
-				x: 1347.5,
-				z: 300
+		"105": {
+			"portalId": 27,
+			"requiredQuestCode": "MQ_BOSS_WORLDTREE",
+			"pos": {
+				"x": 783.75,
+				"z": 250
 			}
 		}
 	},
-	108: {
-		107: {
-			portalId: 34, requiredQuestCode: null,
-			pos: {
-				x: 1405,
-				z: 300
-			}
-		}
-	},
-	201: {
-		2: {
-			portalId: 38, requiredQuestCode: null,
-			pos: {
-				x: 180,
-				z: -5
+	"105": {
+		"104": {
+			"portalId": 28,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 852.5,
+				"z": 250
 			}
 		},
-		202: {
-			portalId: 39, requiredQuestCode: null,
-			pos: {
-				x: 180,
-				z: -155
+		"106": {
+			"portalId": 29,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 947.5,
+				"z": 300
 			}
 		}
 	},
-	202: {
-		201: {
-			portalId: 40, requiredQuestCode: null,
-			pos: {
-				x: 345,
-				z: -100
+	"106": {
+		"105": {
+			"portalId": 30,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 1052.5,
+				"z": 300
 			}
 		},
-		203: {
-			portalId: 41, requiredQuestCode: null,
-			pos: {
-				x: 455,
-				z: -100
+		"107": {
+			"portalId": 31,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 1147.5,
+				"z": 300
 			}
 		}
 	},
-	203: {
-		202: {
-			portalId: 42, requiredQuestCode: null,
-			pos: {
-				x: 525,
-				z: -60
+	"107": {
+		"106": {
+			"portalId": 32,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 1252.5,
+				"z": 300
 			}
 		},
-		204: {
-			portalId: 43, requiredQuestCode: null,
-			pos: {
-				x: 675,
-				z: -60
+		"108": {
+			"portalId": 33,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 1347.5,
+				"z": 300
 			}
 		}
 	},
-	204: {
-		203: {
-			portalId: 44, requiredQuestCode: "MQ2_CORE3",
-			pos: {
-				x: 730,
-				z: -50
+	"108": {
+		"107": {
+			"portalId": 34,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 1405,
+				"z": 300
+			}
+		}
+	},
+	"201": {
+		"2": {
+			"portalId": 38,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 180,
+				"z": -5
 			}
 		},
-		205: {
-			portalId: 45, requiredQuestCode: "MQ2_CORE3",
-			pos: {
-				x: 770,
-				z: -50
+		"202": {
+			"portalId": 39,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 180,
+				"z": -155
 			}
 		}
 	},
-	205: {
-		204: {
-			portalId: 46, requiredQuestCode: null,
-			pos: {
-				x: 845,
-				z: -100
+	"202": {
+		"201": {
+			"portalId": 40,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 345,
+				"z": -100
 			}
 		},
-		206: {
-			portalId: 47, requiredQuestCode: null,
-			pos: {
-				x: 955,
-				z: -100
+		"203": {
+			"portalId": 41,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 455,
+				"z": -100
 			}
 		}
 	},
-	206: {
-		205: {
-			portalId: 48, requiredQuestCode: null,
-			pos: {
-				x: 1045,
-				z: -100
+	"203": {
+		"202": {
+			"portalId": 42,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 525,
+				"z": -60
 			}
 		},
-		207: {
-			portalId: 49, requiredQuestCode: null,
-			pos: {
-				x: 1155,
-				z: -100
+		"204": {
+			"portalId": 43,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 675,
+				"z": -60
 			}
 		}
 	},
-	207: {
-		206: {
-			portalId: 50, requiredQuestCode: null,
-			pos: {
-				x: 1245,
-				z: -100
+	"204": {
+		"203": {
+			"portalId": 44,
+			"requiredQuestCode": "MQ2_CORE3",
+			"pos": {
+				"x": 730,
+				"z": -50
 			}
 		},
-		208: {
-			portalId: 51, requiredQuestCode: null,
-			pos: {
-				x: 1355,
-				z: -100
+		"205": {
+			"portalId": 45,
+			"requiredQuestCode": "MQ2_CORE3",
+			"pos": {
+				"x": 770,
+				"z": -50
 			}
 		}
 	},
-	208: {
-		207: {
-			portalId: 52, requiredQuestCode: null,
-			pos: {
-				x: 1445,
-				z: -100
+	"205": {
+		"204": {
+			"portalId": 46,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 845,
+				"z": -100
 			}
 		},
-		209: {
-			portalId: 53, requiredQuestCode: null,
-			pos: {
-				x: 1555,
-				z: -100
+		"206": {
+			"portalId": 47,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 955,
+				"z": -100
 			}
 		}
 	},
-	209: {
-		208: {
-			portalId: 54, requiredQuestCode: null,
-			pos: {
-				x: 1625,
-				z: -60
+	"206": {
+		"205": {
+			"portalId": 48,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 1045,
+				"z": -100
+			}
+		},
+		"207": {
+			"portalId": 49,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 1155,
+				"z": -100
+			}
+		}
+	},
+	"207": {
+		"206": {
+			"portalId": 50,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 1245,
+				"z": -100
+			}
+		},
+		"208": {
+			"portalId": 51,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 1355,
+				"z": -100
+			}
+		}
+	},
+	"208": {
+		"207": {
+			"portalId": 52,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 1445,
+				"z": -100
+			}
+		},
+		"209": {
+			"portalId": 53,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 1555,
+				"z": -100
+			}
+		}
+	},
+	"209": {
+		"208": {
+			"portalId": 54,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 1625,
+				"z": -60
+			}
+		}
+	},
+	"301": {
+		"302": {
+			"portalId": 55,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 174,
+				"z": -830
+			}
+		}
+	},
+	"302": {
+		"301": {
+			"portalId": 56,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 226,
+				"z": -830
+			}
+		},
+		"303": {
+			"portalId": 57,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 354,
+				"z": -850
+			}
+		}
+	},
+	"303": {
+		"302": {
+			"portalId": 58,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 406,
+				"z": -850
+			}
+		},
+		"304": {
+			"portalId": 59,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 574,
+				"z": -820
+			}
+		}
+	},
+	"304": {
+		"303": {
+			"portalId": 60,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 626,
+				"z": -820
+			}
+		},
+		"305": {
+			"portalId": 61,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 684,
+				"z": -820
+			}
+		}
+	},
+	"305": {
+		"304": {
+			"portalId": 62,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 736,
+				"z": -820
+			}
+		},
+		"306": {
+			"portalId": 63,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 884,
+				"z": -850
+			}
+		}
+	},
+	"306": {
+		"305": {
+			"portalId": 64,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 936,
+				"z": -850
+			}
+		},
+		"307": {
+			"portalId": 65,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 1104,
+				"z": -850
+			}
+		}
+	},
+	"307": {
+		"306": {
+			"portalId": 66,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 1156,
+				"z": -850
+			}
+		},
+		"308": {
+			"portalId": 67,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 1304,
+				"z": -860
+			}
+		}
+	},
+	"308": {
+		"307": {
+			"portalId": 68,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 1356,
+				"z": -860
+			}
+		},
+		"309": {
+			"portalId": 69,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 1484,
+				"z": -860
+			}
+		}
+	},
+	"309": {
+		"308": {
+			"portalId": 70,
+			"requiredQuestCode": null,
+			"pos": {
+				"x": 1536,
+				"z": -860
 			}
 		}
 	}
 };
+
+const DEFAULT_RAIDS = [
+	{
+		"raidId": 1,
+		"templateZoneId": 11,
+		"altarZoneId": 3,
+		"altarX": 290,
+		"altarZ": 100,
+		"bossMonsterId": 1093,
+		"bossLevel": 10,
+		"requiredLevel": 10,
+		"name": "Sunbough Dragonscale Altar"
+	},
+	{
+		"raidId": 2,
+		"templateZoneId": 12,
+		"altarZoneId": 6,
+		"altarX": 645,
+		"altarZ": 110,
+		"bossMonsterId": 1097,
+		"bossLevel": 28,
+		"requiredLevel": 28,
+		"name": "Ashen Sarcophagus Sanctum"
+	},
+	{
+		"raidId": 3,
+		"templateZoneId": 13,
+		"altarZoneId": 9,
+		"altarX": 1128,
+		"altarZ": 138,
+		"bossMonsterId": 1099,
+		"bossLevel": 37,
+		"requiredLevel": 37,
+		"name": "Ember Flameheart Altar"
+	},
+	{
+		"raidId": 4,
+		"templateZoneId": 181,
+		"altarZoneId": 103,
+		"altarX": 645,
+		"altarZ": 390,
+		"bossMonsterId": 1198,
+		"bossLevel": 50,
+		"requiredLevel": 45,
+		"name": "Hangar Sealed Altar"
+	},
+	{
+		"raidId": 5,
+		"templateZoneId": 182,
+		"altarZoneId": 108,
+		"altarX": 1590,
+		"altarZ": 390,
+		"bossMonsterId": 1200,
+		"bossLevel": 60,
+		"requiredLevel": 55,
+		"name": "Core Sealed Altar"
+	},
+	{
+		"raidId": 6,
+		"templateZoneId": 281,
+		"altarZoneId": 203,
+		"altarX": 620,
+		"altarZ": -100,
+		"bossMonsterId": 1299,
+		"bossLevel": 65,
+		"requiredLevel": 65,
+		"name": "Old Forest Sealed Altar"
+	},
+	{
+		"raidId": 7,
+		"templateZoneId": 282,
+		"altarZoneId": 209,
+		"altarX": 1760,
+		"altarZ": -60,
+		"bossMonsterId": 1300,
+		"bossLevel": 75,
+		"requiredLevel": 75,
+		"name": "Earthshaker Sealed Altar"
+	}
+];
+
+var spkmodConstants = (function() {
+	try {
+		if (typeof window !== "undefined" && window.localStorage) {
+			const cached = localStorage.getItem("spkmod-constants-cache");
+			if (cached) return JSON.parse(cached);
+		}
+	} catch (_) {}
+	return { portals: DEFAULT_PORTALS, raids: DEFAULT_RAIDS };
+})();
+
+var Portals = spkmodConstants.portals || DEFAULT_PORTALS;
+window.Portals = Portals;
+window.spkmodRaids = spkmodConstants.raids || DEFAULT_RAIDS;
+
+(async function() {
+	try {
+		const res = await fetch("https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/main/constants.json");
+		if (res.ok) {
+			const data = await res.json();
+			if (data) {
+				if (data.portals) {
+					Portals = data.portals;
+					window.Portals = Portals;
+				}
+				if (data.raids) {
+					window.spkmodRaids = data.raids;
+				}
+				if (typeof window !== "undefined" && window.localStorage) {
+					try {
+						localStorage.setItem("spkmod-constants-cache", JSON.stringify(data));
+					} catch (_) {}
+				}
+			}
+		}
+	} catch (e) {
+		console.warn("[SpeakiMod+] Failed to load constants.json from GitHub:", e);
+	}
+})();
 
 window.lunCompletedQuests = new Set();
 try {
@@ -9008,14 +9358,26 @@ function updateMapLoop() {
 
 	for (const zid in zonePos) {
 		const zp = zonePos[zid];
-		const isCurrent = parseInt(zid) === (gameState?.zoneId % 10000);
+		const zidNum = parseInt(zid);
+		const isCurrent = zidNum === (gameState?.zoneId % 10000);
+		const raid = (window.spkmodRaids || []).find(r => r.altarZoneId === zidNum);
 		
 		const bx = zp.x - boxW/2;
 		const by = zp.y - boxH/2;
 		
-		ctx.fillStyle = isCurrent ? "rgb(40, 100, 40)" : "rgb(30, 40, 50)";
-		ctx.strokeStyle = isCurrent ? "rgba(100, 255, 100, 0.8)" : "rgba(150, 180, 200, 0.6)";
-		ctx.lineWidth = isCurrent ? 2 : 1;
+		if (isCurrent) {
+			ctx.fillStyle = "rgb(40, 100, 40)";
+			ctx.strokeStyle = "rgba(100, 255, 100, 0.8)";
+			ctx.lineWidth = 2;
+		} else if (raid) {
+			ctx.fillStyle = "rgba(45, 25, 25, 0.9)";
+			ctx.strokeStyle = "rgba(255, 60, 20, 0.95)";
+			ctx.lineWidth = 2.5;
+		} else {
+			ctx.fillStyle = "rgb(30, 40, 50)";
+			ctx.strokeStyle = "rgba(150, 180, 200, 0.6)";
+			ctx.lineWidth = 1;
+		}
 		
 		ctx.fillRect(bx, by, boxW, boxH);
 		ctx.strokeRect(bx, by, boxW, boxH);
@@ -9036,6 +9398,31 @@ function updateMapLoop() {
 			ctx.fillText(line2, zp.x, zp.y + 6);
 		} else {
 			ctx.fillText(rawName, zp.x, zp.y);
+		}
+
+		if (raid) {
+			const pillW = 50, pillH = 14;
+			const pillX = zp.x - pillW / 2;
+			const pillY = by - 9;
+			const myLvl = (window.gameState?.myStat?.level) || (window.gameState?.playerLevel) || 1;
+			const isUnlocked = myLvl >= raid.requiredLevel;
+
+			ctx.save();
+			ctx.fillStyle = isUnlocked ? "rgba(180, 20, 20, 0.95)" : "rgba(35, 35, 35, 0.92)";
+			ctx.strokeStyle = isUnlocked ? "rgba(255, 160, 40, 0.95)" : "rgba(140, 140, 140, 0.8)";
+			ctx.lineWidth = 1.2;
+			ctx.beginPath();
+			if (ctx.roundRect) ctx.roundRect(pillX, pillY, pillW, pillH, 3);
+			else ctx.rect(pillX, pillY, pillW, pillH);
+			ctx.fill();
+			ctx.stroke();
+
+			ctx.fillStyle = isUnlocked ? "#ffd700" : "#bbbbbb";
+			ctx.font = "bold 9px sans-serif";
+			ctx.textAlign = "center";
+			ctx.textBaseline = "middle";
+			ctx.fillText(isUnlocked ? `⚔️ LV${raid.requiredLevel}` : `🔒 LV${raid.requiredLevel}`, zp.x, pillY + pillH / 2 + 0.5);
+			ctx.restore();
 		}
 	}
 	
