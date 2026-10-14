@@ -96,31 +96,7 @@ if (!window.__speakiFetchHooked) {
 				window.speakiAuthToken = authHeader.trim();
 			}
 		}
-		const response = await origFetch.apply(this, args);
-		try {
-			const url = typeof resource === "string" ? resource : (resource?.url || "");
-			if (url.includes("/api/gamedata")) {
-				const clone = response.clone();
-				const json = await clone.json();
-				if (json) {
-					if (!Array.isArray(json.skins)) json.skins = [];
-					if (!json.skins.some(s => s && s.code === "SKIN_NER")) {
-						json.skins.push({ itemId: 99999, code: "SKIN_NER", name: "Ner" });
-					}
-					if (!json.skins.some(s => s && s.code === "SKIN_SPEAKI_PUREPUMPKIN")) {
-						json.skins.push({ itemId: 99998, code: "SKIN_SPEAKI_PUREPUMPKIN", name: "Pure Pumpkin Speaki" });
-					}
-					return new Response(JSON.stringify(json), {
-						status: response.status,
-						statusText: response.statusText,
-						headers: response.headers
-					});
-				}
-			}
-		} catch (e) {
-			console.warn("[SpeakiMod+] Failed to inject local skins into gamedata:", e);
-		}
-		return response;
+		return origFetch.apply(this, args);
 	};
 }
 
@@ -2893,6 +2869,8 @@ var lunChromaKeyColor = (window.localStorage && localStorage.getItem("spkmod-chr
 var lunHideAllOtherPlayers = (window.localStorage && localStorage.getItem("spkmod-hide-all-players") === "true") || false;
 var lunLockedFacialExpression = (window.localStorage && localStorage.getItem("spkmod-locked-facial-expression")) || "none";
 var lunLocalSkin = (window.localStorage && localStorage.getItem("spkmod-local-skin")) || "none";
+if (lunLocalSkin === "SKIN_NER") lunLocalSkin = "ner";
+else if (lunLocalSkin !== "ner") lunLocalSkin = "none";
 
 var lunSpeedometerEnabled = window.localStorage ? (localStorage.getItem("spkmod-speedometer") !== "false") : true;
 
@@ -3087,42 +3065,233 @@ function maintainLockedFacialExpression() {
 	if (typeof fe.setOverrideExpression === "function") fe.setOverrideExpression(lunLockedFacialExpression);
 }
 
-function applyLocalSkinSelection(skinCode, allowToggle = true) {
-	if (allowToggle && skinCode !== "none" && lunLocalSkin === skinCode) {
-		skinCode = "none";
-	}
-	lunLocalSkin = skinCode || "none";
-	if (window.localStorage) {
-		localStorage.setItem("spkmod-local-skin", lunLocalSkin);
-	}
+let _spkmodNerBodyTexture = null;
+let _spkmodNerFaceTexture = null;
+let _spkmodNerLoadingPromise = null;
 
-	const itemId = lunLocalSkin === "SKIN_NER" ? 99999 : lunLocalSkin === "SKIN_SPEAKI_PUREPUMPKIN" ? 99998 : 0;
-
-	if (typeof gameState !== "undefined" && gameState && typeof gameState.setLocalSkin === "function") {
-		gameState.setLocalSkin(itemId);
-		if (itemId > 0) {
-			setTimeout(() => {
-				if (gameState && gameState.localSkinInstalledItemId !== itemId) {
-					if (typeof chatLog === "function") {
-						chatLog("ℹ️ Skin saved! Reload page (F5) once if model does not appear immediately.");
+function spkmodCreateTextureFromUrl(url, referenceTexture) {
+	return new Promise((resolve) => {
+		const img = new Image();
+		img.crossOrigin = "anonymous";
+		img.onload = () => {
+			try {
+				let tex = null;
+				if (referenceTexture && typeof referenceTexture.clone === "function") {
+					tex = referenceTexture.clone();
+					tex.image = img;
+					tex.needsUpdate = true;
+				} else if (typeof window.THREE !== "undefined" && window.THREE.Texture) {
+					tex = new window.THREE.Texture(img);
+					if (referenceTexture) {
+						if (referenceTexture.flipY !== undefined) tex.flipY = referenceTexture.flipY;
+						if (referenceTexture.colorSpace !== undefined) tex.colorSpace = referenceTexture.colorSpace;
+						if (referenceTexture.wrapS !== undefined) tex.wrapS = referenceTexture.wrapS;
+						if (referenceTexture.wrapT !== undefined) tex.wrapT = referenceTexture.wrapT;
+					} else {
+						tex.colorSpace = window.THREE.SRGBColorSpace || "";
 					}
+					tex.needsUpdate = true;
 				}
-			}, 700);
+				resolve(tex);
+			} catch (e) {
+				console.warn("[SpeakiMod+] Error instantiating texture for " + url, e);
+				resolve(null);
+			}
+		};
+		img.onerror = (err) => {
+			console.warn("[SpeakiMod+] Failed to load texture image from " + url, err);
+			resolve(null);
+		};
+		img.src = url;
+	});
+}
+
+async function spkmodEnsureNerTextures(refBody, refFace) {
+	if (_spkmodNerBodyTexture && _spkmodNerFaceTexture) {
+		return { body: _spkmodNerBodyTexture, face: _spkmodNerFaceTexture };
+	}
+	if (_spkmodNerLoadingPromise) return _spkmodNerLoadingPromise;
+
+	_spkmodNerLoadingPromise = (async () => {
+		if (typeof window.THREE === "undefined" && typeof spkmodEnsureThree === "function") {
+			try { await spkmodEnsureThree(); } catch (_) {}
+		}
+		const [bodyTex, faceTex] = await Promise.all([
+			_spkmodNerBodyTexture ? Promise.resolve(_spkmodNerBodyTexture) : spkmodCreateTextureFromUrl("/models/ner/Map_Body.png", refBody),
+			_spkmodNerFaceTexture ? Promise.resolve(_spkmodNerFaceTexture) : spkmodCreateTextureFromUrl("/models/ner/Map_Face.png", refFace)
+		]);
+		if (bodyTex) _spkmodNerBodyTexture = bodyTex;
+		if (faceTex) _spkmodNerFaceTexture = faceTex;
+		_spkmodNerLoadingPromise = null;
+		return { body: _spkmodNerBodyTexture, face: _spkmodNerFaceTexture };
+	})();
+
+	return _spkmodNerLoadingPromise;
+}
+
+function spkmodGetAvatarMaterials() {
+	if (typeof gameState === "undefined" || !gameState || !gameState.localAvatar || !gameState.localAvatar.root) {
+		return { bodyMaterials: [], faceMaterials: [] };
+	}
+	const bodyMaterials = [];
+	const faceMaterials = [];
+	const otherMaterials = [];
+
+	gameState.localAvatar.root.traverse((child) => {
+		if (!child || !child.isMesh || !child.material) return;
+		if (child.userData && (child.userData.speakiMagicStaff || child.userData.speakiCookingProp || child.userData.__spkmodProp)) return;
+
+		const mats = Array.isArray(child.material) ? child.material : [child.material];
+		for (const m of mats) {
+			if (!m) continue;
+			if (typeof spkmodIsOutlineMaterial === "function" && spkmodIsOutlineMaterial(m)) continue;
+			if (m.type === "OutlineEffect" || m.name === "OutlineEffect") continue;
+
+			const matName = (m.name || "").toLowerCase();
+			const meshName = (child.name || "").toLowerCase();
+			const src = (m.map && m.map.image && m.map.image.src) ? String(m.map.image.src).toLowerCase() : "";
+
+			if (src.includes("face") || matName.includes("face") || meshName.includes("face") || matName.includes("eye") || meshName.includes("eye") || matName.includes("head") || meshName.includes("head")) {
+				if (!faceMaterials.includes(m)) faceMaterials.push(m);
+			} else if (src.includes("body") || matName.includes("body") || meshName.includes("body") || matName.includes("costume") || meshName.includes("costume")) {
+				if (!bodyMaterials.includes(m)) bodyMaterials.push(m);
+			} else {
+				if (!otherMaterials.includes(m)) otherMaterials.push(m);
+			}
+		}
+	});
+
+	for (const m of otherMaterials) {
+		if (!bodyMaterials.includes(m) && !faceMaterials.includes(m)) {
+			bodyMaterials.push(m);
 		}
 	}
 
-	const skinLabels = {
-		none: "DEFAULT SPEAKI",
-		SKIN_NER: "NER",
-		SKIN_SPEAKI_PUREPUMPKIN: "PURE PUMPKIN"
-	};
-	if (typeof chatLog === "function") {
-		chatLog("Character Skin: " + (skinLabels[lunLocalSkin] || lunLocalSkin.toUpperCase()));
+	return { bodyMaterials, faceMaterials };
+}
+
+function spkmodRestoreSpeakiTextures() {
+	if (typeof gameState === "undefined" || !gameState || !gameState.localAvatar || !gameState.localAvatar.root) return;
+	gameState.localAvatar.root.traverse((child) => {
+		if (!child || !child.isMesh || !child.material) return;
+		const mats = Array.isArray(child.material) ? child.material : [child.material];
+		for (const m of mats) {
+			if (!m) continue;
+			if (m.userData && m.userData.__spkmodOrigMap !== undefined) {
+				m.map = m.userData.__spkmodOrigMap;
+				m.needsUpdate = true;
+			}
+		}
+	});
+
+	// Restore facial expressions
+	const fe = gameState?.localAvatar?.faceExpression;
+	if (fe) {
+		if (lunLockedFacialExpression && lunLockedFacialExpression !== "none") {
+			if (typeof fe.beginOverride === "function") fe.beginOverride();
+			if (typeof fe.setOverrideExpression === "function") fe.setOverrideExpression(lunLockedFacialExpression);
+		} else {
+			if (typeof fe.endOverride === "function") fe.endOverride();
+		}
 	}
+}
+
+async function spkmodApplyNerSkin(enable, retryCount = 0) {
+	if (!enable) {
+		spkmodRestoreSpeakiTextures();
+		return;
+	}
+
+	if (typeof gameState === "undefined" || !gameState || !gameState.localAvatar || !gameState.localAvatar.root) {
+		if (retryCount < 8) {
+			setTimeout(() => spkmodApplyNerSkin(true, retryCount + 1), 250);
+		}
+		return;
+	}
+
+	const { bodyMaterials, faceMaterials } = spkmodGetAvatarMaterials();
+	if (bodyMaterials.length === 0 && faceMaterials.length === 0) {
+		if (retryCount < 8) {
+			setTimeout(() => spkmodApplyNerSkin(true, retryCount + 1), 250);
+		}
+		return;
+	}
+
+	const refBody = bodyMaterials[0]?.map || null;
+	const refFace = faceMaterials[0]?.map || null;
+
+	const { body, face } = await spkmodEnsureNerTextures(refBody, refFace);
+
+	// Apply to body materials
+	for (const m of bodyMaterials) {
+		if (!m) continue;
+		if (!m.userData) m.userData = {};
+		if (m.userData.__spkmodOrigMap === undefined) {
+			m.userData.__spkmodOrigMap = m.map;
+		}
+		if (body) {
+			m.map = body;
+			m.needsUpdate = true;
+		}
+	}
+
+	// Apply to face materials
+	for (const m of faceMaterials) {
+		if (!m) continue;
+		if (!m.userData) m.userData = {};
+		if (m.userData.__spkmodOrigMap === undefined) {
+			m.userData.__spkmodOrigMap = m.map;
+		}
+		if (face) {
+			m.map = face;
+			m.needsUpdate = true;
+		}
+	}
+
+	// Lock face expression so blinking UV animation doesn't overwrite Ner's face
+	const fe = gameState?.localAvatar?.faceExpression;
+	if (fe && typeof fe.beginOverride === "function") {
+		fe.beginOverride();
+	}
+}
+
+function applyLocalSkinSelection(skinCode, allowToggle = true) {
+	const isNer = skinCode === "ner" || skinCode === "SKIN_NER";
+	if (allowToggle && isNer && (lunLocalSkin === "ner" || lunLocalSkin === "SKIN_NER")) {
+		skinCode = "none";
+	}
+
+	if (skinCode === "none") {
+		lunLocalSkin = "none";
+		if (window.localStorage) {
+			localStorage.setItem("spkmod-local-skin", "none");
+		}
+		spkmodRestoreSpeakiTextures();
+		if (typeof chatLog === "function") {
+			chatLog("Character Skin: DEFAULT SPEAKI (OFF)");
+		}
+	} else if (isNer) {
+		lunLocalSkin = "ner";
+		if (window.localStorage) {
+			localStorage.setItem("spkmod-local-skin", "ner");
+		}
+		spkmodApplyNerSkin(true);
+		if (typeof chatLog === "function") {
+			chatLog("Character Skin: 🦊 NER (Texture equipped)");
+		}
+	}
+
 	if (typeof updateLocalEditsUI === "function") {
 		updateLocalEditsUI();
 	}
 }
+
+setTimeout(() => {
+	if (typeof lunLocalSkin !== "undefined" && (lunLocalSkin === "ner" || lunLocalSkin === "SKIN_NER") && typeof spkmodApplyNerSkin === "function") {
+		spkmodApplyNerSkin(true);
+	}
+}, 1500);
+
 
 function toggleStatsModal() {
 	if (!lunHudElements.statsModal) return;
@@ -10505,27 +10674,20 @@ document.body.appendChild(
 						innerText: "🎭 " + (t("skinsHeader") || "Character Skin (Local Cosplay)"),
 						style: "margin-top: 0px;"
 					}),
-					buildElement("div", { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;" }, [
+					buildElement("div", { style: "display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;" }, [
 						editsModalElements.skinBtnDefaultEffects = buildElement("button", {
 							className: "spkmod-panel-btn",
-							style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #ffffff;",
-							innerText: "⚪ " + (t("skinBtnDefault") || "Default"),
+							style: "padding: 6px 4px; font-size: 11px; text-align: center; color: #ffffff;",
+							innerText: t("skinBtnDefault") || "⚪ Default",
 							title: "Reset to default Speaki appearance",
 							onclick: () => applyLocalSkinSelection("none")
 						}),
 						editsModalElements.skinBtnNerEffects = buildElement("button", {
 							className: "spkmod-panel-btn",
-							style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #ffd54a; font-weight: bold;",
-							innerText: "🦊 " + (t("skinBtnNer") || "Ner"),
-							title: "Equip Ner skin locally (custom model, animations & staff)",
-							onclick: () => applyLocalSkinSelection("SKIN_NER", true)
-						}),
-						editsModalElements.skinBtnPurePumpkinEffects = buildElement("button", {
-							className: "spkmod-panel-btn",
-							style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #ff8833; font-weight: bold;",
-							innerText: "🎃 " + (t("skinBtnPurePumpkin") || "Pure Pumpkin"),
-							title: "Equip Pure Pumpkin Speaki skin locally",
-							onclick: () => applyLocalSkinSelection("SKIN_SPEAKI_PUREPUMPKIN", true)
+							style: "padding: 6px 4px; font-size: 11px; text-align: center; color: #ffd54a; font-weight: bold;",
+							innerText: t("skinBtnNer") || "🦊 Ner Skin",
+							title: "Equip Ner skin textures locally (click again to disable)",
+							onclick: () => applyLocalSkinSelection("ner", true)
 						})
 					])
 				]),
@@ -11171,18 +11333,16 @@ function updateLocalEditsUI() {
 	if (editsModalElements.skinsHeaderEffects) setText(editsModalElements.skinsHeaderEffects, "🎭 " + (t("skinsHeader") || "Character Skin (Local Cosplay)"));
 	if (editsModalElements.skinBtnDefault) setText(editsModalElements.skinBtnDefault, (t("skinBtnDefault") || "⚪ Default"));
 	if (editsModalElements.skinBtnDefaultEffects) setText(editsModalElements.skinBtnDefaultEffects, (t("skinBtnDefault") || "⚪ Default"));
-	if (editsModalElements.skinBtnNer) setText(editsModalElements.skinBtnNer, (t("skinBtnNer") || "🦊 Ner"));
-	if (editsModalElements.skinBtnNerEffects) setText(editsModalElements.skinBtnNerEffects, (t("skinBtnNer") || "🦊 Ner"));
-	if (editsModalElements.skinBtnPurePumpkin) setText(editsModalElements.skinBtnPurePumpkin, (t("skinBtnPurePumpkin") || "🎃 Pure Pumpkin"));
-	if (editsModalElements.skinBtnPurePumpkinEffects) setText(editsModalElements.skinBtnPurePumpkinEffects, (t("skinBtnPurePumpkin") || "🎃 Pure Pumpkin"));
+	if (editsModalElements.skinBtnNer) setText(editsModalElements.skinBtnNer, (t("skinBtnNer") || "🦊 Ner Skin"));
+	if (editsModalElements.skinBtnNerEffects) setText(editsModalElements.skinBtnNerEffects, (t("skinBtnNer") || "🦊 Ner Skin"));
 
+	const currentSkin = (typeof lunLocalSkin !== "undefined" && (lunLocalSkin === "ner" || lunLocalSkin === "SKIN_NER")) ? "ner" : "none";
 	const skinBtns = [
 		{ key: "none", btns: [editsModalElements.skinBtnDefault, editsModalElements.skinBtnDefaultEffects] },
-		{ key: "SKIN_NER", btns: [editsModalElements.skinBtnNer, editsModalElements.skinBtnNerEffects] },
-		{ key: "SKIN_SPEAKI_PUREPUMPKIN", btns: [editsModalElements.skinBtnPurePumpkin, editsModalElements.skinBtnPurePumpkinEffects] }
+		{ key: "ner", btns: [editsModalElements.skinBtnNer, editsModalElements.skinBtnNerEffects] }
 	];
 	skinBtns.forEach(({ key, btns }) => {
-		const isActive = (typeof lunLocalSkin !== "undefined" ? lunLocalSkin : "none") === key;
+		const isActive = currentSkin === key;
 		btns.forEach(btn => {
 			if (!btn) return;
 			if (isActive) {
@@ -11896,27 +12056,20 @@ document.body.appendChild(
 					innerText: "🎭 " + (t("skinsHeader") || "Character Skin (Local Cosplay)"),
 					style: "margin-top: 0px;"
 				}),
-				buildElement("div", { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;" }, [
+				buildElement("div", { style: "display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;" }, [
 					editsModalElements.skinBtnDefault = buildElement("button", {
 						className: "spkmod-panel-btn",
-						style: "padding: 6px 4px; font-size: 10px; text-align: center; color: #ffffff;",
-						innerText: "⚪ " + (t("skinBtnDefault") || "Default"),
+						style: "padding: 6px 4px; font-size: 11px; text-align: center; color: #ffffff;",
+						innerText: t("skinBtnDefault") || "⚪ Default",
 						title: "Reset to default Speaki appearance",
 						onclick: () => applyLocalSkinSelection("none")
 					}),
 					editsModalElements.skinBtnNer = buildElement("button", {
 						className: "spkmod-panel-btn",
-						style: "padding: 6px 4px; font-size: 10px; text-align: center; color: #ffd54a; font-weight: bold;",
-						innerText: "🦊 " + (t("skinBtnNer") || "Ner"),
-						title: "Equip Ner skin locally (custom model, animations & staff)",
-						onclick: () => applyLocalSkinSelection("SKIN_NER", true)
-					}),
-					editsModalElements.skinBtnPurePumpkin = buildElement("button", {
-						className: "spkmod-panel-btn",
-						style: "padding: 6px 4px; font-size: 10px; text-align: center; color: #ff8833; font-weight: bold;",
-						innerText: "🎃 " + (t("skinBtnPurePumpkin") || "Pure Pumpkin"),
-						title: "Equip Pure Pumpkin Speaki skin locally",
-						onclick: () => applyLocalSkinSelection("SKIN_SPEAKI_PUREPUMPKIN", true)
+						style: "padding: 6px 4px; font-size: 11px; text-align: center; color: #ffd54a; font-weight: bold;",
+						innerText: t("skinBtnNer") || "🦊 Ner Skin",
+						title: "Equip Ner skin textures locally (click again to disable)",
+						onclick: () => applyLocalSkinSelection("ner", true)
 					})
 				])
 			])
@@ -14095,8 +14248,8 @@ function hookAvatarLabel(entity) {
 	if (typeof lunLockedFacialExpression !== "undefined" && lunLockedFacialExpression !== "none" && typeof maintainLockedFacialExpression === "function") {
 		maintainLockedFacialExpression();
 	}
-	if (typeof lunLocalSkin !== "undefined" && lunLocalSkin !== "none" && typeof applyLocalSkinSelection === "function") {
-		applyLocalSkinSelection(lunLocalSkin, false);
+	if (typeof lunLocalSkin !== "undefined" && (lunLocalSkin === "ner" || lunLocalSkin === "SKIN_NER") && typeof applyLocalSkinSelection === "function") {
+		applyLocalSkinSelection("ner", false);
 	}
 
 	if (gameState && gameState.myStat) {

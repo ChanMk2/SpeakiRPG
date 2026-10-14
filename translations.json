@@ -580,8 +580,7 @@
         "floatingBtnPinned": "📌 Pinned \"{0}\" outside HUD! (Drag to move, Right-click to dismiss)",
         "floatingBtnDismissed": "🧹 Floating button \"{0}\" dismissed.",
         "skinsHeader": "Character Skin (Local Cosplay)",
-        "skinBtnNer": "🦊 Ner",
-        "skinBtnPurePumpkin": "🎃 Pure Pumpkin",
+        "skinBtnNer": "🦊 Ner Skin",
         "skinBtnDefault": "⚪ Default"
     },
     "ja": {
@@ -1195,8 +1194,7 @@
         "floatingBtnPinned": "📌 「{0}」を画面に固定しました！（ドラッグで移動、右クリックで解除）",
         "floatingBtnDismissed": "🧹 フローティングボタン「{0}」を解除しました。",
         "skinsHeader": "キャラクタースキン（ローカル外見）",
-        "skinBtnNer": "🦊 ネル (Ner)",
-        "skinBtnPurePumpkin": "🎃 ピュアパンプキン",
+        "skinBtnNer": "🦊 ネルスキン (Ner)",
         "skinBtnDefault": "⚪ デフォルト"
     },
     "ko": {
@@ -1780,8 +1778,7 @@
         "floatingBtnPinned": "📌 \"{0}\" 버튼을 화면에 고정했습니다! (드래그하여 이동, 우클릭으로 제거)",
         "floatingBtnDismissed": "🧹 고정 버튼 \"{0}\" 제거됨.",
         "skinsHeader": "캐릭터 스킨 (로컬 코스프레)",
-        "skinBtnNer": "🦊 네르 (Ner)",
-        "skinBtnPurePumpkin": "🎃 퓨어펌킨 스피키",
+        "skinBtnNer": "🦊 네르 스킨 (Ner)",
         "skinBtnDefault": "⚪ 기본 스피키"
     },
     "zh-TW": {
@@ -2360,8 +2357,7 @@
         "floatingBtnPinned": "📌 已將「{0}」固定於畫面上！（拖曳移動，右鍵清除）",
         "floatingBtnDismissed": "🧹 已清除懸浮按鈕「{0}」。",
         "skinsHeader": "角色外觀 (本地 Cosplay)",
-        "skinBtnNer": "🦊 奈爾 (Ner)",
-        "skinBtnPurePumpkin": "🎃 純南瓜斯皮基",
+        "skinBtnNer": "🦊 奈爾外觀 (Ner)",
         "skinBtnDefault": "⚪ 預設外觀"
     },
     "zh-CN": {
@@ -2940,8 +2936,7 @@
         "floatingBtnPinned": "📌 已将“{0}”固定在屏幕上！（拖动移动，右键清除）",
         "floatingBtnDismissed": "🧹 已清除悬浮按钮“{0}”。",
         "skinsHeader": "角色皮肤 (本地外观)",
-        "skinBtnNer": "🦊 奈尔 (Ner)",
-        "skinBtnPurePumpkin": "🎃 纯南瓜斯皮基",
+        "skinBtnNer": "🦊 奈尔皮肤 (Ner)",
         "skinBtnDefault": "⚪ 默认外观"
     },
     "es-419": {
@@ -3520,8 +3515,7 @@
         "floatingBtnPinned": "📌 ¡\"{0}\" fijado en pantalla! (Arrastra para mover, Clic derecho para quitar)",
         "floatingBtnDismissed": "🧹 Botón flotante \"{0}\" eliminado.",
         "skinsHeader": "Aspectos de Personaje (Cosplay Local)",
-        "skinBtnNer": "🦊 Ner",
-        "skinBtnPurePumpkin": "🎃 Calabaza Pura",
+        "skinBtnNer": "🦊 Aspecto de Ner",
         "skinBtnDefault": "⚪ Predeterminado"
     }
 }
