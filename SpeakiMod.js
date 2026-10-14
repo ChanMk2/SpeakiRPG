@@ -8806,12 +8806,23 @@ const _spkmodLoadedCookingClips = {};
 async function spkmodLoadCookingAnimation(clipName) {
 	const ctrl = gameState?.localAnimationController;
 	if (!ctrl) return false;
-	if (ctrl.actions && ctrl.actions[clipName]) return true;
+	if (ctrl.actions) {
+		if (ctrl.actions instanceof Map) {
+			if (ctrl.actions.has(clipName)) return true;
+		} else if (ctrl.actions[clipName]) {
+			return true;
+		}
+	}
 	if (_spkmodLoadedCookingClips[clipName]) {
 		const clip = _spkmodLoadedCookingClips[clipName];
-		const action = ctrl.mixer.clipAction(clip);
-		ctrl.actions[clipName] = action;
-		return true;
+		if (ctrl && ctrl.mixer) {
+			const action = ctrl.mixer.clipAction(clip);
+			if (ctrl.actions instanceof Map) {
+				ctrl.actions.set(clipName, action);
+			}
+			ctrl.actions[clipName] = action;
+			return true;
+		}
 	}
 	const Loader = await spkmodEnsureFBXLoader();
 	if (!Loader) return false;
@@ -8825,6 +8836,9 @@ async function spkmodLoadCookingAnimation(clipName) {
 				_spkmodLoadedCookingClips[clipName] = clip;
 				if (ctrl && ctrl.mixer) {
 					const action = ctrl.mixer.clipAction(clip);
+					if (ctrl.actions instanceof Map) {
+						ctrl.actions.set(clipName, action);
+					}
 					ctrl.actions[clipName] = action;
 					resolve(true);
 					return;
@@ -8850,6 +8864,25 @@ function spkmodFindAvatarBone(boneName) {
 		}
 	});
 	return found;
+}
+
+function spkmodAttachProp(prop, bone, pos, rot) {
+	if (!prop || !bone) return null;
+	bone.updateWorldMatrix(true, false);
+	const scale = (typeof THREE !== 'undefined' && THREE.Vector3) ? bone.getWorldScale(new THREE.Vector3()) : { x: 1 };
+	const holder = new THREE.Group();
+	holder.name = "spkmod_cooking_prop_holder";
+	holder.userData.lunchPropHolder = true;
+	holder.userData.spkmodCookingProp = true;
+	if (scale.x > 0) {
+		holder.scale.setScalar(1 / scale.x);
+	}
+	if (pos) prop.position.set(pos.x, pos.y, pos.z);
+	if (rot) prop.rotation.set(rot.x, rot.y, rot.z);
+	holder.add(prop);
+	bone.add(holder);
+	window.spkmodCookingState.props.push(holder);
+	return holder;
 }
 
 function spkmodCreateKnifeProp() {
@@ -8888,6 +8921,24 @@ function spkmodCreatePanProp() {
 	return group;
 }
 
+function spkmodCreateLadleProp() {
+	if (typeof THREE === 'undefined') return null;
+	const group = new THREE.Group();
+	group.name = "spkmod_prop_ladle";
+	const mat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.7, roughness: 0.3 });
+	const handleGeom = new THREE.CylinderGeometry(0.015, 0.015, 0.26, 8);
+	const handle = new THREE.Mesh(handleGeom, mat);
+	handle.position.set(0, 0.1, 0);
+	group.add(handle);
+	const bowlGeom = new THREE.SphereGeometry(0.045, 12, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);
+	const bowl = new THREE.Mesh(bowlGeom, mat);
+	bowl.position.set(0, -0.03, 0.02);
+	bowl.rotation.x = Math.PI / 4;
+	group.add(bowl);
+	group.scale.set(1.2, 1.2, 1.2);
+	return group;
+}
+
 function spkmodCreatePlateProp() {
 	if (typeof THREE === 'undefined') return null;
 	const group = new THREE.Group();
@@ -8896,8 +8947,55 @@ function spkmodCreatePlateProp() {
 	const plateGeom = new THREE.CylinderGeometry(0.2, 0.15, 0.03, 16);
 	const plate = new THREE.Mesh(plateGeom, plateMat);
 	group.add(plate);
+	const foodMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.7 });
+	const foodGeom = new THREE.CylinderGeometry(0.12, 0.13, 0.02, 12);
+	const food = new THREE.Mesh(foodGeom, foodMat);
+	food.position.set(0, 0.02, 0);
+	group.add(food);
+	group.scale.set(1.2, 1.2, 1.2);
+	return group;
+}
+
+function spkmodCreateTrayProp() {
+	if (typeof THREE === 'undefined') return null;
+	const group = new THREE.Group();
+	group.name = "spkmod_prop_tray";
+	const trayMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.6 });
+	const tray = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.02, 0.22), trayMat);
+	group.add(tray);
+	const bowlMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+	const bowl1 = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.035, 0.04, 12), bowlMat);
+	bowl1.position.set(-0.06, 0.025, 0);
+	group.add(bowl1);
+	const food1 = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xfffdf0, roughness: 0.9 }));
+	food1.position.set(-0.06, 0.045, 0);
+	group.add(food1);
+	const bowl2 = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.03, 0.035, 12), bowlMat);
+	bowl2.position.set(0.06, 0.02, 0);
+	group.add(bowl2);
+	const food2 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.005, 12), new THREE.MeshStandardMaterial({ color: 0xcc5522, roughness: 0.2 }));
+	food2.position.set(0.06, 0.038, 0);
+	group.add(food2);
 	group.scale.set(1.3, 1.3, 1.3);
 	return group;
+}
+
+function spkmodSetWeaponsVisible(visible) {
+	const avatarRoot = gameState?.localAvatar?.root;
+	if (!avatarRoot) return;
+	avatarRoot.traverse((child) => {
+		if (child.userData && (child.userData.speakiMagicStaff || child.name?.toLowerCase().includes("staff") || child.name?.toLowerCase().includes("weapon") || child.name === "speakov-weapon")) {
+			child.visible = visible;
+		}
+	});
+	const rHand = spkmodFindAvatarBone('rhand') || spkmodFindAvatarBone('righthand');
+	if (rHand && rHand.children) {
+		for (const child of rHand.children) {
+			if (!child.isBone && !child.userData?.lunchPropHolder && !child.userData?.spkmodCookingProp) {
+				child.visible = visible;
+			}
+		}
+	}
 }
 
 function spkmodClearCookingProps() {
@@ -8918,28 +9016,7 @@ function spkmodClearCookingProps() {
 		}
 		window.spkmodCookingState.props = [];
 	}
-	const avatarRoot = gameState?.localAvatar?.root;
-	if (avatarRoot) {
-		avatarRoot.traverse((child) => {
-			if (child.userData && child.userData.__spkmodStaffHidden) {
-				child.visible = true;
-				delete child.userData.__spkmodStaffHidden;
-			}
-		});
-	}
-}
-
-function spkmodHideStaffWhileCooking() {
-	const avatarRoot = gameState?.localAvatar?.root;
-	if (!avatarRoot) return;
-	avatarRoot.traverse((child) => {
-		if (child.userData && (child.userData.speakiMagicStaff || child.name?.toLowerCase().includes("staff") || child.name?.toLowerCase().includes("weapon"))) {
-			if (child.visible) {
-				child.visible = false;
-				child.userData.__spkmodStaffHidden = true;
-			}
-		}
-	});
+	spkmodSetWeaponsVisible(true);
 }
 
 window.spkmodStartCooking = async function(type = 'chop') {
@@ -8950,7 +9027,7 @@ window.spkmodStartCooking = async function(type = 'chop') {
 	}
 
 	spkmodClearCookingProps();
-	spkmodHideStaffWhileCooking();
+	spkmodSetWeaponsVisible(false);
 
 	window.spkmodCookingState.active = true;
 	window.spkmodCookingState.type = type;
@@ -8958,70 +9035,47 @@ window.spkmodStartCooking = async function(type = 'chop') {
 	const rHand = spkmodFindAvatarBone('rhand') || spkmodFindAvatarBone('righthand');
 	const lHand = spkmodFindAvatarBone('lhand') || spkmodFindAvatarBone('lefthand');
 
-	const clipName = `lunch_${type}`;
-	await spkmodLoadCookingAnimation(clipName);
-
 	if (type === 'chop') {
+		const clipName = 'lunch_chop';
+		await spkmodLoadCookingAnimation(clipName);
 		if (rHand) {
 			const knife = spkmodCreateKnifeProp();
-			if (knife) {
-				knife.position.set(0, 0.05, 0);
-				knife.rotation.set(0, 0, Math.PI / 4);
-				rHand.add(knife);
-				window.spkmodCookingState.props.push(knife);
-			}
+			spkmodAttachProp(knife, rHand, { x: 0.08, y: 0.04, z: -0.1 }, { x: 0, y: 0, z: Math.PI / 4 });
 		}
-		if (typeof ctrl.playLunchChop === 'function') {
-			ctrl.playLunchChop();
-		} else {
-			ctrl.playCastLoop(clipName);
-		}
+		ctrl.playCastLoop(clipName);
 		if (typeof chatLog === 'function') chatLog("🔪 Fast chopping animation loop started!");
 	} else if (type === 'stir') {
+		const clipName = 'lunch_stir';
+		await spkmodLoadCookingAnimation(clipName);
 		if (lHand) {
 			const pan = spkmodCreatePanProp();
-			if (pan) {
-				pan.position.set(0, 0.1, 0.1);
-				lHand.add(pan);
-				window.spkmodCookingState.props.push(pan);
-			}
+			spkmodAttachProp(pan, lHand, { x: 0.08, y: 0.08, z: -0.12 }, { x: 0, y: 0, z: 0 });
 		}
 		if (rHand) {
-			const knife = spkmodCreateKnifeProp();
-			if (knife) {
-				knife.position.set(0, 0.05, 0);
-				rHand.add(knife);
-				window.spkmodCookingState.props.push(knife);
-			}
+			const ladle = spkmodCreateLadleProp();
+			spkmodAttachProp(ladle, rHand, { x: 0.08, y: 0.04, z: -0.1 }, { x: 0, y: 0, z: Math.PI / 4 });
 		}
-		if (typeof ctrl.playLunchStir === 'function') {
-			ctrl.playLunchStir();
-		} else {
-			ctrl.playCastLoop(clipName);
-		}
+		ctrl.playCastLoop(clipName);
 		if (typeof chatLog === 'function') chatLog("🍳 Soup stirring animation loop started!");
 	} else if (type === 'plate') {
+		const clipName = 'lunch_plate';
+		await spkmodLoadCookingAnimation(clipName);
 		if (lHand) {
 			const plate = spkmodCreatePlateProp();
-			if (plate) {
-				plate.position.set(0, 0.08, 0.08);
-				lHand.add(plate);
-				window.spkmodCookingState.props.push(plate);
-			}
+			spkmodAttachProp(plate, lHand, { x: 0.08, y: 0.06, z: -0.1 }, { x: 0, y: 0, z: 0 });
 		}
-		if (typeof ctrl.playLunchPlate === 'function') {
-			ctrl.playLunchPlate();
-		} else {
-			ctrl.playCastLoop(clipName);
+		if (rHand) {
+			const ladle = spkmodCreateLadleProp();
+			spkmodAttachProp(ladle, rHand, { x: 0.08, y: 0.04, z: -0.1 }, { x: 0, y: 0, z: Math.PI / 4 });
 		}
+		ctrl.playCastLoop(clipName);
 		if (typeof chatLog === 'function') chatLog("🍽️ Plating dish animation loop started!");
 	} else if (type === 'serve') {
+		const clipName = 'lunch_serve';
+		await spkmodLoadCookingAnimation(clipName);
 		if (rHand) {
-			const plate = spkmodCreatePlateProp();
-			if (plate) {
-				rHand.add(plate);
-				window.spkmodCookingState.props.push(plate);
-			}
+			const dish = spkmodCreatePlateProp();
+			spkmodAttachProp(dish, rHand, { x: 0.08, y: 0.06, z: -0.12 }, { x: 0, y: 0, z: 0 });
 		}
 		if (typeof ctrl.playLunchServe === 'function') {
 			ctrl.playLunchServe();
@@ -9030,7 +9084,18 @@ window.spkmodStartCooking = async function(type = 'chop') {
 		}
 		if (typeof chatLog === 'function') chatLog("🛎️ Serving delicious meal!");
 	} else if (type === 'carry') {
+		await Promise.all([
+			spkmodLoadCookingAnimation('lunch_carry_idle'),
+			spkmodLoadCookingAnimation('lunch_carry_run')
+		]);
+		if (rHand) {
+			const tray = spkmodCreateTrayProp();
+			spkmodAttachProp(tray, rHand, { x: 0.09, y: -0.03, z: -0.18 }, { x: 0, y: 0, z: 0 });
+		}
 		ctrl.setCarrying(true);
+		if (typeof ctrl.crossFadeToLocomotion === 'function') {
+			ctrl.crossFadeToLocomotion();
+		}
 		if (typeof chatLog === 'function') chatLog("📦 Carrying food tray stance activated!");
 	}
 };
@@ -9043,6 +9108,9 @@ window.spkmodStopCooking = function() {
 	if (ctrl) {
 		ctrl.stopCastLoop();
 		ctrl.setCarrying(false);
+		if (typeof ctrl.crossFadeToLocomotion === 'function') {
+			ctrl.crossFadeToLocomotion();
+		}
 	}
 	if (typeof chatLog === 'function') chatLog("🛑 Stopped cooking & restored weapon.");
 };
@@ -9582,7 +9650,7 @@ document.body.appendChild(
 	lunHudElements.effectsModal = buildElement("div", {
 		id: "spkmod-effects-modal",
 		className: "hidden",
-		style: "width: 650px; min-width: 500px; max-width: 95vw; overflow-x: hidden;"
+		style: "width: 960px; min-width: 600px; max-width: 96vw; overflow-x: hidden;"
 	}, [
 		buildElement("div", { className: "spkmod-panel-cat", style: "justify-content: space-between;" }, [
 			lunPanelElements.effectsModalTitle = buildElement("span", {
@@ -9595,7 +9663,7 @@ document.body.appendChild(
 				onclick: _ => lunHudElements.effectsModal.classList.add("hidden")
 			})
 		]),
-		buildElement("div", { style: "display: flex; flex-direction: row; gap: 10px; max-height: 75vh; overflow-y: auto; overflow-x: hidden; padding: 4px; box-sizing: border-box;" }, [
+		buildElement("div", { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-height: 85vh; overflow-y: auto; overflow-x: hidden; padding: 4px; box-sizing: border-box;" }, [
 			buildElement("div", { style: "display: flex; flex-direction: column; gap: 8px; flex: 1;" }, [
 				lunPanelElements.effectsWarning = buildElement("div", {
 					innerText: t("localEffectsWarning"),
@@ -9628,7 +9696,7 @@ document.body.appendChild(
 				}),
 
 				// Soccer Uniform
-				buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px; border-top: 1px solid #555; padding-top: 6px;" }, [
+				buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px;" }, [
 					editsModalElements.soccerHeader = buildElement("div", {
 						className: "spkmod-panel-cat-header",
 						innerText: "⚽ " + (t("soccerHeader") || "Soccer Uniform"),
@@ -9659,6 +9727,89 @@ document.body.appendChild(
 					])
 				]),
 
+				// 🍳 Cooking & Kitchen Animations
+				buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px; border-top: 1px solid #555; padding-top: 6px;" }, [
+					editsModalElements.cookingHeader = buildElement("div", {
+						className: "spkmod-panel-cat-header",
+						innerText: "🍳 " + (t("cookingHeader") || "Cooking Animations"),
+						style: "margin-top: 0px;"
+					}),
+					buildElement("div", { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px;" }, [
+						editsModalElements.cookBtnChop = buildElement("button", {
+							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center;",
+							innerText: t("cookBtnChop") || "🔪 Chop",
+							title: "Loop fast chopping animation with kitchen knife",
+							onclick: () => window.spkmodStartCooking && window.spkmodStartCooking("chop")
+						}),
+						editsModalElements.cookBtnStir = buildElement("button", {
+							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center;",
+							innerText: t("cookBtnStir") || "🍳 Stir",
+							title: "Loop stirring soup animation with pan & ladle",
+							onclick: () => window.spkmodStartCooking && window.spkmodStartCooking("stir")
+						}),
+						editsModalElements.cookBtnPlate = buildElement("button", {
+							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center;",
+							innerText: t("cookBtnPlate") || "🍽️ Plate",
+							title: "Loop plating food animation",
+							onclick: () => window.spkmodStartCooking && window.spkmodStartCooking("plate")
+						}),
+						editsModalElements.cookBtnServe = buildElement("button", {
+							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center;",
+							innerText: t("cookBtnServe") || "🛎️ Serve",
+							title: "Play elegant dish presentation one-shot",
+							onclick: () => window.spkmodStartCooking && window.spkmodStartCooking("serve")
+						}),
+						editsModalElements.cookBtnCarry = buildElement("button", {
+							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center;",
+							innerText: t("cookBtnCarry") || "📦 Carry",
+							title: "Carry food tray stance while walking or standing",
+							onclick: () => window.spkmodStartCooking && window.spkmodStartCooking("carry")
+						}),
+						editsModalElements.cookBtnStop = buildElement("button", {
+							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center; color: #ffaaaa;",
+							innerText: t("cookBtnStop") || "🛑 Stop",
+							title: "Stop cooking and restore weapon",
+							onclick: () => window.spkmodStopCooking && window.spkmodStopCooking()
+						})
+					])
+				]),
+
+				// 🚁 Copter Hat & Special Poses
+				buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px; border-top: 1px solid #555; padding-top: 6px;" }, [
+					editsModalElements.copterHeader = buildElement("div", {
+						className: "spkmod-panel-cat-header",
+						innerText: "🚁 " + (t("copterHeader") || "Copter Hat & Special Poses"),
+						style: "margin-top: 0px;"
+					}),
+					buildElement("div", { style: "display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px;" }, [
+						editsModalElements.copterBtnSelf = buildElement("button", {
+							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center; color: #ffd54a; font-weight: bold;",
+							innerText: t("copterBtnSelf") || "🚁 Copter (Self)",
+							title: "Toggle spinning propeller pumpkin copter hat on yourself",
+							onclick: () => window.spkmodToggleCopterHat && window.spkmodToggleCopterHat("self")
+						}),
+						editsModalElements.copterBtnAll = buildElement("button", {
+							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center; color: #38bdf8; font-weight: bold;",
+							innerText: t("copterBtnAll") || "🚁 Copter (ALL)",
+							title: "Toggle spinning propeller hats on EVERY player in town!",
+							onclick: () => window.spkmodToggleCopterHat && window.spkmodToggleCopterHat("all")
+						}),
+						editsModalElements.spellDanceBtn = buildElement("button", {
+							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center; color: #c084fc;",
+							innerText: t("spellDanceBtn") || "✨🌀 Spell Dance",
+							title: "Play magical town return portal dance",
+							onclick: () => window.spkmodPlaySpellDance && window.spkmodPlaySpellDance()
+						}),
+						editsModalElements.gatherAnimBtn = buildElement("button", {
+							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center; color: #84cc16;",
+							innerText: t("gatherAnimBtn") || "🌿 Gather Loop",
+							title: "Play ground foraging & harvesting loop",
+							onclick: () => window.spkmodPlayGather && window.spkmodPlayGather()
+						})
+					])
+				])
+			]),
+			buildElement("div", { style: "display: flex; flex-direction: column; gap: 8px; border-left: 1px solid #555; padding-left: 10px;" }, [
 				// Character Dye & FX
 				buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px; border-top: 1px solid #555; padding-top: 6px;" }, [
 					buildElement("div", { style: "display: flex; justify-content: space-between; align-items: center;" }, [
@@ -9796,88 +9947,6 @@ document.body.appendChild(
 						})
 					])
 				]),
-
-				// 🍳 Cooking & Kitchen Animations
-				buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px; border-top: 1px solid #555; padding-top: 6px;" }, [
-					editsModalElements.cookingHeader = buildElement("div", {
-						className: "spkmod-panel-cat-header",
-						innerText: "🍳 " + (t("cookingHeader") || "Cooking Animations"),
-						style: "margin-top: 0px;"
-					}),
-					buildElement("div", { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px;" }, [
-						editsModalElements.cookBtnChop = buildElement("button", {
-							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center;",
-							innerText: t("cookBtnChop") || "🔪 Chop",
-							title: "Loop fast chopping animation with kitchen knife",
-							onclick: () => window.spkmodStartCooking && window.spkmodStartCooking("chop")
-						}),
-						editsModalElements.cookBtnStir = buildElement("button", {
-							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center;",
-							innerText: t("cookBtnStir") || "🍳 Stir",
-							title: "Loop stirring soup animation with pan & ladle",
-							onclick: () => window.spkmodStartCooking && window.spkmodStartCooking("stir")
-						}),
-						editsModalElements.cookBtnPlate = buildElement("button", {
-							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center;",
-							innerText: t("cookBtnPlate") || "🍽️ Plate",
-							title: "Loop plating food animation",
-							onclick: () => window.spkmodStartCooking && window.spkmodStartCooking("plate")
-						}),
-						editsModalElements.cookBtnServe = buildElement("button", {
-							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center;",
-							innerText: t("cookBtnServe") || "🛎️ Serve",
-							title: "Play elegant dish presentation one-shot",
-							onclick: () => window.spkmodStartCooking && window.spkmodStartCooking("serve")
-						}),
-						editsModalElements.cookBtnCarry = buildElement("button", {
-							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center;",
-							innerText: t("cookBtnCarry") || "📦 Carry",
-							title: "Carry food tray stance while walking or standing",
-							onclick: () => window.spkmodStartCooking && window.spkmodStartCooking("carry")
-						}),
-						editsModalElements.cookBtnStop = buildElement("button", {
-							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center; color: #ffaaaa;",
-							innerText: t("cookBtnStop") || "🛑 Stop",
-							title: "Stop cooking and restore weapon",
-							onclick: () => window.spkmodStopCooking && window.spkmodStopCooking()
-						})
-					])
-				]),
-
-				// 🚁 Copter Hat & Special Poses
-				buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px; border-top: 1px solid #555; padding-top: 6px;" }, [
-					editsModalElements.copterHeader = buildElement("div", {
-						className: "spkmod-panel-cat-header",
-						innerText: "🚁 " + (t("copterHeader") || "Copter Hat & Special Poses"),
-						style: "margin-top: 0px;"
-					}),
-					buildElement("div", { style: "display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px;" }, [
-						editsModalElements.copterBtnSelf = buildElement("button", {
-							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center; color: #ffd54a; font-weight: bold;",
-							innerText: t("copterBtnSelf") || "🚁 Copter (Self)",
-							title: "Toggle spinning propeller pumpkin copter hat on yourself",
-							onclick: () => window.spkmodToggleCopterHat && window.spkmodToggleCopterHat("self")
-						}),
-						editsModalElements.copterBtnAll = buildElement("button", {
-							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center; color: #38bdf8; font-weight: bold;",
-							innerText: t("copterBtnAll") || "🚁 Copter (ALL)",
-							title: "Toggle spinning propeller hats on EVERY player in town!",
-							onclick: () => window.spkmodToggleCopterHat && window.spkmodToggleCopterHat("all")
-						}),
-						editsModalElements.spellDanceBtn = buildElement("button", {
-							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center; color: #c084fc;",
-							innerText: t("spellDanceBtn") || "✨🌀 Spell Dance",
-							title: "Play magical town return portal dance",
-							onclick: () => window.spkmodPlaySpellDance && window.spkmodPlaySpellDance()
-						}),
-						editsModalElements.gatherAnimBtn = buildElement("button", {
-							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center; color: #84cc16;",
-							innerText: t("gatherAnimBtn") || "🌿 Gather Loop",
-							title: "Play ground foraging & harvesting loop",
-							onclick: () => window.spkmodPlayGather && window.spkmodPlayGather()
-						})
-					])
-				])
 			]),
 			buildElement("div", { style: "display: flex; flex-direction: column; gap: 8px; flex: 1; border-left: 1px solid #555; padding-left: 10px;" }, [
 				editsModalElements.renameHeader = buildElement("div", { className: "spkmod-panel-cat-header", innerText: t("renameHeader") || "Rename Name Tags", style: "margin-top: 0px;" }),
@@ -10012,7 +10081,7 @@ document.body.appendChild(
 );
 setTimeout(() => {
 	if (typeof makeDraggable === 'function' && lunHudElements.effectsModal && lunPanelElements.effectsModalTitle) {
-		const modalW = 260, modalH = 280;
+		const modalW = 960, modalH = 480;
 		lunHudElements.effectsModal.style.left = Math.max(10, (window.innerWidth / 2) - (modalW / 2)) + "px";
 		lunHudElements.effectsModal.style.top = Math.max(10, window.innerHeight * 0.15) + "px";
 		makeDraggable(lunHudElements.effectsModal, [lunPanelElements.effectsModalTitle]);
