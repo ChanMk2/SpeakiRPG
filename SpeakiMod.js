@@ -6469,12 +6469,134 @@ function renderInfoUI() {
 }
 
 // ============================================================================
-// FLOATING ACTION BUTTONS (Right-Click to Summon / Clean)
+// FLOATING ACTION BUTTONS (Right-Click to Summon / Clean / LocalStorage Saved)
 // ============================================================================
 
 window.spkmodActiveFloatingButtons = new Map(); // sourceElement -> floatingElement
 
-function spkmodSpawnFloatingButton(sourceBtn, initialX, initialY) {
+function spkmodGetButtonId(btn) {
+    if (!btn) return null;
+    if (btn.dataset && btn.dataset.spkmodBtnId) return btn.dataset.spkmodBtnId;
+    if (btn.id) {
+        btn.dataset.spkmodBtnId = "id:" + btn.id;
+        return btn.dataset.spkmodBtnId;
+    }
+
+    if (typeof lunPanelElements === "object" && lunPanelElements) {
+        for (const [key, el] of Object.entries(lunPanelElements)) {
+            if (el === btn) {
+                btn.dataset.spkmodBtnId = "panel:" + key;
+                return btn.dataset.spkmodBtnId;
+            }
+        }
+    }
+    if (typeof editsModalElements === "object" && editsModalElements) {
+        for (const [key, el] of Object.entries(editsModalElements)) {
+            if (el === btn) {
+                btn.dataset.spkmodBtnId = "edits:" + key;
+                return btn.dataset.spkmodBtnId;
+            }
+        }
+    }
+    if (typeof lunHudElements === "object" && lunHudElements) {
+        for (const [key, el] of Object.entries(lunHudElements)) {
+            if (el === btn) {
+                btn.dataset.spkmodBtnId = "hud:" + key;
+                return btn.dataset.spkmodBtnId;
+            }
+        }
+    }
+
+    const parent = btn.closest("[id]");
+    const parentId = parent ? parent.id : "body";
+    const title = btn.title || "";
+    const text = (btn.innerText || btn.textContent || "").trim();
+
+    const domId = `dom:${parentId}|${title}|${text}`;
+    if (btn.dataset) btn.dataset.spkmodBtnId = domId;
+    return domId;
+}
+
+function spkmodFindButtonById(id) {
+    if (!id) return null;
+
+    if (id.startsWith("id:")) {
+        return document.getElementById(id.slice(3));
+    }
+    if (id.startsWith("panel:")) {
+        const key = id.slice(6);
+        return (typeof lunPanelElements === "object" && lunPanelElements && lunPanelElements[key]) || null;
+    }
+    if (id.startsWith("edits:")) {
+        const key = id.slice(6);
+        return (typeof editsModalElements === "object" && editsModalElements && editsModalElements[key]) || null;
+    }
+    if (id.startsWith("hud:")) {
+        const key = id.slice(4);
+        return (typeof lunHudElements === "object" && lunHudElements && lunHudElements[key]) || null;
+    }
+    if (id.startsWith("dom:")) {
+        const parts = id.slice(4).split("|");
+        const parentId = parts[0];
+        const title = parts[1];
+        const text = parts[2];
+        const root = (parentId && parentId !== "body") ? document.getElementById(parentId) : document.body;
+        if (!root) return null;
+        const allBtns = root.querySelectorAll("button, .spkmod-panel-btn, .spkmod-quick-btn");
+        for (const b of allBtns) {
+            if (title && b.title === title) return b;
+            if (text && (b.innerText || b.textContent || "").trim() === text) return b;
+        }
+        return null;
+    }
+    return null;
+}
+
+function spkmodSaveFloatingButtons() {
+    try {
+        const list = [];
+        for (const [sourceBtn, floatingBtn] of window.spkmodActiveFloatingButtons.entries()) {
+            if (!floatingBtn || !floatingBtn.parentNode) continue;
+            const btnId = spkmodGetButtonId(sourceBtn);
+            if (!btnId) continue;
+            const left = parseInt(floatingBtn.style.left, 10) || floatingBtn.offsetLeft;
+            const top = parseInt(floatingBtn.style.top, 10) || floatingBtn.offsetTop;
+            list.push({
+                btnId,
+                left,
+                top
+            });
+        }
+        localStorage.setItem("spkmod-floating-buttons", JSON.stringify(list));
+    } catch (e) {
+        console.warn("[SpeakiMod+] Failed to save floating buttons to localStorage:", e);
+    }
+}
+
+function spkmodRestoreFloatingButtons() {
+    try {
+        const raw = localStorage.getItem("spkmod-floating-buttons");
+        if (!raw) return;
+        const list = JSON.parse(raw);
+        if (!Array.isArray(list)) return;
+
+        for (const item of list) {
+            if (!item || !item.btnId) continue;
+            const sourceBtn = spkmodFindButtonById(item.btnId);
+            if (sourceBtn) {
+                if (!window.spkmodActiveFloatingButtons.has(sourceBtn)) {
+                    const left = Math.max(10, Math.min(window.innerWidth - 120, item.left));
+                    const top = Math.max(10, Math.min(window.innerHeight - 40, item.top));
+                    spkmodSpawnFloatingButton(sourceBtn, left, top, true);
+                }
+            }
+        }
+    } catch (e) {
+        console.warn("[SpeakiMod+] Failed to restore floating buttons from localStorage:", e);
+    }
+}
+
+function spkmodSpawnFloatingButton(sourceBtn, initialX, initialY, isRestoring = false) {
     if (!sourceBtn) return null;
 
     // Toggle: If a floating copy already exists for this button, remove it
@@ -6600,6 +6722,10 @@ function spkmodSpawnFloatingButton(sourceBtn, initialX, initialY) {
         window.removeEventListener("pointerup", onPointerUp);
         floatingBtn.style.cursor = "grab";
 
+        if (isDragging) {
+            spkmodSaveFloatingButtons();
+        }
+
         if (!isDragging && e.button === 0) {
             // Click animation
             floatingBtn.style.transform = "scale(0.92)";
@@ -6639,10 +6765,11 @@ function spkmodSpawnFloatingButton(sourceBtn, initialX, initialY) {
     });
 
     const btnName = (sourceBtn.innerText || sourceBtn.textContent || "Button").trim();
-    if (typeof chatLog === 'function') {
+    if (!isRestoring && typeof chatLog === 'function') {
         chatLog(t("floatingBtnPinned", btnName) || `📌 Pinned "${btnName}" outside HUD! (Drag to move, Right-click to dismiss)`);
     }
 
+    spkmodSaveFloatingButtons();
     return floatingBtn;
 }
 
@@ -6668,6 +6795,8 @@ function spkmodRemoveFloatingButton(floatingBtn) {
         }
     }, 160);
 
+    spkmodSaveFloatingButtons();
+
     if (typeof chatLog === 'function') {
         chatLog(t("floatingBtnDismissed", btnName) || `🧹 Floating button "${btnName}" dismissed.`);
     }
@@ -6675,6 +6804,13 @@ function spkmodRemoveFloatingButton(floatingBtn) {
 
 window.spkmodSpawnFloatingButton = spkmodSpawnFloatingButton;
 window.spkmodRemoveFloatingButton = spkmodRemoveFloatingButton;
+window.spkmodSaveFloatingButtons = spkmodSaveFloatingButtons;
+window.spkmodRestoreFloatingButtons = spkmodRestoreFloatingButtons;
+
+// Auto-restore saved buttons on page load
+setTimeout(spkmodRestoreFloatingButtons, 600);
+setTimeout(spkmodRestoreFloatingButtons, 1800);
+setTimeout(spkmodRestoreFloatingButtons, 3500);
 
 // Global Right-Click Delegate for summoning buttons outside HUD
 document.addEventListener("contextmenu", (e) => {
@@ -6691,6 +6827,7 @@ document.addEventListener("contextmenu", (e) => {
     e.stopPropagation();
     spkmodSpawnFloatingButton(btn, e.clientX, e.clientY);
 }, true);
+
 
 
 
@@ -9010,16 +9147,44 @@ window.spkmodCookingState = {
 	savedStaffVisibility: null
 };
 
+let _spkmodThreePromise = null;
+async function spkmodEnsureThree() {
+	if (typeof window.THREE !== 'undefined' && window.THREE.Group && window.THREE.Mesh && window.THREE.BoxGeometry) {
+		return window.THREE;
+	}
+	if (_spkmodThreePromise) return _spkmodThreePromise;
+
+	_spkmodThreePromise = (async () => {
+		try {
+			const threeMod = await import('https://esm.sh/v135/three@0.185.0');
+			window.THREE = Object.assign(window.THREE || {}, threeMod);
+			return window.THREE;
+		} catch (e) {
+			console.warn("[SpeakiMod+] Failed to load Three.js from CDN:", e);
+		}
+		return window.THREE;
+	})();
+
+	return _spkmodThreePromise;
+}
+
+// Background prefetch Three.js so props spawn with zero lag
+setTimeout(() => {
+	spkmodEnsureThree().catch(() => {});
+}, 1200);
+
 let _spkmodFBXLoaderClass = null;
 async function spkmodEnsureFBXLoader() {
 	if (_spkmodFBXLoaderClass) return _spkmodFBXLoaderClass;
-	if (typeof THREE !== 'undefined' && THREE.FBXLoader) {
-		_spkmodFBXLoaderClass = THREE.FBXLoader;
+	await spkmodEnsureThree();
+	if (window.THREE && window.THREE.FBXLoader) {
+		_spkmodFBXLoaderClass = window.THREE.FBXLoader;
 		return _spkmodFBXLoaderClass;
 	}
 	try {
 		const mod = await import('https://esm.sh/v135/three@0.185.0/examples/jsm/loaders/FBXLoader.js');
 		_spkmodFBXLoaderClass = mod.FBXLoader;
+		if (window.THREE) window.THREE.FBXLoader = mod.FBXLoader;
 		return _spkmodFBXLoaderClass;
 	} catch (e) {
 		console.warn("[SpeakiMod+] Failed to load FBXLoader:", e);
@@ -9078,73 +9243,109 @@ async function spkmodLoadCookingAnimation(clipName) {
 }
 
 function spkmodGetAvatarBone(side = 'right') {
-	const avatarRoot = gameState?.localAvatar?.root;
-	if (!avatarRoot) return null;
-
 	const isRight = (side === 'right' || side === 'rhand' || side === 'righthand');
+	const roots = [
+		gameState?.localAvatar?.root,
+		gameState?.localAvatarPose,
+		gameState?.playerContainer
+	].filter(Boolean);
 
-	// 1. For right hand: Check if the character's weapon/staff or weapon holder is attached to a bone
-	if (isRight) {
-		let staffBone = null;
-		avatarRoot.traverse((child) => {
-			if (staffBone) return;
-			if (child.userData && (child.userData.speakiMagicStaff || child.userData.speakovSharedAsset || child.name === "speakov-weapon" || child.name?.toLowerCase().includes("staff"))) {
-				let p = child.parent;
-				while (p && p !== avatarRoot) {
-					if (p.isBone || p.type === 'Bone' || (p.name && p.name.toLowerCase().includes('hand'))) {
-						staffBone = p;
-						break;
-					}
-					p = p.parent;
-				}
-				if (!staffBone && child.parent && child.parent !== avatarRoot) {
-					staffBone = child.parent;
-				}
-			}
-		});
-		if (staffBone) return staffBone;
-	}
-
-	// 2. Traverse avatarRoot and collect all bones or named nodes
-	const allBones = [];
-	avatarRoot.traverse((child) => {
-		if (child.isBone || child.type === 'Bone') {
-			allBones.push(child);
-		}
-	});
-	if (allBones.length === 0) {
-		avatarRoot.traverse((child) => {
-			if (child.name) allBones.push(child);
-		});
-	}
+	if (roots.length === 0) return null;
 
 	const sanitize = s => (s || '').toLowerCase().replace(/[^a-z]/g, '');
-	const targets = isRight
-		? ['righthand', 'rhand', 'handr', 'rightwrist', 'wristr']
-		: ['lefthand', 'lhand', 'handl', 'leftwrist', 'wristl'];
+	const targets = isRight ? ['rhand', 'righthand'] : ['lhand', 'lefthand'];
+	const fallbackRegex = isRight
+		? /right.?hand|r.?hand|bip001.*r.*hand|bone.*009/i
+		: /left.?hand|l.?hand|bip001.*l.*hand|bone.*007/i;
 
-	for (const target of targets) {
-		const found = allBones.find(b => {
-			const s = sanitize(b.name);
-			return s.includes(target) && !s.includes('finger') && !s.includes('thumb');
-		});
-		if (found) return found;
-	}
-
-	// 3. Fallback: match any node containing hand and r/l
-	for (const b of allBones) {
-		const lower = (b.name || '').toLowerCase();
+	for (const root of roots) {
+		// 1. If right hand: check if weapon / staff group is attached to a hand bone
 		if (isRight) {
-			if (lower.includes('hand') && (lower.includes('right') || lower.includes('_r') || lower.includes('.r') || lower.endsWith('r')) && !lower.includes('finger')) {
-				return b;
+			let foundBone = null;
+			root.traverse((child) => {
+				if (foundBone) return;
+				if (child.userData && child.userData.speakiMagicStaff) {
+					if (child.parent && child.parent !== root) {
+						foundBone = child.parent;
+					}
+				}
+			});
+			if (foundBone) {
+				console.log("[SpeakiMod+] Found right hand bone via speakiMagicStaff parent:", foundBone.name);
+				return foundBone;
 			}
-		} else {
-			if (lower.includes('hand') && (lower.includes('left') || lower.includes('_l') || lower.includes('.l') || lower.endsWith('l')) && !lower.includes('finger')) {
+		}
+
+		// 2. Check SkinnedMesh skeleton bones if present
+		let foundBone = null;
+		root.traverse((child) => {
+			if (foundBone) return;
+			if (child.skeleton && Array.isArray(child.skeleton.bones)) {
+				for (const b of child.skeleton.bones) {
+					const s = sanitize(b.name);
+					if (targets.some(t => s.includes(t)) && !s.includes('finger')) {
+						foundBone = b;
+						return;
+					}
+				}
+				if (!foundBone) {
+					for (const b of child.skeleton.bones) {
+						if (fallbackRegex.test(b.name) && !b.name.toLowerCase().includes('finger')) {
+							foundBone = b;
+							return;
+						}
+					}
+				}
+			}
+		});
+		if (foundBone) {
+			console.log(`[SpeakiMod+] Found ${side} hand bone via SkinnedMesh skeleton:`, foundBone.name);
+			return foundBone;
+		}
+
+		// 3. Traverse all nodes and collect any Bone or named node
+		const candidates = [];
+		root.traverse((child) => {
+			if (child.isBone || child.type === 'Bone' || child.constructor?.name === 'Bone' || child.name) {
+				candidates.push(child);
+			}
+		});
+
+		// A. Exact game match: sanitize name and check target keywords without finger
+		for (const target of targets) {
+			const b = candidates.find(c => {
+				const s = sanitize(c.name);
+				return s.includes(target) && !s.includes('finger');
+			});
+			if (b) {
+				console.log(`[SpeakiMod+] Found ${side} hand bone via sanitized target (${target}):`, b.name);
 				return b;
 			}
 		}
+
+		// B. Fallback regex match
+		const regexMatch = candidates.find(c => fallbackRegex.test(c.name) && !c.name.toLowerCase().includes('finger'));
+		if (regexMatch) {
+			console.log(`[SpeakiMod+] Found ${side} hand bone via fallback regex:`, regexMatch.name);
+			return regexMatch;
+		}
+
+		// C. Fallback: match any node containing 'hand' and 'right' / 'left'
+		const genericMatch = candidates.find(c => {
+			const lower = (c.name || '').toLowerCase();
+			if (isRight) {
+				return lower.includes('hand') && (lower.includes('right') || lower.includes('_r') || lower.includes('.r') || lower.endsWith('r')) && !lower.includes('finger');
+			} else {
+				return lower.includes('hand') && (lower.includes('left') || lower.includes('_l') || lower.includes('.l') || lower.endsWith('l')) && !lower.includes('finger');
+			}
+		});
+		if (genericMatch) {
+			console.log(`[SpeakiMod+] Found ${side} hand bone via generic match:`, genericMatch.name);
+			return genericMatch;
+		}
 	}
 
+	console.warn(`[SpeakiMod+] Could not find ${side} hand bone on avatar!`);
 	return null;
 }
 
@@ -9159,14 +9360,25 @@ function spkmodAttachProp(prop, bone, pos, rot) {
 		console.warn("[SpeakiMod+] spkmodAttachProp failed: prop or bone missing", { prop: !!prop, bone: !!bone });
 		return null;
 	}
-	bone.updateWorldMatrix(true, false);
-	const scale = (typeof THREE !== 'undefined' && THREE.Vector3) ? bone.getWorldScale(new THREE.Vector3()) : { x: 1 };
+	const THREE = window.THREE;
+	if (!THREE) {
+		console.warn("[SpeakiMod+] spkmodAttachProp failed: THREE not loaded");
+		return null;
+	}
+
+	// Update matrices so world scale is accurate
+	gameState?.playerContainer?.updateMatrixWorld?.(true);
+	gameState?.localAvatar?.root?.updateMatrixWorld?.(true);
+	bone.updateWorldMatrix?.(true, false);
+
+	const scale = THREE.Vector3 ? bone.getWorldScale(new THREE.Vector3()) : { x: 1 };
 	const holder = new THREE.Group();
 	holder.name = "spkmod_cooking_prop_holder";
 	holder.userData.lunchPropHolder = true;
 	holder.userData.spkmodCookingProp = true;
 	
-	const s = (scale && scale.x > 0 && isFinite(scale.x)) ? scale.x : 1;
+	let s = (scale && scale.x > 0.0001 && isFinite(scale.x)) ? scale.x : 1;
+	if (s < 0.001 || s > 1000) s = 1;
 	holder.scale.setScalar(1 / s);
 
 	if (pos) prop.position.set(pos.x, pos.y, pos.z);
@@ -9179,17 +9391,29 @@ function spkmodAttachProp(prop, bone, pos, rot) {
 		child.userData.spkmodCookingProp = true;
 		if (child.isMesh) {
 			child.raycast = () => {};
+			child.frustumCulled = false;
+			if (bone.layers) child.layers.mask = bone.layers.mask;
+			if (child.material) {
+				const mats = Array.isArray(child.material) ? child.material : [child.material];
+				for (const m of mats) {
+					m.side = THREE.DoubleSide;
+					m.depthTest = true;
+					m.depthWrite = true;
+				}
+			}
 		}
 	});
 
 	holder.add(prop);
 	bone.add(holder);
 	window.spkmodCookingState.props.push(holder);
+	console.log(`[SpeakiMod+] Successfully attached prop "${prop.name}" to bone "${bone.name}" (scale: ${s})`);
 	return holder;
 }
 
 function spkmodCreateKnifeProp() {
-	if (typeof THREE === 'undefined') return null;
+	const THREE = window.THREE;
+	if (!THREE) return null;
 	const group = new THREE.Group();
 	group.name = "spkmod_prop_knife";
 
@@ -9217,7 +9441,8 @@ function spkmodCreateKnifeProp() {
 }
 
 function spkmodCreatePanProp() {
-	if (typeof THREE === 'undefined') return null;
+	const THREE = window.THREE;
+	if (!THREE) return null;
 	const group = new THREE.Group();
 	group.name = "spkmod_prop_pan";
 
@@ -9246,7 +9471,8 @@ function spkmodCreatePanProp() {
 }
 
 function spkmodCreateLadleProp() {
-	if (typeof THREE === 'undefined') return null;
+	const THREE = window.THREE;
+	if (!THREE) return null;
 	const group = new THREE.Group();
 	group.name = "spkmod_prop_ladle";
 
@@ -9267,7 +9493,8 @@ function spkmodCreateLadleProp() {
 }
 
 function spkmodCreatePlateProp() {
-	if (typeof THREE === 'undefined') return null;
+	const THREE = window.THREE;
+	if (!THREE) return null;
 	const group = new THREE.Group();
 	group.name = "spkmod_prop_plate";
 
@@ -9288,13 +9515,14 @@ function spkmodCreatePlateProp() {
 	garnish.position.set(0.03, 0.03, 0.02);
 	group.add(garnish);
 
-	// In game: y4 = { x: .095, y: -.03, z: -.181 }
+	// Game hand placement
 	group.position.set(0.095, -0.03, -0.181);
 	return group;
 }
 
 function spkmodCreateTrayProp() {
-	if (typeof THREE === 'undefined') return null;
+	const THREE = window.THREE;
+	if (!THREE) return null;
 	const group = new THREE.Group();
 	group.name = "spkmod_prop_tray";
 
@@ -9326,19 +9554,26 @@ function spkmodCreateTrayProp() {
 	soup.position.set(0.08, 0.045, 0);
 	group.add(soup);
 
-	// In game: y4 = { x: .095, y: -.03, z: -.181 }
+	// Game hand placement
 	group.position.set(0.095, -0.03, -0.181);
 	return group;
 }
 
 function spkmodSetWeaponsVisible(visible) {
-	const avatarRoot = gameState?.localAvatar?.root;
-	if (!avatarRoot) return;
-	avatarRoot.traverse((child) => {
-		if (child.userData && (child.userData.speakiMagicStaff || child.name?.toLowerCase().includes("staff") || child.name?.toLowerCase().includes("weapon") || child.name === "speakov-weapon")) {
-			child.visible = visible;
-		}
-	});
+	const roots = [
+		gameState?.localAvatar?.root,
+		gameState?.localAvatarPose,
+		gameState?.playerContainer
+	].filter(Boolean);
+
+	for (const root of roots) {
+		root.traverse((child) => {
+			if (child.userData && (child.userData.speakiMagicStaff || child.name?.toLowerCase().includes("staff") || child.name?.toLowerCase().includes("weapon") || child.name === "speakov-weapon")) {
+				child.visible = visible;
+			}
+		});
+	}
+
 	const rHand = spkmodGetAvatarBone('right');
 	if (rHand && rHand.children) {
 		for (const child of rHand.children) {
@@ -9353,7 +9588,7 @@ function spkmodClearCookingProps() {
 	if (window.spkmodCookingState.props.length > 0) {
 		for (const p of window.spkmodCookingState.props) {
 			if (p && p.parent) p.parent.remove(p);
-			if (p.traverse) {
+			if (p && p.traverse) {
 				p.traverse((child) => {
 					if (child.isMesh) {
 						if (child.geometry) child.geometry.dispose();
@@ -9367,6 +9602,24 @@ function spkmodClearCookingProps() {
 		}
 		window.spkmodCookingState.props = [];
 	}
+
+	// Deep cleanup across all avatar roots just in case
+	const roots = [
+		gameState?.localAvatar?.root,
+		gameState?.localAvatarPose,
+		gameState?.playerContainer
+	].filter(Boolean);
+	for (const r of roots) {
+		const toRemove = [];
+		r.traverse((child) => {
+			if (child.userData?.lunchPropHolder || child.userData?.spkmodCookingProp || child.name === "spkmod_cooking_prop_holder") {
+				toRemove.push(child);
+			}
+		});
+		for (const obj of toRemove) {
+			if (obj.parent) obj.parent.remove(obj);
+		}
+	}
 	spkmodSetWeaponsVisible(true);
 }
 
@@ -9377,53 +9630,66 @@ window.spkmodStartCooking = async function(type = 'chop') {
 		return;
 	}
 
+	// Toggle off if already cooking this exact action (second press stops loop)
+	if (window.spkmodCookingState.active && window.spkmodCookingState.type === type) {
+		window.spkmodStopCooking();
+		return;
+	}
+
 	spkmodClearCookingProps();
 	spkmodSetWeaponsVisible(false);
 
 	window.spkmodCookingState.active = true;
 	window.spkmodCookingState.type = type;
 
-	const rHand = spkmodGetAvatarBone('right');
-	const lHand = spkmodGetAvatarBone('left');
+	// 1. Ensure Three.js core is loaded
+	await spkmodEnsureThree();
 
+	// 2. Play animation and attach props
 	if (type === 'chop') {
 		const clipName = 'lunch_chop';
 		await spkmodLoadCookingAnimation(clipName);
+		ctrl.playCastLoop(clipName);
+		const rHand = spkmodGetAvatarBone('right');
 		if (rHand) {
 			const knife = spkmodCreateKnifeProp();
 			spkmodAttachProp(knife, rHand);
 		}
-		ctrl.playCastLoop(clipName);
 		if (typeof chatLog === 'function') chatLog("🔪 Fast chopping animation loop started!");
 	} else if (type === 'stir') {
 		const clipName = 'lunch_stir';
 		await spkmodLoadCookingAnimation(clipName);
+		ctrl.playCastLoop(clipName);
+		const lHand = spkmodGetAvatarBone('left');
 		if (lHand) {
 			const pan = spkmodCreatePanProp();
 			spkmodAttachProp(pan, lHand);
 		}
+		const rHand = spkmodGetAvatarBone('right');
 		if (rHand) {
 			const ladle = spkmodCreateLadleProp();
 			spkmodAttachProp(ladle, rHand);
 		}
-		ctrl.playCastLoop(clipName);
 		if (typeof chatLog === 'function') chatLog("🍳 Soup stirring animation loop started!");
 	} else if (type === 'plate') {
 		const clipName = 'lunch_plate';
 		await spkmodLoadCookingAnimation(clipName);
+		ctrl.playCastLoop(clipName);
+		const lHand = spkmodGetAvatarBone('left');
 		if (lHand) {
 			const plate = spkmodCreatePlateProp();
 			spkmodAttachProp(plate, lHand);
 		}
+		const rHand = spkmodGetAvatarBone('right');
 		if (rHand) {
 			const ladle = spkmodCreateLadleProp();
 			spkmodAttachProp(ladle, rHand);
 		}
-		ctrl.playCastLoop(clipName);
 		if (typeof chatLog === 'function') chatLog("🍽️ Plating dish animation loop started!");
 	} else if (type === 'serve') {
 		const clipName = 'lunch_serve';
 		await spkmodLoadCookingAnimation(clipName);
+		const rHand = spkmodGetAvatarBone('right');
 		if (rHand) {
 			const dish = spkmodCreatePlateProp();
 			spkmodAttachProp(dish, rHand);
@@ -9439,6 +9705,7 @@ window.spkmodStartCooking = async function(type = 'chop') {
 			spkmodLoadCookingAnimation('lunch_carry_idle'),
 			spkmodLoadCookingAnimation('lunch_carry_run')
 		]);
+		const rHand = spkmodGetAvatarBone('right');
 		if (rHand) {
 			const tray = spkmodCreateTrayProp();
 			spkmodAttachProp(tray, rHand);
@@ -12102,6 +12369,9 @@ if (typeof spkmodI18nRenderers !== "undefined") {
 }
 
 if (typeof window.spkmodUpdatePresetListUI === 'function') window.spkmodUpdatePresetListUI();
+if (typeof window.spkmodRestoreFloatingButtons === 'function') {
+	setTimeout(window.spkmodRestoreFloatingButtons, 100);
+}
 
 
 function updateBeyBladeButtonText() {
