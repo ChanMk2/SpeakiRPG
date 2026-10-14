@@ -831,62 +831,9 @@ var spkmodLang = (window.localStorage && localStorage.getItem("spkmod-lang")) ||
 	}
 })();
 
-var spkmodFallbackTranslations = {
-	"en": {
-		"soccerHeader": "Soccer Uniform", "soccerBtnRed": "Red Team", "soccerBtnBlue": "Blue Team", "soccerBtnNone": "Default",
-		"avatarDyeHeader": "Character Dye & FX (Local Only)", "dyeScopeBody": "Outfit Only", "dyeScopeAll": "Full Avatar",
-		"dyeCustomColor": "Custom Color:", "dyeRainbowSpeed": "Rainbow Speed:", "dyeBtnRainbow": "Rainbow", "dyeBtnRainbowAll": "Rainbow ALL", "dyeBtnRainbowRandom": "Random Rainbow", "dyeBtnShadow": "Void Shadow", "dyeReset": "Reset Character Dye & FX",
-		"dyeColorCrimson": "Crimson", "dyeColorBlue": "Blue", "dyeColorEmerald": "Emerald", "dyeColorGold": "Gold", "dyeColorPurple": "Purple", "dyeColorHotPink": "Hot Pink",
-		"dyeColorCyan": "Cyan", "dyeColorOrange": "Orange", "dyeColorMint": "Mint", "dyeColorAmber": "Amber", "dyeColorPearl": "Pearl", "dyeColorObsidian": "Obsidian",
-		"dyeColorMagenta": "Magenta", "dyeColorIce": "Ice", "dyeColorSepia": "Sepia", "dyeColorLavender": "Lavender", "dyeColorLime": "Lime", "dyeColorIndigo": "Indigo"
-	},
-	"ja": {
-		"soccerHeader": "サッカーユニフォーム", "soccerBtnRed": "レッドチーム", "soccerBtnBlue": "ブルーチーム", "soccerBtnNone": "デフォルト",
-		"avatarDyeHeader": "キャラ染色＆エフェクト (ローカルのみ)", "dyeScopeBody": "衣装のみ", "dyeScopeAll": "全体",
-		"dyeCustomColor": "カスタム色:", "dyeRainbowSpeed": "レインボー速度:", "dyeBtnRainbow": "レインボー", "dyeBtnRainbowAll": "全員レインボー", "dyeBtnRainbowRandom": "ランダムレインボー", "dyeBtnShadow": "ヴォイドシャドウ", "dyeReset": "キャラ染色＆FXをリセット",
-		"dyeColorCrimson": "クリムゾン", "dyeColorBlue": "ブルー", "dyeColorEmerald": "エメラルド", "dyeColorGold": "ゴールド", "dyeColorPurple": "パープル", "dyeColorHotPink": "ホットピンク",
-		"dyeColorCyan": "シアン", "dyeColorOrange": "オレンジ", "dyeColorMint": "ミント", "dyeColorAmber": "アンバー", "dyeColorPearl": "パール", "dyeColorObsidian": "オブシディアン",
-		"dyeColorMagenta": "マゼンタ", "dyeColorIce": "アイス", "dyeColorSepia": "セピア", "dyeColorLavender": "ラベンダー", "dyeColorLime": "ライム", "dyeColorIndigo": "インディゴ"
-	},
-	"ko": {
-		"soccerHeader": "축구 유니폼", "soccerBtnRed": "레드팀", "soccerBtnBlue": "블루팀", "soccerBtnNone": "기본",
-		"avatarDyeHeader": "캐릭터 염색 & 효과 (로컬 전용)", "dyeScopeBody": "의상만", "dyeScopeAll": "전체",
-		"dyeCustomColor": "사용자 지정 색상:", "dyeRainbowSpeed": "무지개 속도:", "dyeBtnRainbow": "무지개", "dyeBtnRainbowAll": "전원 무지개", "dyeBtnRainbowRandom": "랜덤 무지개", "dyeBtnShadow": "보이드 섀도우", "dyeReset": "캐릭터 염색 및 효과 초기화",
-		"dyeColorCrimson": "크림슨", "dyeColorBlue": "블루", "dyeColorEmerald": "에메랄드", "dyeColorGold": "골드", "dyeColorPurple": "퍼플", "dyeColorHotPink": "핫핑크",
-		"dyeColorCyan": "시안", "dyeColorOrange": "오렌지", "dyeColorMint": "민트", "dyeColorAmber": "앰버", "dyeColorPearl": "펄", "dyeColorObsidian": "흑요석",
-		"dyeColorMagenta": "마젠타", "dyeColorIce": "아이스", "dyeColorSepia": "세피아", "dyeColorLavender": "라벤더", "dyeColorLime": "라임", "dyeColorIndigo": "인디고"
-	},
-	"zh-TW": {
-		"soccerHeader": "足球隊服", "soccerBtnRed": "紅隊", "soccerBtnBlue": "藍隊", "soccerBtnNone": "預設",
-		"avatarDyeHeader": "角色染色與特效 (僅本地)", "dyeScopeBody": "僅服裝", "dyeScopeAll": "全角色",
-		"dyeCustomColor": "自訂顏色:", "dyeRainbowSpeed": "彩虹速度:", "dyeBtnRainbow": "彩虹", "dyeBtnRainbowAll": "全員彩虹", "dyeBtnRainbowRandom": "隨機彩虹", "dyeBtnShadow": "虛空暗影", "dyeReset": "重設角色染色與特效",
-		"dyeColorCrimson": "緋紅", "dyeColorBlue": "寶藍", "dyeColorEmerald": "翡翠綠", "dyeColorGold": "金黃", "dyeColorPurple": "紫色", "dyeColorHotPink": "亮粉",
-		"dyeColorCyan": "青藍", "dyeColorOrange": "橙橘", "dyeColorMint": "薄荷綠", "dyeColorAmber": "琥珀", "dyeColorPearl": "珍珠白", "dyeColorObsidian": "黑曜石",
-		"dyeColorMagenta": "洋紅", "dyeColorIce": "冰藍", "dyeColorSepia": "深褐", "dyeColorLavender": "薰衣草", "dyeColorLime": "萊姆綠", "dyeColorIndigo": "靛藍"
-	},
-	"zh-CN": {
-		"soccerHeader": "足球队服", "soccerBtnRed": "红队", "soccerBtnBlue": "蓝队", "soccerBtnNone": "默认",
-		"avatarDyeHeader": "角色染色与特效 (仅本地)", "dyeScopeBody": "仅服装", "dyeScopeAll": "全角色",
-		"dyeCustomColor": "自定义颜色:", "dyeRainbowSpeed": "彩虹速度:", "dyeBtnRainbow": "彩虹", "dyeBtnRainbowAll": "全员彩虹", "dyeBtnRainbowRandom": "随机彩虹", "dyeBtnShadow": "虚空暗影", "dyeReset": "重置角色染色与特效",
-		"dyeColorCrimson": "绯红", "dyeColorBlue": "宝蓝", "dyeColorEmerald": "翡翠绿", "dyeColorGold": "金黄", "dyeColorPurple": "紫色", "dyeColorHotPink": "亮粉",
-		"dyeColorCyan": "青蓝", "dyeColorOrange": "橙橘", "dyeColorMint": "薄荷绿", "dyeColorAmber": "琥珀", "dyeColorPearl": "珍珠白", "dyeColorObsidian": "黑曜石",
-		"dyeColorMagenta": "洋红", "dyeColorIce": "冰蓝", "dyeColorSepia": "深褐", "dyeColorLavender": "薰衣草", "dyeColorLime": "莱姆绿", "dyeColorIndigo": "靛蓝"
-	},
-	"es-419": {
-		"soccerHeader": "Uniforme de Fútbol", "soccerBtnRed": "Equipo Rojo", "soccerBtnBlue": "Equipo Azul", "soccerBtnNone": "Predeterminado",
-		"avatarDyeHeader": "Tinte y Efectos de Personaje (Solo Local)", "dyeScopeBody": "Solo Atuendo", "dyeScopeAll": "Avatar Completo",
-		"dyeCustomColor": "Color Personalizado:", "dyeRainbowSpeed": "Velocidad de Arcoíris:", "dyeBtnRainbow": "Arcoíris", "dyeBtnRainbowAll": "Arcoíris TODOS", "dyeBtnRainbowRandom": "Arcoíris Aleatorio", "dyeBtnShadow": "Sombra del Vacío", "dyeReset": "Restablecer Tinte y Efectos",
-		"dyeColorCrimson": "Carmesí", "dyeColorBlue": "Azul", "dyeColorEmerald": "Esmeralda", "dyeColorGold": "Dorado", "dyeColorPurple": "Púrpura", "dyeColorHotPink": "Rosa Brillante",
-		"dyeColorCyan": "Cian", "dyeColorOrange": "Naranja", "dyeColorMint": "Menta", "dyeColorAmber": "Ámbar", "dyeColorPearl": "Perla", "dyeColorObsidian": "Obsidiana",
-		"dyeColorMagenta": "Magenta", "dyeColorIce": "Hielo", "dyeColorSepia": "Sepia", "dyeColorLavender": "Lavanda", "dyeColorLime": "Lima", "dyeColorIndigo": "Índigo"
-	}
-};
-
 function t(key, ...args) {
 	var str = (spkmodTranslations[spkmodLang] && spkmodTranslations[spkmodLang][key])
-		|| (spkmodFallbackTranslations[spkmodLang] && spkmodFallbackTranslations[spkmodLang][key])
 		|| (spkmodTranslations.en && spkmodTranslations.en[key])
-		|| (spkmodFallbackTranslations.en && spkmodFallbackTranslations.en[key])
 		|| key;
 	args.forEach((a, i) => { str = str.split(`{${i}}`).join(a); });
 	return str;
@@ -4537,7 +4484,7 @@ document.body.appendChild(
 					title: t("eventInfoBtnTooltip"),
 					onclick: () => {
 						lunHudElements.eventModal.classList.add("hidden");
-						window.gameState.onMinigameNpcInteract();
+						window.gameState.onNpcInteract("minigame")
 					}
 				}),
 				lunPanelElements.eventBtn = buildElement("button", {
@@ -8477,8 +8424,468 @@ window.spkmodResetAvatarColors = function() {
 	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
 };
 
+// ============================================================================
+// COOKING ANIMATIONS & PROPS (Chop, Stir, Plate, Serve, Carry)
+// ============================================================================
 
+window.spkmodCookingState = {
+	active: false,
+	type: null,
+	props: [],
+	savedStaffVisibility: null
+};
 
+let _spkmodFBXLoaderClass = null;
+async function spkmodEnsureFBXLoader() {
+	if (_spkmodFBXLoaderClass) return _spkmodFBXLoaderClass;
+	if (typeof THREE !== 'undefined' && THREE.FBXLoader) {
+		_spkmodFBXLoaderClass = THREE.FBXLoader;
+		return _spkmodFBXLoaderClass;
+	}
+	try {
+		const mod = await import('https://esm.sh/v135/three@0.185.0/examples/jsm/loaders/FBXLoader.js');
+		_spkmodFBXLoaderClass = mod.FBXLoader;
+		return _spkmodFBXLoaderClass;
+	} catch (e) {
+		console.warn("[SpeakiMod+] Failed to load FBXLoader:", e);
+		return null;
+	}
+}
+
+const _spkmodLoadedCookingClips = {};
+async function spkmodLoadCookingAnimation(clipName) {
+	const ctrl = gameState?.localAnimationController;
+	if (!ctrl) return false;
+	if (ctrl.actions && ctrl.actions[clipName]) return true;
+	if (_spkmodLoadedCookingClips[clipName]) {
+		const clip = _spkmodLoadedCookingClips[clipName];
+		const action = ctrl.mixer.clipAction(clip);
+		ctrl.actions[clipName] = action;
+		return true;
+	}
+	const Loader = await spkmodEnsureFBXLoader();
+	if (!Loader) return false;
+	const loader = new Loader();
+	const url = `/models/speaki/animations/${clipName}.fbx`;
+	return new Promise((resolve) => {
+		loader.load(url, (fbx) => {
+			if (fbx.animations && fbx.animations.length > 0) {
+				const clip = fbx.animations[0];
+				clip.name = clipName;
+				_spkmodLoadedCookingClips[clipName] = clip;
+				if (ctrl && ctrl.mixer) {
+					const action = ctrl.mixer.clipAction(clip);
+					ctrl.actions[clipName] = action;
+					resolve(true);
+					return;
+				}
+			}
+			resolve(false);
+		}, undefined, (err) => {
+			console.warn("[SpeakiMod+] Error loading FBX animation:", clipName, err);
+			resolve(false);
+		});
+	});
+}
+
+function spkmodFindAvatarBone(boneName) {
+	const avatarRoot = gameState?.localAvatar?.root;
+	if (!avatarRoot) return null;
+	let found = null;
+	const lower = boneName.toLowerCase();
+	avatarRoot.traverse((child) => {
+		if (found) return;
+		if (child.isBone && child.name && child.name.toLowerCase().includes(lower)) {
+			found = child;
+		}
+	});
+	return found;
+}
+
+function spkmodCreateKnifeProp() {
+	if (typeof THREE === 'undefined') return null;
+	const group = new THREE.Group();
+	group.name = "spkmod_prop_knife";
+	const bladeMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.85, roughness: 0.2 });
+	const bladeGeom = new THREE.BoxGeometry(0.04, 0.25, 0.01);
+	const blade = new THREE.Mesh(bladeGeom, bladeMat);
+	blade.position.set(0, 0.15, 0);
+	group.add(blade);
+	const handleMat = new THREE.MeshStandardMaterial({ color: 0x4a2e18, roughness: 0.7 });
+	const handleGeom = new THREE.CylinderGeometry(0.02, 0.02, 0.12, 8);
+	const handle = new THREE.Mesh(handleGeom, handleMat);
+	handle.position.set(0, -0.04, 0);
+	group.add(handle);
+	group.scale.set(1.4, 1.4, 1.4);
+	return group;
+}
+
+function spkmodCreatePanProp() {
+	if (typeof THREE === 'undefined') return null;
+	const group = new THREE.Group();
+	group.name = "spkmod_prop_pan";
+	const panMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.6, roughness: 0.4 });
+	const panGeom = new THREE.CylinderGeometry(0.22, 0.18, 0.08, 16);
+	const pan = new THREE.Mesh(panGeom, panMat);
+	group.add(pan);
+	const handleMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
+	const handleGeom = new THREE.CylinderGeometry(0.02, 0.02, 0.25, 8);
+	const handle = new THREE.Mesh(handleGeom, handleMat);
+	handle.rotation.z = Math.PI / 2;
+	handle.position.set(0.24, 0, 0);
+	group.add(handle);
+	group.scale.set(1.1, 1.1, 1.1);
+	return group;
+}
+
+function spkmodCreatePlateProp() {
+	if (typeof THREE === 'undefined') return null;
+	const group = new THREE.Group();
+	group.name = "spkmod_prop_plate";
+	const plateMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
+	const plateGeom = new THREE.CylinderGeometry(0.2, 0.15, 0.03, 16);
+	const plate = new THREE.Mesh(plateGeom, plateMat);
+	group.add(plate);
+	group.scale.set(1.3, 1.3, 1.3);
+	return group;
+}
+
+function spkmodClearCookingProps() {
+	if (window.spkmodCookingState.props.length > 0) {
+		for (const p of window.spkmodCookingState.props) {
+			if (p && p.parent) p.parent.remove(p);
+			if (p.traverse) {
+				p.traverse((child) => {
+					if (child.isMesh) {
+						if (child.geometry) child.geometry.dispose();
+						if (child.material) {
+							if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+							else child.material.dispose();
+						}
+					}
+				});
+			}
+		}
+		window.spkmodCookingState.props = [];
+	}
+	const avatarRoot = gameState?.localAvatar?.root;
+	if (avatarRoot) {
+		avatarRoot.traverse((child) => {
+			if (child.userData && child.userData.__spkmodStaffHidden) {
+				child.visible = true;
+				delete child.userData.__spkmodStaffHidden;
+			}
+		});
+	}
+}
+
+function spkmodHideStaffWhileCooking() {
+	const avatarRoot = gameState?.localAvatar?.root;
+	if (!avatarRoot) return;
+	avatarRoot.traverse((child) => {
+		if (child.userData && (child.userData.speakiMagicStaff || child.name?.toLowerCase().includes("staff") || child.name?.toLowerCase().includes("weapon"))) {
+			if (child.visible) {
+				child.visible = false;
+				child.userData.__spkmodStaffHidden = true;
+			}
+		}
+	});
+}
+
+window.spkmodStartCooking = async function(type = 'chop') {
+	const ctrl = gameState?.localAnimationController;
+	if (!ctrl) {
+		if (typeof chatLog === 'function') chatLog("[Cooking] Error: Game animation controller not ready.");
+		return;
+	}
+
+	spkmodClearCookingProps();
+	spkmodHideStaffWhileCooking();
+
+	window.spkmodCookingState.active = true;
+	window.spkmodCookingState.type = type;
+
+	const rHand = spkmodFindAvatarBone('rhand') || spkmodFindAvatarBone('righthand');
+	const lHand = spkmodFindAvatarBone('lhand') || spkmodFindAvatarBone('lefthand');
+
+	const clipName = `lunch_${type}`;
+	await spkmodLoadCookingAnimation(clipName);
+
+	if (type === 'chop') {
+		if (rHand) {
+			const knife = spkmodCreateKnifeProp();
+			if (knife) {
+				knife.position.set(0, 0.05, 0);
+				knife.rotation.set(0, 0, Math.PI / 4);
+				rHand.add(knife);
+				window.spkmodCookingState.props.push(knife);
+			}
+		}
+		if (typeof ctrl.playLunchChop === 'function') {
+			ctrl.playLunchChop();
+		} else {
+			ctrl.playCastLoop(clipName);
+		}
+		if (typeof chatLog === 'function') chatLog("🔪 Fast chopping animation loop started!");
+	} else if (type === 'stir') {
+		if (lHand) {
+			const pan = spkmodCreatePanProp();
+			if (pan) {
+				pan.position.set(0, 0.1, 0.1);
+				lHand.add(pan);
+				window.spkmodCookingState.props.push(pan);
+			}
+		}
+		if (rHand) {
+			const knife = spkmodCreateKnifeProp();
+			if (knife) {
+				knife.position.set(0, 0.05, 0);
+				rHand.add(knife);
+				window.spkmodCookingState.props.push(knife);
+			}
+		}
+		if (typeof ctrl.playLunchStir === 'function') {
+			ctrl.playLunchStir();
+		} else {
+			ctrl.playCastLoop(clipName);
+		}
+		if (typeof chatLog === 'function') chatLog("🍳 Soup stirring animation loop started!");
+	} else if (type === 'plate') {
+		if (lHand) {
+			const plate = spkmodCreatePlateProp();
+			if (plate) {
+				plate.position.set(0, 0.08, 0.08);
+				lHand.add(plate);
+				window.spkmodCookingState.props.push(plate);
+			}
+		}
+		if (typeof ctrl.playLunchPlate === 'function') {
+			ctrl.playLunchPlate();
+		} else {
+			ctrl.playCastLoop(clipName);
+		}
+		if (typeof chatLog === 'function') chatLog("🍽️ Plating dish animation loop started!");
+	} else if (type === 'serve') {
+		if (rHand) {
+			const plate = spkmodCreatePlateProp();
+			if (plate) {
+				rHand.add(plate);
+				window.spkmodCookingState.props.push(plate);
+			}
+		}
+		if (typeof ctrl.playLunchServe === 'function') {
+			ctrl.playLunchServe();
+		} else {
+			ctrl.playOneShot(clipName, 'emote');
+		}
+		if (typeof chatLog === 'function') chatLog("🛎️ Serving delicious meal!");
+	} else if (type === 'carry') {
+		ctrl.setCarrying(true);
+		if (typeof chatLog === 'function') chatLog("📦 Carrying food tray stance activated!");
+	}
+};
+
+window.spkmodStopCooking = function() {
+	window.spkmodCookingState.active = false;
+	window.spkmodCookingState.type = null;
+	spkmodClearCookingProps();
+	const ctrl = gameState?.localAnimationController;
+	if (ctrl) {
+		ctrl.stopCastLoop();
+		ctrl.setCarrying(false);
+	}
+	if (typeof chatLog === 'function') chatLog("🛑 Stopped cooking & restored weapon.");
+};
+
+// ============================================================================
+// HELICOPTER COPTER HAT & SPECIAL POSES
+// ============================================================================
+
+window.spkmodCopterHatActive = false;
+window.spkmodCopterHatAllActive = false;
+
+window.spkmodToggleCopterHat = function(scope = 'self') {
+	const ctrl = gameState?.localAnimationController;
+	if (scope === 'all') {
+		window.spkmodCopterHatAllActive = !window.spkmodCopterHatAllActive;
+		if (window.spkmodCopterHatAllActive) {
+			ctrl?.showReviveHat();
+			if (gameState?.remotePlayers?.remotePlayers) {
+				for (const [id, rp] of gameState.remotePlayers.remotePlayers) {
+					rp.avatar?.animationController?.showReviveHat();
+				}
+			}
+			if (typeof chatLog === 'function') chatLog("🚁 Propeller copter hats given to EVERYONE in town!");
+		} else {
+			ctrl?.hideReviveHat();
+			if (gameState?.remotePlayers?.remotePlayers) {
+				for (const [id, rp] of gameState.remotePlayers.remotePlayers) {
+					rp.avatar?.animationController?.hideReviveHat();
+				}
+			}
+			if (typeof chatLog === 'function') chatLog("🚁 Removed all copter hats.");
+		}
+	} else {
+		window.spkmodCopterHatActive = !window.spkmodCopterHatActive;
+		if (window.spkmodCopterHatActive) {
+			ctrl?.showReviveHat();
+			if (typeof chatLog === 'function') chatLog("🚁 Propeller copter hat equipped!");
+		} else {
+			ctrl?.hideReviveHat();
+			if (typeof chatLog === 'function') chatLog("🚁 Propeller copter hat removed.");
+		}
+	}
+};
+
+window.spkmodPlaySpellDance = function() {
+	const ctrl = gameState?.localAnimationController;
+	if (ctrl && typeof ctrl.playReturnCastDance === 'function') {
+		ctrl.playReturnCastDance();
+		if (typeof chatLog === 'function') chatLog("✨🌀 Magical portal spell dance activated!");
+	}
+};
+
+window.spkmodPlayGather = function() {
+	const ctrl = gameState?.localAnimationController;
+	if (ctrl && typeof ctrl.playGatherAnim === 'function') {
+		ctrl.playGatherAnim();
+		if (typeof chatLog === 'function') chatLog("🌿 Foraging / gathering loop activated! (Move or click Stop to cancel)");
+	}
+};
+
+// ============================================================================
+// STEP PARTICLE TRAIL (Stars, Rainbow, Hearts)
+// ============================================================================
+
+window.spkmodStepTrail = {
+	enabled: false,
+	type: 'stars',
+	distAccum: 0,
+	lastPos: null,
+	animId: null
+};
+
+const SPKMOD_RAINBOW_TRAIL_COLORS = ['#ff0055', '#ff8800', '#ffd700', '#00ff88', '#00d4ff', '#b347ff'];
+let spkmodRainbowTrailIdx = 0;
+
+function spkmodEmitStepTrailFx(pos) {
+	if (!gameState?.skillParticles) return;
+	const type = window.spkmodStepTrail.type || 'stars';
+
+	if (type === 'stars') {
+		gameState.skillParticles.emit({
+			count: 14,
+			texture: 'star4',
+			color: '#ffd700',
+			axis: 'sphere',
+			coneAngleDeg: 80,
+			speedMinMps: 0.6,
+			speedMaxMps: 1.8,
+			gravityMps2: 2.0,
+			sizeM: 0.28,
+			lifeSecMin: 0.4,
+			lifeSecMax: 0.8,
+			spawnJitterSec: 0.02
+		}, pos);
+	} else if (type === 'rainbow') {
+		const color = SPKMOD_RAINBOW_TRAIL_COLORS[spkmodRainbowTrailIdx++ % SPKMOD_RAINBOW_TRAIL_COLORS.length];
+		gameState.skillParticles.emit({
+			count: 16,
+			texture: 'star4',
+			color: color,
+			axis: 'up',
+			coneAngleDeg: 55,
+			speedMinMps: 1.0,
+			speedMaxMps: 2.5,
+			gravityMps2: 2.5,
+			sizeM: 0.32,
+			lifeSecMin: 0.5,
+			lifeSecMax: 1.0,
+			spawnJitterSec: 0.02
+		}, pos);
+	} else if (type === 'hearts') {
+		if (gameState.bloomEffects?.spawnHearts && gameState.playerContainer) {
+			gameState.bloomEffects.spawnHearts(gameState.playerContainer);
+		}
+	}
+}
+
+function spkmodStepTrailLoop() {
+	if (!window.spkmodStepTrail.enabled) return;
+	const curPos = gameState?.playerContainer?.position;
+	if (curPos) {
+		const st = window.spkmodStepTrail;
+		if (st.lastPos) {
+			const dist = Math.hypot(curPos.x - st.lastPos.x, curPos.z - st.lastPos.z);
+			st.distAccum += dist;
+			if (st.distAccum >= 0.6) {
+				st.distAccum = 0;
+				spkmodEmitStepTrailFx(curPos);
+			}
+		} else {
+			st.lastPos = curPos.clone();
+		}
+		st.lastPos.copy(curPos);
+	}
+	window.spkmodStepTrail.animId = requestAnimationFrame(spkmodStepTrailLoop);
+}
+
+window.spkmodToggleStepTrail = function(enabled, type) {
+	if (type) window.spkmodStepTrail.type = type;
+	if (enabled !== undefined) {
+		window.spkmodStepTrail.enabled = enabled;
+	} else {
+		window.spkmodStepTrail.enabled = !window.spkmodStepTrail.enabled;
+	}
+
+	if (window.spkmodStepTrail.animId) {
+		cancelAnimationFrame(window.spkmodStepTrail.animId);
+		window.spkmodStepTrail.animId = null;
+	}
+
+	if (window.spkmodStepTrail.enabled) {
+		window.spkmodStepTrail.distAccum = 0;
+		window.spkmodStepTrail.lastPos = null;
+		window.spkmodStepTrail.animId = requestAnimationFrame(spkmodStepTrailLoop);
+		if (typeof chatLog === 'function') chatLog(`👣 Step Particle Trail ENABLED (${window.spkmodStepTrail.type})! Walk around to see sparkles.`);
+	} else {
+		if (typeof chatLog === 'function') chatLog("🛑 Step Particle Trail DISABLED.");
+	}
+	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
+};
+
+window.spkmodSetTrailType = function(type) {
+	window.spkmodStepTrail.type = type;
+	if (!window.spkmodStepTrail.enabled) {
+		window.spkmodToggleStepTrail(true, type);
+	} else {
+		if (typeof chatLog === 'function') chatLog(`✨ Step trail switched to: ${type.toUpperCase()}`);
+		if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
+	}
+};
+
+window.spkmodBurstTrail = function() {
+	if (!gameState?.playerContainer?.position) return;
+	if (gameState.skillParticles) {
+		gameState.skillParticles.emit({
+			count: 50,
+			texture: 'star4',
+			color: '#ffd700',
+			axis: 'sphere',
+			speedMinMps: 1.5,
+			speedMaxMps: 4.2,
+			gravityMps2: 2.5,
+			sizeM: 0.38,
+			lifeSecMin: 0.6,
+			lifeSecMax: 1.5,
+			spawnJitterSec: 0.04
+		}, gameState.playerContainer.position);
+	}
+	if (gameState.bloomEffects && gameState.localAvatar?.root) {
+		gameState.bloomEffects.burst(gameState.localAvatar.root);
+	}
+	if (typeof chatLog === 'function') chatLog("💥 Starburst Explosion triggered!");
+};
 
 
 const mapModalElements = {};
@@ -8788,7 +9195,7 @@ document.body.appendChild(
 	lunHudElements.effectsModal = buildElement("div", {
 		id: "spkmod-effects-modal",
 		className: "hidden",
-		style: "width: 580px; max-width: 95vw; min-width: 480px; max-width: 90vw; overflow-x: hidden;"
+		style: "width: 650px; min-width: 500px; max-width: 95vw; overflow-x: hidden;"
 	}, [
 		buildElement("div", { className: "spkmod-panel-cat", style: "justify-content: space-between;" }, [
 			lunPanelElements.effectsModalTitle = buildElement("span", {
@@ -8801,7 +9208,7 @@ document.body.appendChild(
 				onclick: _ => lunHudElements.effectsModal.classList.add("hidden")
 			})
 		]),
-		buildElement("div", { style: "display: flex; flex-direction: row; gap: 10px; max-height: 70vh; overflow-y: auto; overflow-x: hidden; padding: 4px; box-sizing: border-box;" }, [
+		buildElement("div", { style: "display: flex; flex-direction: row; gap: 10px; max-height: 75vh; overflow-y: auto; overflow-x: hidden; padding: 4px; box-sizing: border-box;" }, [
 			buildElement("div", { style: "display: flex; flex-direction: column; gap: 8px; flex: 1;" }, [
 				lunPanelElements.effectsWarning = buildElement("div", {
 					innerText: t("localEffectsWarning"),
@@ -9001,6 +9408,88 @@ document.body.appendChild(
 							}
 						})
 					])
+				]),
+
+				// 🍳 Cooking & Kitchen Animations
+				buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px; border-top: 1px solid #555; padding-top: 6px;" }, [
+					editsModalElements.cookingHeader = buildElement("div", {
+						className: "spkmod-panel-cat-header",
+						innerText: "🍳 " + (t("cookingHeader") || "Cooking Animations"),
+						style: "margin-top: 0px;"
+					}),
+					buildElement("div", { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px;" }, [
+						editsModalElements.cookBtnChop = buildElement("button", {
+							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center;",
+							innerText: t("cookBtnChop") || "🔪 Chop",
+							title: "Loop fast chopping animation with kitchen knife",
+							onclick: () => window.spkmodStartCooking && window.spkmodStartCooking("chop")
+						}),
+						editsModalElements.cookBtnStir = buildElement("button", {
+							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center;",
+							innerText: t("cookBtnStir") || "🍳 Stir",
+							title: "Loop stirring soup animation with pan & ladle",
+							onclick: () => window.spkmodStartCooking && window.spkmodStartCooking("stir")
+						}),
+						editsModalElements.cookBtnPlate = buildElement("button", {
+							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center;",
+							innerText: t("cookBtnPlate") || "🍽️ Plate",
+							title: "Loop plating food animation",
+							onclick: () => window.spkmodStartCooking && window.spkmodStartCooking("plate")
+						}),
+						editsModalElements.cookBtnServe = buildElement("button", {
+							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center;",
+							innerText: t("cookBtnServe") || "🛎️ Serve",
+							title: "Play elegant dish presentation one-shot",
+							onclick: () => window.spkmodStartCooking && window.spkmodStartCooking("serve")
+						}),
+						editsModalElements.cookBtnCarry = buildElement("button", {
+							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center;",
+							innerText: t("cookBtnCarry") || "📦 Carry",
+							title: "Carry food tray stance while walking or standing",
+							onclick: () => window.spkmodStartCooking && window.spkmodStartCooking("carry")
+						}),
+						editsModalElements.cookBtnStop = buildElement("button", {
+							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center; color: #ffaaaa;",
+							innerText: t("cookBtnStop") || "🛑 Stop",
+							title: "Stop cooking and restore weapon",
+							onclick: () => window.spkmodStopCooking && window.spkmodStopCooking()
+						})
+					])
+				]),
+
+				// 🚁 Copter Hat & Special Poses
+				buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px; border-top: 1px solid #555; padding-top: 6px;" }, [
+					editsModalElements.copterHeader = buildElement("div", {
+						className: "spkmod-panel-cat-header",
+						innerText: "🚁 " + (t("copterHeader") || "Copter Hat & Special Poses"),
+						style: "margin-top: 0px;"
+					}),
+					buildElement("div", { style: "display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px;" }, [
+						editsModalElements.copterBtnSelf = buildElement("button", {
+							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center; color: #ffd54a; font-weight: bold;",
+							innerText: t("copterBtnSelf") || "🚁 Copter (Self)",
+							title: "Toggle spinning propeller pumpkin copter hat on yourself",
+							onclick: () => window.spkmodToggleCopterHat && window.spkmodToggleCopterHat("self")
+						}),
+						editsModalElements.copterBtnAll = buildElement("button", {
+							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center; color: #38bdf8; font-weight: bold;",
+							innerText: t("copterBtnAll") || "🚁 Copter (ALL)",
+							title: "Toggle spinning propeller hats on EVERY player in town!",
+							onclick: () => window.spkmodToggleCopterHat && window.spkmodToggleCopterHat("all")
+						}),
+						editsModalElements.spellDanceBtn = buildElement("button", {
+							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center; color: #c084fc;",
+							innerText: t("spellDanceBtn") || "✨🌀 Spell Dance",
+							title: "Play magical town return portal dance",
+							onclick: () => window.spkmodPlaySpellDance && window.spkmodPlaySpellDance()
+						}),
+						editsModalElements.gatherAnimBtn = buildElement("button", {
+							className: "spkmod-panel-btn", style: "padding: 5px 2px; font-size: 10px; text-align: center; color: #84cc16;",
+							innerText: t("gatherAnimBtn") || "🌿 Gather Loop",
+							title: "Play ground foraging & harvesting loop",
+							onclick: () => window.spkmodPlayGather && window.spkmodPlayGather()
+						})
+					])
 				])
 			]),
 			buildElement("div", { style: "display: flex; flex-direction: column; gap: 8px; flex: 1; border-left: 1px solid #555; padding-left: 10px;" }, [
@@ -9075,7 +9564,61 @@ document.body.appendChild(
 					className: "spkmod-panel-btn", style: "padding: 6px; font-size: 11px; margin-top: 8px; border-color: #55ff55 !important;",
 					innerText: t("reviveAllBtn"),
 					onclick: () => window.spkmodReviveAll && window.spkmodReviveAll()
-				})
+				}),
+
+				// ✨ Step Particle Trail
+				buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px; border-top: 1px solid #555; padding-top: 6px; margin-top: 4px;" }, [
+					editsModalElements.stepTrailHeader = buildElement("div", {
+						className: "spkmod-panel-cat-header",
+						innerText: "✨ " + (t("stepTrailHeader") || "Step Particle Trail"),
+						style: "margin-top: 0px;"
+					}),
+					buildElement("div", { style: "display: flex; gap: 4px;" }, [
+						editsModalElements.stepTrailToggleBtn = buildElement("button", {
+							className: "spkmod-panel-btn",
+							style: "flex: 1; padding: 5px 2px; font-size: 10px; text-align: center; font-weight: bold; color: " + (window.spkmodStepTrail?.enabled ? "#55ff55" : "#ffaaaa") + ";",
+							innerText: (t("stepTrailToggle") || "Trail: ") + (window.spkmodStepTrail?.enabled ? "ON" : "OFF"),
+							onclick: () => {
+								if (window.spkmodToggleStepTrail) window.spkmodToggleStepTrail();
+							}
+						}),
+						editsModalElements.stepTrailBurstBtn = buildElement("button", {
+							className: "spkmod-panel-btn",
+							style: "flex: 1; padding: 5px 2px; font-size: 10px; text-align: center; color: #ffd54a; font-weight: bold;",
+							innerText: t("stepTrailBurst") || "💥 Starburst Explosion",
+							title: "Trigger 50-star firework burst and avatar squash & stretch",
+							onclick: () => {
+								if (window.spkmodBurstTrail) window.spkmodBurstTrail();
+							}
+						})
+					]),
+					buildElement("div", { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px;" }, [
+						editsModalElements.stepTrailStarsBtn = buildElement("button", {
+							className: "spkmod-panel-btn",
+							style: "padding: 4px 2px; font-size: 9.5px; text-align: center; color: #ffd700;",
+							innerText: t("stepTrailStars") || "⭐ Stars",
+							onclick: () => {
+								if (window.spkmodSetTrailType) window.spkmodSetTrailType('stars');
+							}
+						}),
+						editsModalElements.stepTrailRainbowBtn = buildElement("button", {
+							className: "spkmod-panel-btn",
+							style: "padding: 4px 2px; font-size: 9.5px; text-align: center; color: #ec4899;",
+							innerText: t("stepTrailRainbow") || "🌈 Rainbow",
+							onclick: () => {
+								if (window.spkmodSetTrailType) window.spkmodSetTrailType('rainbow');
+							}
+						}),
+						editsModalElements.stepTrailHeartsBtn = buildElement("button", {
+							className: "spkmod-panel-btn",
+							style: "padding: 4px 2px; font-size: 9.5px; text-align: center; color: #f43f5e;",
+							innerText: t("stepTrailHearts") || "💖 Hearts",
+							onclick: () => {
+								if (window.spkmodSetTrailType) window.spkmodSetTrailType('hearts');
+							}
+						})
+					])
+				])
 			])
 		])
 	])
@@ -9443,6 +9986,35 @@ function updateLocalEditsUI() {
 	if (editsModalElements.rainbowSpeedSlider) {
 		editsModalElements.rainbowSpeedSlider.value = typeof window.spkmodRainbowSpeed === 'number' ? window.spkmodRainbowSpeed : 1.0;
 	}
+
+	// Cooking Buttons
+	if (editsModalElements.cookingHeader) setText(editsModalElements.cookingHeader, "🍳 " + (t("cookingHeader") || "Cooking Animations"));
+	if (editsModalElements.cookBtnChop) setText(editsModalElements.cookBtnChop, t("cookBtnChop") || "🔪 Chop");
+	if (editsModalElements.cookBtnStir) setText(editsModalElements.cookBtnStir, t("cookBtnStir") || "🍳 Stir");
+	if (editsModalElements.cookBtnPlate) setText(editsModalElements.cookBtnPlate, t("cookBtnPlate") || "🍽️ Plate");
+	if (editsModalElements.cookBtnServe) setText(editsModalElements.cookBtnServe, t("cookBtnServe") || "🛎️ Serve");
+	if (editsModalElements.cookBtnCarry) setText(editsModalElements.cookBtnCarry, t("cookBtnCarry") || "📦 Carry");
+	if (editsModalElements.cookBtnStop) setText(editsModalElements.cookBtnStop, t("cookBtnStop") || "🛑 Stop");
+
+	// Copter & Poses
+	if (editsModalElements.copterHeader) setText(editsModalElements.copterHeader, "🚁 " + (t("copterHeader") || "Copter Hat & Special Poses"));
+	if (editsModalElements.copterBtnSelf) setText(editsModalElements.copterBtnSelf, t("copterBtnSelf") || "🚁 Copter (Self)");
+	if (editsModalElements.copterBtnAll) setText(editsModalElements.copterBtnAll, t("copterBtnAll") || "🚁 Copter (ALL)");
+	if (editsModalElements.spellDanceBtn) setText(editsModalElements.spellDanceBtn, t("spellDanceBtn") || "✨🌀 Spell Dance");
+	if (editsModalElements.gatherAnimBtn) setText(editsModalElements.gatherAnimBtn, t("gatherAnimBtn") || "🌿 Gather Loop");
+
+	// Step Trail
+	if (editsModalElements.stepTrailHeader) setText(editsModalElements.stepTrailHeader, "✨ " + (t("stepTrailHeader") || "Step Particle Trail"));
+	if (editsModalElements.stepTrailToggleBtn) {
+		const isEnabled = window.spkmodStepTrail?.enabled;
+		setText(editsModalElements.stepTrailToggleBtn, (t("stepTrailToggle") || "Trail: ") + (isEnabled ? "ON" : "OFF"));
+		editsModalElements.stepTrailToggleBtn.style.color = isEnabled ? "#55ff55" : "#ffaaaa";
+		editsModalElements.stepTrailToggleBtn.style.borderColor = isEnabled ? "#55ff55" : "#555";
+	}
+	if (editsModalElements.stepTrailBurstBtn) setText(editsModalElements.stepTrailBurstBtn, t("stepTrailBurst") || "💥 Starburst Explosion");
+	if (editsModalElements.stepTrailStarsBtn) setText(editsModalElements.stepTrailStarsBtn, t("stepTrailStars") || "⭐ Stars");
+	if (editsModalElements.stepTrailRainbowBtn) setText(editsModalElements.stepTrailRainbowBtn, t("stepTrailRainbow") || "🌈 Rainbow");
+	if (editsModalElements.stepTrailHeartsBtn) setText(editsModalElements.stepTrailHeartsBtn, t("stepTrailHearts") || "💖 Hearts");
 }
 
 function toggleLocalEditsModal() {
@@ -12503,6 +13075,39 @@ function hookGameStateOnce() {
 						if (typeof gameState !== "undefined" && gameState && typeof gameState.sendEmoteNow === "function") {
 							gameState.sendEmoteNow(Emotes.MinigameJoayo);
 						}
+						break;
+					case "cook":
+					case "kitchen":
+						const cookType = (cmd[1] || "chop").toLowerCase();
+						if (cookType === "stop" || cookType === "off") {
+							if (window.spkmodStopCooking) window.spkmodStopCooking();
+						} else {
+							if (window.spkmodStartCooking) window.spkmodStartCooking(cookType);
+						}
+						break;
+					case "trail":
+						const trailSub = (cmd[1] || "").toLowerCase();
+						if (trailSub === "off" || trailSub === "stop") {
+							if (window.spkmodToggleStepTrail) window.spkmodToggleStepTrail(false);
+						} else if (trailSub === "stars" || trailSub === "rainbow" || trailSub === "hearts") {
+							if (window.spkmodSetTrailType) window.spkmodSetTrailType(trailSub);
+						} else {
+							if (window.spkmodToggleStepTrail) window.spkmodToggleStepTrail();
+						}
+						break;
+					case "burst":
+						if (window.spkmodBurstTrail) window.spkmodBurstTrail();
+						break;
+					case "copter":
+					case "hat":
+						const copterScope = (cmd[1] || "self").toLowerCase();
+						if (window.spkmodToggleCopterHat) window.spkmodToggleCopterHat(copterScope);
+						break;
+					case "spelldance":
+						if (window.spkmodPlaySpellDance) window.spkmodPlaySpellDance();
+						break;
+					case "gather":
+						if (window.spkmodPlayGather) window.spkmodPlayGather();
 						break;
 					case "uiscale":
 						const newScale = parseFloat(cmd[1]);
