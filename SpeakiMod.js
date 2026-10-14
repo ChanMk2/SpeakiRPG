@@ -2897,10 +2897,16 @@ if (lunChromaKeyColor !== "none" && !LUN_CHROMA_COLORS[lunChromaKeyColor]) {
 	lunChromaKeyColor = "none";
 }
 
-function applyChromaKeyColor(colorKey) {
+function applyChromaKeyColor(colorKey, allowToggle = false) {
+	if (allowToggle && colorKey !== "none" && lunChromaKeyColor === colorKey) {
+		colorKey = "none";
+	}
 	lunChromaKeyColor = colorKey || "none";
 	if (window.localStorage) {
 		localStorage.setItem("spkmod-chroma-key", lunChromaKeyColor);
+	}
+	if (typeof chatLog === "function") {
+		chatLog("Chroma Skybox: " + (lunChromaKeyColor === "none" ? "OFF (DEFAULT)" : lunChromaKeyColor.toUpperCase()));
 	}
 	const scene = gameState?.scene;
 	if (!scene) return;
@@ -5205,7 +5211,7 @@ document.body.appendChild(
 				]),
 				buildElement("div", { className: "spkmod-panel-cat" }, [
 					lunPanelElements.cameraEffectLabel = buildElement("span", { style: "color: #fff; font-size: 11px; font-weight: bold; flex: 1;", innerText: t("cameraEffectLabel") || "Camera Effect" }),
-					lunPanelElements.cameraEffectSelect = buildElement("select", { className: "spkmod-panel-combo", value: lunCameraEffect, onchange: e => { lunCameraEffect = e.target.value; if (window.localStorage) localStorage.setItem("spkmod-camera-effect", lunCameraEffect); updateDynamicStyles(); } }, [
+					lunPanelElements.cameraEffectSelect = buildElement("select", { className: "spkmod-panel-combo", value: lunCameraEffect, onchange: e => { lunCameraEffect = e.target.value; if (window.localStorage) localStorage.setItem("spkmod-camera-effect", lunCameraEffect); updateDynamicStyles(); if (typeof updateLocalEditsUI === "function") updateLocalEditsUI(); } }, [
 						buildElement("option", { value: "none", innerText: t("effectNone") || "Normal" }),
 						buildElement("option", { value: "bw", innerText: t("effectBw") || "Black & White" }),
 						buildElement("option", { value: "sepia", innerText: t("effectSepia") || "Sepia" }),
@@ -10827,6 +10833,9 @@ setTimeout(() => {
 }, 500);
 
 function setCameraEffectLocal(effectKey) {
+	if (effectKey && effectKey !== "none" && lunCameraEffect === effectKey) {
+		effectKey = "none";
+	}
 	lunCameraEffect = effectKey || "none";
 	if (window.localStorage) localStorage.setItem("spkmod-camera-effect", lunCameraEffect);
 	if (typeof updateDynamicStyles === "function") updateDynamicStyles();
@@ -10834,7 +10843,7 @@ function setCameraEffectLocal(effectKey) {
 		lunPanelElements.cameraEffectSelect.value = lunCameraEffect;
 	}
 	if (typeof updateLocalEditsUI === "function") updateLocalEditsUI();
-	if (typeof chatLog === "function") chatLog("Camera Effect: " + lunCameraEffect.toUpperCase());
+	if (typeof chatLog === "function") chatLog("Camera Effect: " + (lunCameraEffect === "none" ? "OFF (NORMAL)" : lunCameraEffect.toUpperCase()));
 }
 
 function updateLocalEditsUI() {
@@ -10895,11 +10904,13 @@ function updateLocalEditsUI() {
 		if (btn) {
 			if (lunChromaKeyColor === key) {
 				btn.style.borderColor = "var(--spkmod-accent, #ffd54a)";
-				btn.style.background = "rgba(255, 255, 255, 0.2)";
+				btn.style.background = (key === "white" ? "#ffffff" : key === "black" ? "#222222" : "rgba(255, 255, 255, 0.2)");
+				btn.style.boxShadow = "0 0 8px var(--spkmod-accent, #ffd54a)";
 				btn.style.fontWeight = "bold";
 			} else {
 				btn.style.borderColor = "#555";
-				btn.style.background = "";
+				btn.style.background = (key === "white" ? "#eeeeee" : key === "black" ? "#111111" : "");
+				btn.style.boxShadow = "none";
 				btn.style.fontWeight = "normal";
 			}
 		}
@@ -11050,10 +11061,12 @@ function updateLocalEditsUI() {
 			if (lunCameraEffect === key) {
 				btn.style.borderColor = "var(--spkmod-accent, #ffd54a)";
 				btn.style.background = "rgba(255, 255, 255, 0.2)";
+				btn.style.boxShadow = "0 0 8px var(--spkmod-accent, #ffd54a)";
 				btn.style.fontWeight = "bold";
 			} else {
 				btn.style.borderColor = "#555";
 				btn.style.background = "";
+				btn.style.boxShadow = "none";
 				btn.style.fontWeight = "normal";
 			}
 		}
@@ -11291,115 +11304,115 @@ document.body.appendChild(
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 2px; font-size: 9.5px; text-align: center; color: #00ff00;",
 						innerText: "🟢 " + (t("chromaKeyColorGreen") || "Green"),
-						onclick: () => { applyChromaKeyColor("green"); updateLocalEditsUI(); }
+						onclick: () => { applyChromaKeyColor("green", true); updateLocalEditsUI(); }
 					}),
 					editsModalElements.chromaBtnBlue = buildElement("button", {
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 2px; font-size: 9.5px; text-align: center; color: #5599ff;",
 						innerText: "🔵 " + (t("chromaKeyColorBlue") || "Blue"),
-						onclick: () => { applyChromaKeyColor("blue"); updateLocalEditsUI(); }
+						onclick: () => { applyChromaKeyColor("blue", true); updateLocalEditsUI(); }
 					}),
 					editsModalElements.chromaBtnRed = buildElement("button", {
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 2px; font-size: 9.5px; text-align: center; color: #ff5555;",
 						innerText: "🔴 " + (t("chromaKeyColorRed") || "Red"),
-						onclick: () => { applyChromaKeyColor("red"); updateLocalEditsUI(); }
+						onclick: () => { applyChromaKeyColor("red", true); updateLocalEditsUI(); }
 					}),
 					editsModalElements.chromaBtnMagenta = buildElement("button", {
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 2px; font-size: 9.5px; text-align: center; color: #ff55ff;",
 						innerText: "🟣 " + (t("chromaKeyColorMagenta") || "Magenta"),
-						onclick: () => { applyChromaKeyColor("magenta"); updateLocalEditsUI(); }
+						onclick: () => { applyChromaKeyColor("magenta", true); updateLocalEditsUI(); }
 					}),
 					editsModalElements.chromaBtnBlack = buildElement("button", {
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 2px; font-size: 9.5px; text-align: center; color: #ffffff; background: #111;",
 						innerText: "⚫ " + (t("skyColorBlack") || "Black Void"),
-						onclick: () => { applyChromaKeyColor("black"); updateLocalEditsUI(); }
+						onclick: () => { applyChromaKeyColor("black", true); updateLocalEditsUI(); }
 					}),
 					editsModalElements.chromaBtnWhite = buildElement("button", {
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 2px; font-size: 9.5px; text-align: center; color: #333333; background: #eee;",
 						innerText: "⚪ " + (t("skyColorWhite") || "White Studio"),
-						onclick: () => { applyChromaKeyColor("white"); updateLocalEditsUI(); }
+						onclick: () => { applyChromaKeyColor("white", true); updateLocalEditsUI(); }
 					}),
 					editsModalElements.chromaBtnMidnight = buildElement("button", {
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 2px; font-size: 9.5px; text-align: center; color: #8faaff;",
 						innerText: "🌌 " + (t("skyColorMidnight") || "Midnight Navy"),
-						onclick: () => { applyChromaKeyColor("midnight"); updateLocalEditsUI(); }
+						onclick: () => { applyChromaKeyColor("midnight", true); updateLocalEditsUI(); }
 					}),
 					editsModalElements.chromaBtnSunset = buildElement("button", {
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 2px; font-size: 9.5px; text-align: center; color: #ff99ff;",
 						innerText: "🟪 " + (t("skyColorSunset") || "Sunset Violet"),
-						onclick: () => { applyChromaKeyColor("sunset"); updateLocalEditsUI(); }
+						onclick: () => { applyChromaKeyColor("sunset", true); updateLocalEditsUI(); }
 					}),
 					editsModalElements.chromaBtnCyber = buildElement("button", {
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 2px; font-size: 9.5px; text-align: center; color: #00ffff;",
 						innerText: "🔷 " + (t("skyColorCyber") || "Cyber Teal"),
-						onclick: () => { applyChromaKeyColor("cyber"); updateLocalEditsUI(); }
+						onclick: () => { applyChromaKeyColor("cyber", true); updateLocalEditsUI(); }
 					}),
 					editsModalElements.chromaBtnYellow = buildElement("button", {
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 2px; font-size: 9.5px; text-align: center; color: #ffff33;",
 						innerText: "🟡 " + (t("skyColorYellow") || "Neon Yellow"),
-						onclick: () => { applyChromaKeyColor("yellow"); updateLocalEditsUI(); }
+						onclick: () => { applyChromaKeyColor("yellow", true); updateLocalEditsUI(); }
 					}),
 					editsModalElements.chromaBtnOrange = buildElement("button", {
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 2px; font-size: 9.5px; text-align: center; color: #ff8833;",
 						innerText: "🧡 " + (t("skyColorOrange") || "Vivid Orange"),
-						onclick: () => { applyChromaKeyColor("orange"); updateLocalEditsUI(); }
+						onclick: () => { applyChromaKeyColor("orange", true); updateLocalEditsUI(); }
 					}),
 					editsModalElements.chromaBtnPink = buildElement("button", {
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 2px; font-size: 9.5px; text-align: center; color: #ff80bf;",
 						innerText: "🌸 " + (t("skyColorPink") || "Soft Pink"),
-						onclick: () => { applyChromaKeyColor("pink"); updateLocalEditsUI(); }
+						onclick: () => { applyChromaKeyColor("pink", true); updateLocalEditsUI(); }
 					}),
 					editsModalElements.chromaBtnCyan = buildElement("button", {
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 2px; font-size: 9.5px; text-align: center; color: #38bdf8;",
 						innerText: "🩵 " + (t("skyColorCyan") || "Electric Cyan"),
-						onclick: () => { applyChromaKeyColor("cyan"); updateLocalEditsUI(); }
+						onclick: () => { applyChromaKeyColor("cyan", true); updateLocalEditsUI(); }
 					}),
 					editsModalElements.chromaBtnMint = buildElement("button", {
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 2px; font-size: 9.5px; text-align: center; color: #34d399;",
 						innerText: "🌿 " + (t("skyColorMint") || "Mint Green"),
-						onclick: () => { applyChromaKeyColor("mint"); updateLocalEditsUI(); }
+						onclick: () => { applyChromaKeyColor("mint", true); updateLocalEditsUI(); }
 					}),
 					editsModalElements.chromaBtnPurple = buildElement("button", {
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 2px; font-size: 9.5px; text-align: center; color: #c084fc;",
 						innerText: "💜 " + (t("skyColorPurple") || "Deep Purple"),
-						onclick: () => { applyChromaKeyColor("purple"); updateLocalEditsUI(); }
+						onclick: () => { applyChromaKeyColor("purple", true); updateLocalEditsUI(); }
 					}),
 					editsModalElements.chromaBtnAmber = buildElement("button", {
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 2px; font-size: 9.5px; text-align: center; color: #fbbf24;",
 						innerText: "🪙 " + (t("skyColorAmber") || "Warm Amber"),
-						onclick: () => { applyChromaKeyColor("amber"); updateLocalEditsUI(); }
+						onclick: () => { applyChromaKeyColor("amber", true); updateLocalEditsUI(); }
 					}),
 					editsModalElements.chromaBtnCrimson = buildElement("button", {
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 2px; font-size: 9.5px; text-align: center; color: #fb7185;",
 						innerText: "🍷 " + (t("skyColorCrimson") || "Crimson Wine"),
-						onclick: () => { applyChromaKeyColor("crimson"); updateLocalEditsUI(); }
+						onclick: () => { applyChromaKeyColor("crimson", true); updateLocalEditsUI(); }
 					}),
 					editsModalElements.chromaBtnSlate = buildElement("button", {
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 2px; font-size: 9.5px; text-align: center; color: #94a3b8;",
 						innerText: "🩶 " + (t("skyColorSlate") || "Studio Slate"),
-						onclick: () => { applyChromaKeyColor("slate"); updateLocalEditsUI(); }
+						onclick: () => { applyChromaKeyColor("slate", true); updateLocalEditsUI(); }
 					}),
 					editsModalElements.chromaBtnSepia = buildElement("button", {
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 2px; font-size: 9.5px; text-align: center; color: #d97706;",
 						innerText: "☕ " + (t("skyColorSepia") || "Warm Sepia"),
-						onclick: () => { applyChromaKeyColor("sepia"); updateLocalEditsUI(); }
+						onclick: () => { applyChromaKeyColor("sepia", true); updateLocalEditsUI(); }
 					})
 				])
 			]),
@@ -16246,12 +16259,16 @@ window.addEventListener("keydown", e => {
 		
 		if (newEffect !== null) {
 			e.preventDefault();
-			lunCameraEffect = newEffect;
-			if (window.localStorage) localStorage.setItem("spkmod-camera-effect", lunCameraEffect);
-			if (typeof updateDynamicStyles === "function") updateDynamicStyles();
-			if (typeof lunPanelElements !== "undefined" && lunPanelElements.cameraEffectSelect) lunPanelElements.cameraEffectSelect.value = lunCameraEffect;
-			if (typeof updateLocalEditsUI === "function") updateLocalEditsUI();
-			if (typeof chatLog === "function") chatLog("Camera Effect: " + newEffect.toUpperCase());
+			if (typeof setCameraEffectLocal === "function") {
+				setCameraEffectLocal(newEffect);
+			} else {
+				lunCameraEffect = newEffect;
+				if (window.localStorage) localStorage.setItem("spkmod-camera-effect", lunCameraEffect);
+				if (typeof updateDynamicStyles === "function") updateDynamicStyles();
+				if (typeof lunPanelElements !== "undefined" && lunPanelElements.cameraEffectSelect) lunPanelElements.cameraEffectSelect.value = lunCameraEffect;
+				if (typeof updateLocalEditsUI === "function") updateLocalEditsUI();
+				if (typeof chatLog === "function") chatLog("Camera Effect: " + newEffect.toUpperCase());
+			}
 			return;
 		}
 	}
