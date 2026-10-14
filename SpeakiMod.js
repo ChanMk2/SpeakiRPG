@@ -8507,9 +8507,14 @@ window.spkmodSetAvatarColorScope = function(scope) {
 	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
 };
 
-window.spkmodApplyAvatarColor = function(hexColor) {
+window.spkmodApplyAvatarColor = function(hexColor, allowToggle = false) {
 	if (typeof gameState === 'undefined' || !gameState || !gameState.localAvatar) {
 		if (typeof chatLog === 'function') chatLog("[FX] Game avatar is not loaded yet.");
+		return;
+	}
+
+	if (allowToggle && window.spkmodAvatarColorMode === "color" && (window.spkmodAvatarColorHex || '').toLowerCase() === (hexColor || '').toLowerCase()) {
+		window.spkmodResetAvatarColors();
 		return;
 	}
 
@@ -8609,7 +8614,14 @@ window.spkmodStartRainbowWave = function(targetMode, customSpeed) {
 
 	const isRandom = targetMode === "random" || targetMode === "rand";
 	const isAll = !isRandom && (targetMode === true || targetMode === "all");
-	window.spkmodAvatarColorMode = isRandom ? "rainbow_random" : (isAll ? "rainbow_all" : "rainbow");
+	const targetModeName = isRandom ? "rainbow_random" : (isAll ? "rainbow_all" : "rainbow");
+
+	if (window.spkmodAvatarColorMode === targetModeName) {
+		window.spkmodResetAvatarColors();
+		return;
+	}
+
+	window.spkmodAvatarColorMode = targetModeName;
 	window.spkmodActiveDyedMaterials.clear();
 
 	if (isRandom) {
@@ -8754,6 +8766,11 @@ window.spkmodApplyShadowMode = function() {
 		return;
 	}
 
+	if (window.spkmodAvatarColorMode === "shadow") {
+		window.spkmodResetAvatarColors();
+		return;
+	}
+
 	window.hookRemotePlayerRebuildIsolation();
 	spkmodEnsurePristineMaterials();
 
@@ -8807,7 +8824,12 @@ window.spkmodApplyBadAppleMode = function() {
 		return;
 	}
 
-	const wasAlreadyActive = window.spkmodAvatarColorMode === "bad_apple";
+	if (window.spkmodAvatarColorMode === "bad_apple") {
+		window.spkmodResetAvatarColors();
+		return;
+	}
+
+	const wasAlreadyActive = false;
 
 	window.hookRemotePlayerRebuildIsolation();
 	spkmodEnsurePristineMaterials();
@@ -10520,7 +10542,12 @@ document.body.appendChild(
 								innerText: `${c.emoji} ${t(c.key) || c.name}`,
 								title: `Apply ${c.name} Dye (${c.hex})`,
 								onclick: () => {
-									if (window.spkmodApplyAvatarColor) window.spkmodApplyAvatarColor(c.hex);
+									if (window.spkmodAvatarColorMode === "color" && (window.spkmodAvatarColorHex || '').toLowerCase() === c.hex.toLowerCase()) {
+										if (window.spkmodResetAvatarColors) window.spkmodResetAvatarColors();
+									} else {
+										if (window.spkmodApplyAvatarColor) window.spkmodApplyAvatarColor(c.hex);
+									}
+									updateLocalEditsUI();
 								}
 							});
 							editsModalElements["dyeBtn_" + c.id] = btn;
@@ -10537,6 +10564,7 @@ document.body.appendChild(
 							style: "flex: 1; height: 26px; border: 1px solid #555; background: #222; border-radius: 4px; cursor: pointer; padding: 1px;",
 							onchange: (e) => {
 								if (window.spkmodApplyAvatarColor) window.spkmodApplyAvatarColor(e.target.value);
+								updateLocalEditsUI();
 							}
 						})
 					]),
@@ -10569,7 +10597,11 @@ document.body.appendChild(
 							innerText: "🌈 " + (t("dyeBtnRainbow") || "Rainbow"),
 							title: "Animate real-time smooth cycling through rainbow spectrum",
 							onclick: () => {
-								if (window.spkmodStartRainbowWave) window.spkmodStartRainbowWave(false);
+								if (window.spkmodAvatarColorMode === "rainbow") {
+									if (window.spkmodResetAvatarColors) window.spkmodResetAvatarColors();
+								} else {
+									if (window.spkmodStartRainbowWave) window.spkmodStartRainbowWave(false);
+								}
 								updateLocalEditsUI();
 							}
 						}),
@@ -10579,7 +10611,11 @@ document.body.appendChild(
 							innerText: "🌟 " + (t("dyeBtnRainbowAll") || "Rainbow ALL"),
 							title: "Animate real-time rainbow wave on ALL players",
 							onclick: () => {
-								if (window.spkmodStartRainbowWave) window.spkmodStartRainbowWave(true);
+								if (window.spkmodAvatarColorMode === "rainbow_all") {
+									if (window.spkmodResetAvatarColors) window.spkmodResetAvatarColors();
+								} else {
+									if (window.spkmodStartRainbowWave) window.spkmodStartRainbowWave(true);
+								}
 								updateLocalEditsUI();
 							}
 						}),
@@ -10589,7 +10625,11 @@ document.body.appendChild(
 							innerText: "🔀 " + (t("dyeBtnRainbowRandom") || "Random Rainbow"),
 							title: "Animate desynchronized rainbow wave on all players with random colors",
 							onclick: () => {
-								if (window.spkmodStartRainbowWave) window.spkmodStartRainbowWave("random");
+								if (window.spkmodAvatarColorMode === "rainbow_random") {
+									if (window.spkmodResetAvatarColors) window.spkmodResetAvatarColors();
+								} else {
+									if (window.spkmodStartRainbowWave) window.spkmodStartRainbowWave("random");
+								}
 								updateLocalEditsUI();
 							}
 						}),
@@ -10599,7 +10639,11 @@ document.body.appendChild(
 							innerText: "👤 " + (t("dyeBtnShadow") || "Void Shadow"),
 							title: "Dark obsidian silhouette with subtle void aura",
 							onclick: () => {
-								if (window.spkmodApplyShadowMode) window.spkmodApplyShadowMode();
+								if (window.spkmodAvatarColorMode === "shadow") {
+									if (window.spkmodResetAvatarColors) window.spkmodResetAvatarColors();
+								} else {
+									if (window.spkmodApplyShadowMode) window.spkmodApplyShadowMode();
+								}
 								updateLocalEditsUI();
 							}
 						}),
@@ -10609,8 +10653,11 @@ document.body.appendChild(
 							innerText: "🍎 " + (t("dyeBtnBadApple") || "Bad Apple"),
 							title: "Iconic monochrome silhouette mode (pitch-black silhouettes on pure white background)",
 							onclick: () => {
-								if (window.spkmodToggleBadAppleMode) window.spkmodToggleBadAppleMode();
-								else if (window.spkmodApplyBadAppleMode) window.spkmodApplyBadAppleMode();
+								if (window.spkmodAvatarColorMode === "bad_apple") {
+									if (window.spkmodResetAvatarColors) window.spkmodResetAvatarColors();
+								} else {
+									if (window.spkmodApplyBadAppleMode) window.spkmodApplyBadAppleMode();
+								}
 								updateLocalEditsUI();
 							}
 						})
@@ -11064,6 +11111,17 @@ function updateLocalEditsUI() {
 			if (btn) {
 				const localizedName = t(c.key) || c.name;
 				setText(btn, `${c.emoji} ${localizedName}`);
+				const isSelected = (window.spkmodAvatarColorMode === "color" && 
+					(window.spkmodAvatarColorHex || '').toLowerCase() === c.hex.toLowerCase());
+				if (isSelected) {
+					btn.style.borderColor = c.hex === "#ffffff" ? "#ffd54a" : c.hex;
+					btn.style.background = "rgba(255, 255, 255, 0.18)";
+					btn.style.boxShadow = `0 0 8px ${c.hex}88`;
+				} else {
+					btn.style.borderColor = "#555";
+					btn.style.background = "";
+					btn.style.boxShadow = "";
+				}
 			}
 		});
 	}
