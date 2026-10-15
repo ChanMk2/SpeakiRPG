@@ -8089,6 +8089,7 @@ window.spkmodResetNames = function() {
 };
 
 window.spkmodActiveSoccerTeam = window.spkmodActiveSoccerTeam || 0;
+window.spkmodActiveSoccerTeamAll = window.spkmodActiveSoccerTeamAll || 0;
 window.spkmodSetTeam = function(team, targetPlayer) {
 	if (typeof gameState === 'undefined' || !gameState) {
 		if (typeof chatLog === 'function') chatLog("[Soccer] Game is not loaded yet.");
@@ -8124,6 +8125,7 @@ window.spkmodSetTeam = function(team, targetPlayer) {
 		if (targetLower === "all" || targetLower === "*") {
 			// Apply to local player
 			window.spkmodActiveSoccerTeam = teamNum;
+			window.spkmodActiveSoccerTeamAll = teamNum;
 			if (typeof gameState.setLocalSoccerTeam === 'function') {
 				gameState.setLocalSoccerTeam(teamNum);
 				affectedCount++;
@@ -8181,6 +8183,7 @@ window.spkmodSetTeam = function(team, targetPlayer) {
 
 	// Target is Local Player (Me):
 	window.spkmodActiveSoccerTeam = teamNum;
+	window.spkmodActiveSoccerTeamAll = 0;
 
 	// Apply locally for instant visual rendering
 	if (typeof gameState.setLocalSoccerTeam === 'function') {
@@ -8193,6 +8196,9 @@ window.spkmodSetTeam = function(team, targetPlayer) {
 		const origHandleSoccerTeam = gameState.handleSoccerTeam.bind(gameState);
 		gameState.handleSoccerTeam = function(e) {
 			const tVal = e.team ?? 0;
+			if (window.spkmodActiveSoccerTeamAll && tVal === 0) {
+				return;
+			}
 			if (e.playerId === this.myPlayerId && window.spkmodActiveSoccerTeam && tVal === 0) {
 				return; // Preserve user's active uniform
 			}
@@ -10407,38 +10413,6 @@ document.body.appendChild(
 					onclick: () => window.spkmodTriggerFlyEveryone && window.spkmodTriggerFlyEveryone()
 				}),
 
-				// Soccer Uniform
-				buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px;" }, [
-					editsModalElements.soccerHeader = buildElement("div", {
-						className: "spkmod-panel-cat-header",
-						innerText: "⚽ " + (t("soccerHeader") || "Soccer Uniform"),
-						style: "margin-top: 0px;"
-					}),
-					buildElement("div", { style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;" }, [
-						editsModalElements.soccerBtnRed = buildElement("button", {
-							className: "spkmod-panel-btn",
-							style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #ff5555; font-weight: bold;",
-							innerText: "🔴 " + (t("soccerBtnRed") || "Red Team"),
-							title: "Set soccer uniform to Red Team",
-							onclick: () => { if (window.spkmodSetTeam) window.spkmodSetTeam("red"); updateLocalEditsUI(); }
-						}),
-						editsModalElements.soccerBtnBlue = buildElement("button", {
-							className: "spkmod-panel-btn",
-							style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #5599ff; font-weight: bold;",
-							innerText: "🔵 " + (t("soccerBtnBlue") || "Blue Team"),
-							title: "Set soccer uniform to Blue Team",
-							onclick: () => { if (window.spkmodSetTeam) window.spkmodSetTeam("blue"); updateLocalEditsUI(); }
-						}),
-						editsModalElements.soccerBtnNone = buildElement("button", {
-							className: "spkmod-panel-btn",
-							style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #eeeeee;",
-							innerText: "⚪ " + (t("soccerBtnNone") || "Default"),
-							title: "Reset soccer uniform to default",
-							onclick: () => { if (window.spkmodSetTeam) window.spkmodSetTeam("none"); updateLocalEditsUI(); }
-						})
-					])
-				]),
-
 				// 🍳 Cooking & Kitchen Animations
 				buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px; border-top: 1px solid #555; padding-top: 6px;" }, [
 					editsModalElements.cookingHeader = buildElement("div", {
@@ -10680,6 +10654,83 @@ document.body.appendChild(
 							title: "Restore avatar to original appearance",
 							onclick: () => {
 								if (window.spkmodResetAvatarColors) window.spkmodResetAvatarColors();
+							}
+						})
+					]),
+
+					// ⚽ Soccer Uniform
+					buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px; border-top: 1px solid #555; padding-top: 6px; margin-top: 4px;" }, [
+						editsModalElements.soccerHeader = buildElement("div", {
+							className: "spkmod-panel-cat-header",
+							innerText: "⚽ " + (t("soccerHeader") || "Soccer Uniform"),
+							style: "margin-top: 0px;"
+						}),
+						buildElement("div", { style: "display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px;" }, [
+							editsModalElements.soccerBtnRed = buildElement("button", {
+								className: "spkmod-panel-btn",
+								style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #ff5555; font-weight: bold;",
+								innerText: "🔴 " + (t("soccerBtnRed") || "Red Team"),
+								title: "Set soccer uniform to Red Team (click again to restore)",
+								onclick: () => {
+									if (window.spkmodActiveSoccerTeam === 1 && !window.spkmodActiveSoccerTeamAll) {
+										if (window.spkmodSetTeam) window.spkmodSetTeam("none");
+									} else {
+										if (window.spkmodSetTeam) window.spkmodSetTeam("red");
+									}
+									updateLocalEditsUI();
+								}
+							}),
+							editsModalElements.soccerBtnBlue = buildElement("button", {
+								className: "spkmod-panel-btn",
+								style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #5599ff; font-weight: bold;",
+								innerText: "🔵 " + (t("soccerBtnBlue") || "Blue Team"),
+								title: "Set soccer uniform to Blue Team (click again to restore)",
+								onclick: () => {
+									if (window.spkmodActiveSoccerTeam === 2 && !window.spkmodActiveSoccerTeamAll) {
+										if (window.spkmodSetTeam) window.spkmodSetTeam("none");
+									} else {
+										if (window.spkmodSetTeam) window.spkmodSetTeam("blue");
+									}
+									updateLocalEditsUI();
+								}
+							}),
+							editsModalElements.soccerBtnRedAll = buildElement("button", {
+								className: "spkmod-panel-btn",
+								style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #ff7777; font-weight: bold;",
+								innerText: "🔴 " + (t("soccerBtnRedAll") || "Red ALL"),
+								title: "Set soccer uniform to Red Team for ALL players (click again to restore)",
+								onclick: () => {
+									if (window.spkmodActiveSoccerTeamAll === 1) {
+										if (window.spkmodSetTeam) window.spkmodSetTeam("none", "all");
+									} else {
+										if (window.spkmodSetTeam) window.spkmodSetTeam("red", "all");
+									}
+									updateLocalEditsUI();
+								}
+							}),
+							editsModalElements.soccerBtnBlueAll = buildElement("button", {
+								className: "spkmod-panel-btn",
+								style: "padding: 6px 2px; font-size: 10px; text-align: center; color: #77b5ff; font-weight: bold;",
+								innerText: "🔵 " + (t("soccerBtnBlueAll") || "Blue ALL"),
+								title: "Set soccer uniform to Blue Team for ALL players (click again to restore)",
+								onclick: () => {
+									if (window.spkmodActiveSoccerTeamAll === 2) {
+										if (window.spkmodSetTeam) window.spkmodSetTeam("none", "all");
+									} else {
+										if (window.spkmodSetTeam) window.spkmodSetTeam("blue", "all");
+									}
+									updateLocalEditsUI();
+								}
+							})
+						]),
+						editsModalElements.soccerBtnNone = buildElement("button", {
+							className: "spkmod-panel-btn",
+							style: "width: 100%; padding: 5px 2px; font-size: 10px; text-align: center; color: #eeeeee; margin-top: 1px;",
+							innerText: "⚪ " + (t("soccerBtnNone") || "Default"),
+							title: "Reset soccer uniform to default for everyone",
+							onclick: () => {
+								if (window.spkmodSetTeam) window.spkmodSetTeam("none", "all");
+								updateLocalEditsUI();
 							}
 						})
 					])
@@ -11080,34 +11131,76 @@ function updateLocalEditsUI() {
 	if (editsModalElements.soccerHeader) setText(editsModalElements.soccerHeader, "⚽ " + (t("soccerHeader") || "Soccer Uniform"));
 	if (editsModalElements.soccerBtnRed) setText(editsModalElements.soccerBtnRed, "🔴 " + (t("soccerBtnRed") || "Red Team"));
 	if (editsModalElements.soccerBtnBlue) setText(editsModalElements.soccerBtnBlue, "🔵 " + (t("soccerBtnBlue") || "Blue Team"));
+	if (editsModalElements.soccerBtnRedAll) setText(editsModalElements.soccerBtnRedAll, "🔴 " + (t("soccerBtnRedAll") || "Red ALL"));
+	if (editsModalElements.soccerBtnBlueAll) setText(editsModalElements.soccerBtnBlueAll, "🔵 " + (t("soccerBtnBlueAll") || "Blue ALL"));
 	if (editsModalElements.soccerBtnNone) setText(editsModalElements.soccerBtnNone, "⚪ " + (t("soccerBtnNone") || "Default"));
 
 	const myTeam = (typeof gameState !== 'undefined' && gameState ? gameState.mySoccerTeam : 0) || window.spkmodActiveSoccerTeam || 0;
+	const allTeam = window.spkmodActiveSoccerTeamAll || 0;
+
 	if (editsModalElements.soccerBtnRed) {
-		if (myTeam === 1) {
+		if (myTeam === 1 && allTeam !== 1) {
 			editsModalElements.soccerBtnRed.style.borderColor = "#ff5555";
 			editsModalElements.soccerBtnRed.style.background = "rgba(255, 85, 85, 0.25)";
+			editsModalElements.soccerBtnRed.style.boxShadow = "0 0 8px #ff5555";
+			editsModalElements.soccerBtnRed.style.fontWeight = "bold";
 		} else {
 			editsModalElements.soccerBtnRed.style.borderColor = "#555";
 			editsModalElements.soccerBtnRed.style.background = "";
+			editsModalElements.soccerBtnRed.style.boxShadow = "none";
+			editsModalElements.soccerBtnRed.style.fontWeight = "normal";
 		}
 	}
 	if (editsModalElements.soccerBtnBlue) {
-		if (myTeam === 2) {
+		if (myTeam === 2 && allTeam !== 2) {
 			editsModalElements.soccerBtnBlue.style.borderColor = "#5599ff";
 			editsModalElements.soccerBtnBlue.style.background = "rgba(85, 153, 255, 0.25)";
+			editsModalElements.soccerBtnBlue.style.boxShadow = "0 0 8px #5599ff";
+			editsModalElements.soccerBtnBlue.style.fontWeight = "bold";
 		} else {
 			editsModalElements.soccerBtnBlue.style.borderColor = "#555";
 			editsModalElements.soccerBtnBlue.style.background = "";
+			editsModalElements.soccerBtnBlue.style.boxShadow = "none";
+			editsModalElements.soccerBtnBlue.style.fontWeight = "normal";
+		}
+	}
+	if (editsModalElements.soccerBtnRedAll) {
+		if (allTeam === 1) {
+			editsModalElements.soccerBtnRedAll.style.borderColor = "#ff5555";
+			editsModalElements.soccerBtnRedAll.style.background = "rgba(255, 85, 85, 0.25)";
+			editsModalElements.soccerBtnRedAll.style.boxShadow = "0 0 8px #ff5555";
+			editsModalElements.soccerBtnRedAll.style.fontWeight = "bold";
+		} else {
+			editsModalElements.soccerBtnRedAll.style.borderColor = "#555";
+			editsModalElements.soccerBtnRedAll.style.background = "";
+			editsModalElements.soccerBtnRedAll.style.boxShadow = "none";
+			editsModalElements.soccerBtnRedAll.style.fontWeight = "normal";
+		}
+	}
+	if (editsModalElements.soccerBtnBlueAll) {
+		if (allTeam === 2) {
+			editsModalElements.soccerBtnBlueAll.style.borderColor = "#5599ff";
+			editsModalElements.soccerBtnBlueAll.style.background = "rgba(85, 153, 255, 0.25)";
+			editsModalElements.soccerBtnBlueAll.style.boxShadow = "0 0 8px #5599ff";
+			editsModalElements.soccerBtnBlueAll.style.fontWeight = "bold";
+		} else {
+			editsModalElements.soccerBtnBlueAll.style.borderColor = "#555";
+			editsModalElements.soccerBtnBlueAll.style.background = "";
+			editsModalElements.soccerBtnBlueAll.style.boxShadow = "none";
+			editsModalElements.soccerBtnBlueAll.style.fontWeight = "normal";
 		}
 	}
 	if (editsModalElements.soccerBtnNone) {
-		if (myTeam === 0) {
+		if (myTeam === 0 && allTeam === 0) {
 			editsModalElements.soccerBtnNone.style.borderColor = "var(--spkmod-accent, #ffd54a)";
 			editsModalElements.soccerBtnNone.style.background = "rgba(255, 255, 255, 0.2)";
+			editsModalElements.soccerBtnNone.style.boxShadow = "0 0 8px var(--spkmod-accent, #ffd54a)";
+			editsModalElements.soccerBtnNone.style.fontWeight = "bold";
 		} else {
 			editsModalElements.soccerBtnNone.style.borderColor = "#555";
 			editsModalElements.soccerBtnNone.style.background = "";
+			editsModalElements.soccerBtnNone.style.boxShadow = "none";
+			editsModalElements.soccerBtnNone.style.fontWeight = "normal";
 		}
 	}
 

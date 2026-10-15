@@ -578,7 +578,9 @@
         "burstSpamOn": "ON",
         "burstSpamOff": "OFF",
         "floatingBtnPinned": "📌 Pinned \"{0}\" outside HUD! (Drag to move, Right-click to dismiss)",
-        "floatingBtnDismissed": "🧹 Floating button \"{0}\" dismissed."
+        "floatingBtnDismissed": "🧹 Floating button \"{0}\" dismissed.",
+        "soccerBtnRedAll": "Red ALL",
+        "soccerBtnBlueAll": "Blue ALL"
     },
     "ja": {
         "langName": "日本語",
@@ -1189,7 +1191,9 @@
         "burstSpamOn": "ON",
         "burstSpamOff": "OFF",
         "floatingBtnPinned": "📌 「{0}」を画面に固定しました！（ドラッグで移動、右クリックで解除）",
-        "floatingBtnDismissed": "🧹 フローティングボタン「{0}」を解除しました。"
+        "floatingBtnDismissed": "🧹 フローティングボタン「{0}」を解除しました。",
+        "soccerBtnRedAll": "レッド全員",
+        "soccerBtnBlueAll": "ブルー全員"
     },
     "ko": {
         "langName": "한국어",
@@ -1770,7 +1774,9 @@
         "burstSpamOn": "ON",
         "burstSpamOff": "OFF",
         "floatingBtnPinned": "📌 \"{0}\" 버튼을 화면에 고정했습니다! (드래그하여 이동, 우클릭으로 제거)",
-        "floatingBtnDismissed": "🧹 고정 버튼 \"{0}\" 제거됨."
+        "floatingBtnDismissed": "🧹 고정 버튼 \"{0}\" 제거됨.",
+        "soccerBtnRedAll": "레드팀 전체",
+        "soccerBtnBlueAll": "블루팀 전체"
     },
     "zh-TW": {
         "langName": "繁體中文",
@@ -2346,7 +2352,9 @@
         "burstSpamOn": "ON",
         "burstSpamOff": "OFF",
         "floatingBtnPinned": "📌 已將「{0}」固定於畫面上！（拖曳移動，右鍵清除）",
-        "floatingBtnDismissed": "🧹 已清除懸浮按鈕「{0}」。"
+        "floatingBtnDismissed": "🧹 已清除懸浮按鈕「{0}」。",
+        "soccerBtnRedAll": "紅隊 全員",
+        "soccerBtnBlueAll": "藍隊 全員"
     },
     "zh-CN": {
         "langName": "简体中文",
@@ -2922,7 +2930,9 @@
         "burstSpamOn": "ON",
         "burstSpamOff": "OFF",
         "floatingBtnPinned": "📌 已将“{0}”固定在屏幕上！（拖动移动，右键清除）",
-        "floatingBtnDismissed": "🧹 已清除悬浮按钮“{0}”。"
+        "floatingBtnDismissed": "🧹 已清除悬浮按钮“{0}”。",
+        "soccerBtnRedAll": "红队 全员",
+        "soccerBtnBlueAll": "蓝队 全员"
     },
     "es-419": {
         "langName": "Español",
@@ -3498,6 +3508,8 @@
         "burstSpamOn": "ON",
         "burstSpamOff": "OFF",
         "floatingBtnPinned": "📌 ¡\"{0}\" fijado en pantalla! (Arrastra para mover, Clic derecho para quitar)",
-        "floatingBtnDismissed": "🧹 Botón flotante \"{0}\" eliminado."
+        "floatingBtnDismissed": "🧹 Botón flotante \"{0}\" eliminado.",
+        "soccerBtnRedAll": "Rojo TODOS",
+        "soccerBtnBlueAll": "Azul TODOS"
     }
 }
