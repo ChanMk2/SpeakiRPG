@@ -3808,6 +3808,8 @@ document.head.appendChild(buildElement(
 			border: ${spkmodBorderWidth} solid #DDD;
 			border-radius: 8px;
 			padding: 6px;
+			user-select: none;
+			cursor: pointer;
 		}
 		#spkmod-gamepad-modal, #spkmod-players-modal, #spkmod-event-modal, #spkmod-patchnotes-modal, #spkmod-bbs-modal, #spkmod-info-modal, #spkmod-effects-modal, #spkmod-stats-modal, #spkmod-edits-modal {
 			display: flex;
@@ -3842,9 +3844,13 @@ document.head.appendChild(buildElement(
 			width: 290px;
 			max-width: 95vw;
 		}
-		#spkmod-patchnotes-modal, #spkmod-info-modal, #spkmod-bbs-modal {
+		#spkmod-patchnotes-modal, #spkmod-info-modal {
 			width: 380px;
 			max-width: 95vw;
+		}
+		#spkmod-bbs-modal {
+			width: 520px;
+			max-width: 96vw;
 		}
 		#spkmod-effects-modal {
 			width: 260px;
@@ -5001,10 +5007,36 @@ document.body.appendChild(
 );
 
 
+let lastPinnedQuestTap = 0;
 document.body.appendChild(
 	lunHudElements.pinnedQuest.panel = buildElement("div", {
 		id: "spkmod-pq",
-		className: "hidden"
+		className: "hidden",
+		title: t("pinnedQuestTooltip") || "Double-click to unpin",
+		ondblclick: (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			if (typeof unpinQuest === "function") {
+				unpinQuest();
+			} else if (typeof window.unpinQuest === "function") {
+				window.unpinQuest();
+			}
+		},
+		ontouchend: (e) => {
+			const now = Date.now();
+			if (now - lastPinnedQuestTap < 400) {
+				e.preventDefault();
+				e.stopPropagation();
+				if (typeof unpinQuest === "function") {
+					unpinQuest();
+				} else if (typeof window.unpinQuest === "function") {
+					window.unpinQuest();
+				}
+				lastPinnedQuestTap = 0;
+			} else {
+				lastPinnedQuestTap = now;
+			}
+		}
 	}, [
 		lunPanelElements.pinnedQuestHeader = buildElement("span", {
 			id: "spkmod-pq-header",
@@ -5018,7 +5050,7 @@ document.body.appendChild(
 			id: "spkmod-pq-pbar"
 		})
 	])
-)
+);
 
 document.body.appendChild(
 	lunHudElements.settingsModal = buildElement("div", {
@@ -12516,7 +12548,6 @@ var bbsModalElements = {
 	refreshBtn: null,
 	closeBtn: null,
 	postsContainer: null,
-	whoAmILabel: null,
 	input: null,
 	charCount: null,
 	submitBtn: null,
@@ -12526,8 +12557,10 @@ var bbsModalElements = {
 var lunBbsPosts = [];
 var lunBbsLoading = false;
 var lunBbsPollTimer = null;
+var lunBbsSeenTimer = null;
 var lunBbsCooldownUntil = 0;
 var lunBbsTranslations = {};
+var lunBbsLastReadId = parseInt((window.localStorage && localStorage.getItem("spkmod-bbs-last-read-id")) || "0", 10);
 
 function escapeBbsHtml(text) {
 	if (!text) return '';
@@ -12570,20 +12603,14 @@ function getMyBbsInfo() {
 }
 
 function updateBbsWhoAmI() {
-	if (!bbsModalElements.whoAmILabel) return;
-	const me = getMyBbsInfo();
-	const staffTag = me.isStaff
-		? ` <span style="background: linear-gradient(135deg, #eab308, #ca8a04); color: #000; font-weight: 800; font-size: 8.5px; padding: 1px 5px; border-radius: 3px; letter-spacing: 0.5px; vertical-align: middle;">🛡️ ${t("bbsStaffBadge") || "MOD"}</span>`
-		: '';
-	bbsModalElements.whoAmILabel.innerHTML = `${t("bbsPostingAs", `<strong style="color: ${me.isStaff ? '#fde047' : '#67e8f9'};">${escapeBbsHtml(me.username)}</strong>`, `<span style="color: #a78bfa;">${me.level}</span>`)}${staffTag}`;
+	// Deprecated: "Posting as: ..." was removed to reduce clutter
 }
 
 function updateBbsUnreadBadge() {
 	const btn = (typeof lunPanelElements !== "undefined" && lunPanelElements.bbsBtn) || document.getElementById("spkmod-bbs-btn");
 	if (!btn) return;
 	let badge = document.getElementById("spkmod-bbs-btn-badge");
-	const lastReadId = parseInt((window.localStorage && localStorage.getItem("spkmod-bbs-last-read-id")) || "0", 10);
-	const hasUnread = Array.isArray(lunBbsPosts) && lunBbsPosts.some(p => (p.id || 0) > lastReadId);
+	const hasUnread = Array.isArray(lunBbsPosts) && lunBbsPosts.some(p => (p.id || 0) > lunBbsLastReadId);
 	if (hasUnread) {
 		if (!badge) {
 			badge = document.createElement("span");
@@ -12600,11 +12627,15 @@ function updateBbsUnreadBadge() {
 function markBbsPostsAsRead() {
 	if (Array.isArray(lunBbsPosts) && lunBbsPosts.length > 0) {
 		const maxId = Math.max(...lunBbsPosts.map(p => p.id || 0));
-		if (window.localStorage) {
-			localStorage.setItem("spkmod-bbs-last-read-id", String(maxId));
+		if (maxId > lunBbsLastReadId) {
+			lunBbsLastReadId = maxId;
+			if (window.localStorage) {
+				localStorage.setItem("spkmod-bbs-last-read-id", String(maxId));
+			}
 		}
-		updateBbsUnreadBadge();
 	}
+	const badge = document.getElementById("spkmod-bbs-btn-badge");
+	if (badge) badge.remove();
 }
 
 window.toggleBbsModal = function() {
@@ -12613,8 +12644,8 @@ window.toggleBbsModal = function() {
 	if (isClosed) {
 		if (typeof positionModalNicely === "function") positionModalNicely(lunHudElements.bbsModal);
 		lunHudElements.bbsModal.classList.remove("hidden");
-		updateBbsWhoAmI();
-		markBbsPostsAsRead();
+		const badge = document.getElementById("spkmod-bbs-btn-badge");
+		if (badge) badge.remove();
 		fetchBbsPosts();
 		if (!lunBbsPollTimer) {
 			lunBbsPollTimer = setInterval(() => {
@@ -12625,9 +12656,14 @@ window.toggleBbsModal = function() {
 		}
 	} else {
 		lunHudElements.bbsModal.classList.add("hidden");
+		markBbsPostsAsRead();
 		if (lunBbsPollTimer) {
 			clearInterval(lunBbsPollTimer);
 			lunBbsPollTimer = null;
+		}
+		if (lunBbsSeenTimer) {
+			clearTimeout(lunBbsSeenTimer);
+			lunBbsSeenTimer = null;
 		}
 	}
 };
@@ -12647,6 +12683,17 @@ async function fetchBbsPosts(isBackground) {
 				renderBbsPosts();
 				if (lunHudElements.bbsModal && !lunHudElements.bbsModal.classList.contains("hidden")) {
 					markBbsPostsAsRead();
+					if (lunBbsSeenTimer) clearTimeout(lunBbsSeenTimer);
+					lunBbsSeenTimer = setTimeout(() => {
+						if (bbsModalElements.postsContainer) {
+							const badges = bbsModalElements.postsContainer.querySelectorAll(".spkmod-bbs-new-badge");
+							badges.forEach(b => {
+								b.style.transition = "opacity 0.5s ease-out";
+								b.style.opacity = "0";
+								setTimeout(() => b.remove(), 500);
+							});
+						}
+					}, 4000);
 				} else {
 					updateBbsUnreadBadge();
 				}
@@ -12660,6 +12707,19 @@ async function fetchBbsPosts(isBackground) {
 	} finally {
 		lunBbsLoading = false;
 		if (bbsModalElements.refreshBtn) bbsModalElements.refreshBtn.style.opacity = "0.8";
+	}
+}
+
+function insertBbsReply(postId) {
+	if (!bbsModalElements.input) return;
+	const cur = bbsModalElements.input.value;
+	const replyTag = `>>${postId} `;
+	if (!cur.includes(replyTag)) {
+		bbsModalElements.input.value = cur ? `${cur} ${replyTag}` : replyTag;
+	}
+	bbsModalElements.input.focus();
+	if (bbsModalElements.charCount) {
+		bbsModalElements.charCount.innerText = `${bbsModalElements.input.value.length}/500`;
 	}
 }
 
@@ -12680,147 +12740,107 @@ function renderBbsPosts() {
 	const wasAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 40;
 
 	container.innerHTML = "";
-	const lastReadId = parseInt((window.localStorage && localStorage.getItem("spkmod-bbs-last-read-id")) || "0", 10);
+	const unreadCutoff = lunBbsLastReadId;
 	lunBbsPosts.forEach(post => {
 		const postEl = document.createElement("div");
 		postEl.id = `spkmod-bbs-post-${post.id}`;
-		postEl.style.cssText = "background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 6px 8px; display: flex; flex-direction: column; gap: 4px; box-sizing: border-box;";
+		postEl.style.cssText = "background: rgba(15, 23, 42, 0.45); border-bottom: 1px solid rgba(255,255,255,0.08); padding: 4px 6px; display: flex; flex-direction: column; gap: 2px; box-sizing: border-box; font-size: 11px; line-height: 1.45;";
 
-		// Header row
-		const headerRow = document.createElement("div");
-		headerRow.style.cssText = "display: flex; justify-content: space-between; align-items: center; font-size: 10px;";
-
-		const leftMeta = document.createElement("div");
-		leftMeta.style.cssText = "display: flex; align-items: center; gap: 5px; flex-wrap: wrap;";
+		const lineEl = document.createElement("div");
+		lineEl.style.cssText = "display: block; word-break: break-word;";
 
 		// #ID anchor
 		const numSpan = document.createElement("span");
-		numSpan.innerText = `#${post.id}`;
-		numSpan.style.cssText = "color: #38bdf8; font-weight: bold; cursor: pointer; user-select: none;";
+		numSpan.innerText = `#${post.id} `;
+		numSpan.style.cssText = "color: #38bdf8; font-weight: bold; cursor: pointer; user-select: none; margin-right: 3px;";
 		numSpan.title = "Click to reply >>" + post.id;
-		numSpan.onclick = () => {
-			if (bbsModalElements.input) {
-				const cur = bbsModalElements.input.value;
-				const replyTag = `>>${post.id} `;
-				if (!cur.includes(replyTag)) {
-					bbsModalElements.input.value = cur ? `${cur} ${replyTag}` : replyTag;
-				}
-				bbsModalElements.input.focus();
-				if (bbsModalElements.charCount) bbsModalElements.charCount.innerText = `${bbsModalElements.input.value.length}/500`;
-			}
-		};
-		leftMeta.appendChild(numSpan);
+		numSpan.onclick = () => insertBbsReply(post.id);
+		lineEl.appendChild(numSpan);
 
-		// Staff badge
+		// Staff badge (shield icon only)
 		if (post.isStaff) {
 			const modBadge = document.createElement("span");
-			modBadge.innerText = "🛡️ " + (t("bbsStaffBadge") || "MOD");
-			modBadge.style.cssText = "background: linear-gradient(135deg, #eab308, #ca8a04); color: #000; font-weight: 800; font-size: 8px; padding: 1px 4px; border-radius: 3px; letter-spacing: 0.5px;";
-			leftMeta.appendChild(modBadge);
+			modBadge.innerText = "🛡️";
+			modBadge.title = "Staff";
+			modBadge.style.cssText = "margin-right: 2px; font-size: 10px; vertical-align: middle;";
+			lineEl.appendChild(modBadge);
 		}
 
 		// Username
 		const nameSpan = document.createElement("span");
 		nameSpan.innerText = post.username || "Player";
-		nameSpan.style.cssText = `font-weight: 600; color: ${post.isStaff ? '#fde047' : '#e2e8f0'};`;
-		leftMeta.appendChild(nameSpan);
+		nameSpan.style.cssText = `font-weight: 600; color: ${post.isStaff ? '#fde047' : '#e2e8f0'}; margin-right: 2px;`;
+		lineEl.appendChild(nameSpan);
 
 		// Level
 		const lvSpan = document.createElement("span");
-		lvSpan.innerText = `(Lv.${post.level || 1})`;
-		lvSpan.style.cssText = "color: #94a3b8;";
-		leftMeta.appendChild(lvSpan);
-
-		// Time
-		const timeSpan = document.createElement("span");
-		timeSpan.innerText = formatBbsTime(post.createdAt);
-		timeSpan.style.cssText = "color: #64748b; font-size: 9.5px;";
-		leftMeta.appendChild(timeSpan);
-
-		// New! badge
-		const isRecent = (Date.now() - (post.createdAt || 0)) < 3600000;
-		if (isRecent || (post.id && post.id > lastReadId)) {
-			const newBadge = document.createElement("span");
-			newBadge.innerText = "New!";
-			newBadge.style.cssText = "color: #ef4444; font-weight: bold; font-size: 9.5px; margin-left: 2px;";
-			leftMeta.appendChild(newBadge);
-		}
-
-		headerRow.appendChild(leftMeta);
-
-		// Delete button (Only for staff)
-		if (me.isStaff) {
-			const delBtn = document.createElement("button");
-			delBtn.innerText = "🗑️";
-			delBtn.title = "Delete post (Staff)";
-			delBtn.style.cssText = "background: transparent; border: none; cursor: pointer; color: #ef4444; font-size: 11px; padding: 0 2px; opacity: 0.75;";
-			delBtn.onmouseenter = () => delBtn.style.opacity = "1";
-			delBtn.onmouseleave = () => delBtn.style.opacity = "0.75";
-			delBtn.onclick = () => {
-				const confirmMsg = t("bbsDeleteConfirm", post.id, post.username) || `Delete post #${post.id} by ${post.username}?`;
-				if (window.confirm(confirmMsg)) {
-					deleteBbsPost(post.id);
-				}
-			};
-			headerRow.appendChild(delBtn);
-		}
-
-		postEl.appendChild(headerRow);
+		lvSpan.innerText = `(Lv.${post.level || 1}): `;
+		lvSpan.style.cssText = "color: #94a3b8; margin-right: 4px;";
+		lineEl.appendChild(lvSpan);
 
 		// Message body
-		const bodyEl = document.createElement("div");
-		bodyEl.style.cssText = "font-size: 11.5px; line-height: 1.45; color: #f1f5f9; word-break: break-word; white-space: pre-wrap; margin: 2px 0;";
-
-		// Parse >>(\d+) reply anchors
+		const msgSpan = document.createElement("span");
+		msgSpan.style.cssText = "color: #f1f5f9; font-weight: 400; white-space: pre-wrap;";
 		const escapedMsg = escapeBbsHtml(post.message || "");
 		const linkedMsg = escapedMsg.replace(/&gt;&gt;(\d+)/g, (match, pNum) => {
 			return `<span class="spkmod-bbs-quote-anchor" data-target="${pNum}" style="color: #38bdf8; text-decoration: underline; cursor: pointer; font-weight: 600;">&gt;&gt;${pNum}</span>`;
 		});
-		bodyEl.innerHTML = linkedMsg;
+		msgSpan.innerHTML = linkedMsg;
+		lineEl.appendChild(msgSpan);
 
-		// Attach click listener for quote anchors
-		bodyEl.querySelectorAll(".spkmod-bbs-quote-anchor").forEach(anchor => {
-			anchor.onclick = (e) => {
+		// Timestamp
+		const timeSpan = document.createElement("span");
+		timeSpan.innerText = ` -- ${formatBbsTime(post.createdAt)}`;
+		timeSpan.style.cssText = "color: #64748b; font-size: 9.5px; margin-left: 6px; white-space: nowrap;";
+		lineEl.appendChild(timeSpan);
+
+		// New! badge (dismissable on click or after viewing)
+		if (post.id && post.id > unreadCutoff) {
+			const newBadge = document.createElement("span");
+			newBadge.className = "spkmod-bbs-new-badge";
+			newBadge.innerText = " New!";
+			newBadge.style.cssText = "color: #ef4444; font-weight: bold; font-size: 9.5px; margin-left: 2px; white-space: nowrap; cursor: pointer;";
+			newBadge.title = "Click to dismiss";
+			newBadge.onclick = (e) => {
 				e.stopPropagation();
-				const targetId = anchor.getAttribute("data-target");
-				const targetEl = document.getElementById(`spkmod-bbs-post-${targetId}`);
-				if (targetEl) {
-					targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
-					targetEl.style.transition = "background 0.3s";
-					targetEl.style.background = "rgba(59, 130, 246, 0.4)";
-					setTimeout(() => {
-						targetEl.style.background = "rgba(15, 23, 42, 0.65)";
-					}, 1200);
+				newBadge.remove();
+				if (window.localStorage) {
+					const cur = parseInt(localStorage.getItem("spkmod-bbs-last-read-id") || "0", 10);
+					const nextId = Math.max(cur, post.id);
+					localStorage.setItem("spkmod-bbs-last-read-id", String(nextId));
+					lunBbsLastReadId = nextId;
 				}
 			};
-		});
-
-		postEl.appendChild(bodyEl);
-
-		// Translation Container
-		const transContainer = document.createElement("div");
-		transContainer.style.cssText = "display: flex; flex-direction: column; gap: 3px;";
-
-		if (lunBbsTranslations[post.id]) {
-			const transBox = document.createElement("div");
-			transBox.style.cssText = "padding: 4px 6px; background: rgba(30, 58, 138, 0.35); border-left: 2px solid #3b82f6; border-radius: 3px; font-size: 11px; color: #bfdbfe; line-height: 1.4; word-break: break-word;";
-			transBox.innerHTML = `<span style="font-size: 9.5px; opacity: 0.8; display: block; margin-bottom: 2px;">🌐 [${(spkmodLang || 'en').toUpperCase()}]</span>${escapeBbsHtml(lunBbsTranslations[post.id])}`;
-			transContainer.appendChild(transBox);
+			lineEl.appendChild(newBadge);
 		}
 
-		// Action footer: Translate button
-		const footerRow = document.createElement("div");
-		footerRow.style.cssText = "display: flex; justify-content: flex-end; align-items: center; margin-top: 1px;";
+		// Action buttons container
+		const actionsSpan = document.createElement("span");
+		actionsSpan.style.cssText = "display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; vertical-align: middle; white-space: nowrap;";
 
+		// Reply button
+		const replyBtn = document.createElement("button");
+		replyBtn.innerText = "↩ " + (t("bbsReply") || "Reply");
+		replyBtn.title = "Reply to #" + post.id;
+		replyBtn.style.cssText = "background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #7dd3fc; border-radius: 3px; font-size: 8.5px; padding: 0 4px; height: 16px; cursor: pointer; line-height: 14px;";
+		replyBtn.onclick = (e) => {
+			e.stopPropagation();
+			insertBbsReply(post.id);
+		};
+		actionsSpan.appendChild(replyBtn);
+
+		// Translate button
 		const transBtn = document.createElement("button");
-		transBtn.innerText = lunBbsTranslations[post.id] ? ("🌐 " + (t("bbsShowOriginal") || "Original")) : ("🌐 " + (t("bbsTranslateBtn") || "Translate"));
-		transBtn.style.cssText = "background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #93c5fd; border-radius: 4px; font-size: 9.5px; padding: 1px 6px; cursor: pointer;";
-		transBtn.onclick = async () => {
+		transBtn.innerText = lunBbsTranslations[post.id] ? ("🌐 " + (t("bbsShowOriginal") || "Orig")) : ("🌐 " + (t("bbsTranslateBtn") || "Trans"));
+		transBtn.title = lunBbsTranslations[post.id] ? "Show original" : "Translate message";
+		transBtn.style.cssText = "background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #93c5fd; border-radius: 3px; font-size: 8.5px; padding: 0 4px; height: 16px; cursor: pointer; line-height: 14px;";
+		transBtn.onclick = async (e) => {
+			e.stopPropagation();
 			if (lunBbsTranslations[post.id]) {
 				delete lunBbsTranslations[post.id];
 				renderBbsPosts();
 			} else {
-				transBtn.innerText = "⏳ ...";
+				transBtn.innerText = "⏳";
 				transBtn.disabled = true;
 				try {
 					const targetLang = spkmodLang === "es-419" ? "es" : spkmodLang;
@@ -12834,10 +12854,54 @@ function renderBbsPosts() {
 				renderBbsPosts();
 			}
 		};
-		footerRow.appendChild(transBtn);
-		transContainer.appendChild(footerRow);
+		actionsSpan.appendChild(transBtn);
 
-		postEl.appendChild(transContainer);
+		// Delete button (Staff only)
+		if (me.isStaff) {
+			const delBtn = document.createElement("button");
+			delBtn.innerText = "🗑️";
+			delBtn.title = "Delete post (Staff)";
+			delBtn.style.cssText = "background: transparent; border: none; cursor: pointer; color: #ef4444; font-size: 10px; padding: 0 2px; opacity: 0.75; line-height: 1;";
+			delBtn.onmouseenter = () => delBtn.style.opacity = "1";
+			delBtn.onmouseleave = () => delBtn.style.opacity = "0.75";
+			delBtn.onclick = (e) => {
+				e.stopPropagation();
+				const confirmMsg = t("bbsDeleteConfirm", post.id, post.username) || `Delete post #${post.id} by ${post.username}?`;
+				if (window.confirm(confirmMsg)) {
+					deleteBbsPost(post.id);
+				}
+			};
+			actionsSpan.appendChild(delBtn);
+		}
+
+		lineEl.appendChild(actionsSpan);
+		postEl.appendChild(lineEl);
+
+		// Translation Box (if translated)
+		if (lunBbsTranslations[post.id]) {
+			const transBox = document.createElement("div");
+			transBox.style.cssText = "margin-top: 2px; padding: 2px 6px; background: rgba(30, 58, 138, 0.35); border-left: 2px solid #3b82f6; border-radius: 3px; font-size: 10.5px; color: #bfdbfe; word-break: break-word;";
+			transBox.innerHTML = `<span style="font-size: 9px; opacity: 0.8; margin-right: 4px;">🌐 [${(spkmodLang || 'en').toUpperCase()}]:</span>${escapeBbsHtml(lunBbsTranslations[post.id])}`;
+			postEl.appendChild(transBox);
+		}
+
+		// Attach quote anchor handler
+		postEl.querySelectorAll(".spkmod-bbs-quote-anchor").forEach(anchor => {
+			anchor.onclick = (e) => {
+				e.stopPropagation();
+				const targetId = anchor.getAttribute("data-target");
+				const targetEl = document.getElementById(`spkmod-bbs-post-${targetId}`);
+				if (targetEl) {
+					targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+					targetEl.style.transition = "background 0.3s";
+					targetEl.style.background = "rgba(59, 130, 246, 0.4)";
+					setTimeout(() => {
+						targetEl.style.background = "rgba(15, 23, 42, 0.45)";
+					}, 1200);
+				}
+			};
+		});
+
 		container.appendChild(postEl);
 	});
 
@@ -13004,8 +13068,7 @@ document.body.appendChild(
 		buildElement("div", {
 			style: "display: flex; flex-direction: column; gap: 4px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.1);"
 		}, [
-			buildElement("div", { style: "display: flex; justify-content: space-between; align-items: center; font-size: 10px;" }, [
-				bbsModalElements.whoAmILabel = buildElement("div", { style: "font-size: 10px; color: #94a3b8;" }),
+			buildElement("div", { style: "display: flex; justify-content: flex-end; align-items: center; margin-bottom: -2px;" }, [
 				bbsModalElements.charCount = buildElement("span", {
 					innerText: "0/500",
 					style: "color: #64748b; font-size: 9.5px;"
@@ -13039,10 +13102,33 @@ document.body.appendChild(
 		])
 	])
 );
+function updateBbsI18n() {
+	if (bbsModalElements.headerTitle) {
+		bbsModalElements.headerTitle.innerText = "💬 " + (t("bbsTitle") || "SpeakiBBS");
+	}
+	if (bbsModalElements.input) {
+		bbsModalElements.input.placeholder = t("bbsPlaceholder") || "Write a message... (Enter to send, Shift+Enter for newline)";
+	}
+	if (bbsModalElements.submitBtn && (!lunBbsCooldownUntil || Date.now() >= lunBbsCooldownUntil)) {
+		bbsModalElements.submitBtn.innerText = "📤 " + (t("bbsPostBtn") || "Post");
+	}
+	if (typeof lunPanelElements !== "undefined" && lunPanelElements.bbsBtn) {
+		lunPanelElements.bbsBtn.title = t("bbsBtnTooltip") || "SpeakiBBS";
+	}
+	if (typeof renderBbsPosts === "function") renderBbsPosts();
+}
+
+if (typeof spkmodI18nRenderers !== "undefined") {
+	spkmodI18nRenderers.push(() => {
+		updateBbsI18n();
+	});
+}
+
 setTimeout(() => {
 	if (typeof makeDraggable === 'function' && lunHudElements.bbsModal && bbsModalElements.headerTitle) {
 		makeDraggable(lunHudElements.bbsModal, [bbsModalElements.headerTitle]);
 	}
+	updateBbsI18n();
 	setTimeout(() => {
 		fetchBbsPosts(true);
 		setInterval(() => {
@@ -14387,6 +14473,9 @@ spkmodI18nRenderers.push(() => {
 	if (lunPanelElements.panelFollowBtn) setText(lunPanelElements.panelFollowBtn, lunFollowTargetName ? t("stopFollowing") : t("follow"));
 	setText(lunPanelElements.gamepadSettingsBtn, t("gamepadBtn"));
 	setText(lunPanelElements.pinnedQuestHeader, t("pinnedQuestHeader"));
+	if (lunHudElements && lunHudElements.pinnedQuest && lunHudElements.pinnedQuest.panel) {
+		lunHudElements.pinnedQuest.panel.title = t("pinnedQuestTooltip") || "Double-click to unpin";
+	}
 	setText(lunHudElements.footerMsg, t("footerMsg"));
 	setText(lunPanelElements.settingsHeader, t("settingsHeader"));
 	if (lunPanelElements.filterToggleLabel) setText(lunPanelElements.filterToggleLabel, t("filterToggleLabel"));
@@ -14615,6 +14704,7 @@ function unpinQuest() {
 
 	refreshPinButtons();
 }
+window.unpinQuest = unpinQuest;
 
 function pinQuest(quest, questElm) {
 	if (lunPinnedQuestId && String(lunPinnedQuestId) === String(quest.questId)) {
