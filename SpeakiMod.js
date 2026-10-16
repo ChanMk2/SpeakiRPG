@@ -4471,6 +4471,43 @@ document.body.appendChild(
 				})
 			]),
 
+			(function() {
+				// Zoom step cycle helper (5-10-15-20-30-40-50-60-70-80-90-5)
+				window.LUN_ZOOM_STEPS = [5, 10, 15, 20, 30, 40, 50, 60, 70, 80, 90];
+				window.lunZoomIndex = -1;
+
+				window.cycleCameraZoom = function() {
+					if (typeof gameState === "undefined" || !gameState?.cameraController) {
+						if (typeof chatLog !== "undefined") chatLog("Camera not ready.");
+						return;
+					}
+					const curZoom = Math.round(gameState.cameraController.cameraZoomDistance || 12);
+					const matchIdx = window.LUN_ZOOM_STEPS.indexOf(curZoom);
+					if (matchIdx !== -1) {
+						window.lunZoomIndex = (matchIdx + 1) % window.LUN_ZOOM_STEPS.length;
+					} else if (window.lunZoomIndex === -1) {
+						window.lunZoomIndex = 0;
+					} else {
+						window.lunZoomIndex = (window.lunZoomIndex + 1) % window.LUN_ZOOM_STEPS.length;
+					}
+					const targetZoom = window.LUN_ZOOM_STEPS[window.lunZoomIndex];
+					gameState.cameraController.cameraZoomDistance = targetZoom;
+					if (typeof chatLog !== "undefined") {
+						chatLog(t("zoomSetMsg", targetZoom));
+					}
+					window.updateZoomButtonText();
+				};
+
+				window.updateZoomButtonText = function() {
+					if (!lunPanelElements.zoomBtn) return;
+					const cur = (typeof gameState !== "undefined" && gameState?.cameraController?.cameraZoomDistance) 
+						? Math.round(gameState.cameraController.cameraZoomDistance) 
+						: (window.lunZoomIndex >= 0 ? window.LUN_ZOOM_STEPS[window.lunZoomIndex] : 12);
+					setText(lunPanelElements.zoomBtn, t("zoomBtn", cur));
+				};
+				return null;
+			})(),
+
 			buildElement("div", { className: "spkmod-panel-cat" }, [
 				lunPanelElements.turnToCameraBtn = buildElement("button", {
 					className: "spkmod-panel-btn",
@@ -4540,6 +4577,18 @@ document.body.appendChild(
 						if (typeof gameState !== "undefined" && gameState?.sendEmoteNow) {
 							gameState.sendEmoteNow(typeof Emotes !== "undefined" ? Emotes.MinigameJoayo || 3 : 3);
 						}
+					}
+				})
+			]),
+
+			buildElement("div", { className: "spkmod-panel-cat" }, [
+				lunPanelElements.zoomBtn = buildElement("button", {
+					id: "spkmod-zoom-btn",
+					className: "spkmod-panel-btn",
+					innerText: t("zoomBtn", (typeof gameState !== "undefined" && gameState?.cameraController?.cameraZoomDistance) ? Math.round(gameState.cameraController.cameraZoomDistance) : 12),
+					value: "",
+					onclick: () => {
+						if (typeof window.cycleCameraZoom === "function") window.cycleCameraZoom();
 					}
 				})
 			]),
@@ -5585,6 +5634,7 @@ function toggleFavoriteEmoji(id) {
     if (window.localStorage) localStorage.setItem("spkmod-emoji-fav", JSON.stringify(lunEmojiFavorites));
     if (typeof lunEmojiTab !== "undefined" && lunEmojiTab === "fav") { if (typeof renderEmojiGrid === "function") renderEmojiGrid(); }
 }
+window.toggleFavoriteEmoji = toggleFavoriteEmoji;
 
 function loadEmojiCatalogFile(url, targetObj) {
     const fallbackUrl = url.replace(/\/main\//, "/161e1bca722be72c67da40a04da2880ea83b1928/").replace(/\/refs\/heads\/main\//, "/161e1bca722be72c67da40a04da2880ea83b1928/");
@@ -5977,7 +6027,7 @@ function renderEmojiGrid() {
         
         const warningBanner = document.createElement("div");
         warningBanner.id = "spkmod-emoji-warning";
-        warningBanner.style.cssText = "color: #ffaa00; font-size: 11px; text-align: center; margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px dashed #555; font-weight: bold; font-family: sans-serif;";
+        warningBanner.style.cssText = "color: #ffaa00; font-size: 11px; text-align: center; margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px dashed #555; font-weight: bold; font-family: sans-serif; white-space: pre-line; line-height: 1.35;";
         headerWrap.appendChild(warningBanner);
 
         header = document.createElement("div");
@@ -6725,6 +6775,7 @@ if (typeof spkmodI18nRenderers !== 'undefined') {
         if (emojiBtn) {
             emojiBtn.title = t("emojiRemovedTooltip", "Removed by developer request, our apologies for the inconvenience, click for the feedback icon");
         }
+        if (typeof window.updateZoomButtonText === "function") window.updateZoomButtonText();
     });
 }
 
@@ -8105,11 +8156,13 @@ function executeGamepadAction(actionName) {
 		case "zoomIn":
 			if (gameState.cameraController) {
 				gameState.cameraController.cameraZoomDistance = Math.max(3, (gameState.cameraController.cameraZoomDistance || 12) - 1);
+				if (typeof updateZoomButtonText === "function") updateZoomButtonText();
 			}
 			break;
 		case "zoomOut":
 			if (gameState.cameraController) {
 				gameState.cameraController.cameraZoomDistance = Math.min(18, (gameState.cameraController.cameraZoomDistance || 12) + 1);
+				if (typeof updateZoomButtonText === "function") updateZoomButtonText();
 			}
 			break;
 		case "autoJump":
@@ -12723,11 +12776,12 @@ function setBbsReplyTarget(id, username) {
 	updateBbsReplyBar();
 	updateBbsRadioIndicators();
 	if (bbsModalElements.input) {
+		bbsModalElements.input.focus();
 		setTimeout(() => {
 			if (bbsModalElements.input) {
-				bbsModalElements.input.focus({ preventScroll: true });
+				bbsModalElements.input.focus();
 			}
-		}, 30);
+		}, 10);
 	}
 }
 
@@ -12813,14 +12867,17 @@ function renderBbsPosts() {
 
 	const roots = buildBbsTree(lunBbsPosts);
 
-	function renderNode(node, depth) {
+	function renderNode(node, depth, visited = new Set()) {
+		if (visited.has(node.post.id) || depth > 10) return;
+		visited.add(node.post.id);
+
 		const post = node.post;
 		const postEl = document.createElement("div");
 		postEl.id = `spkmod-bbs-post-${post.id}`;
 		postEl.dataset.depth = String(depth);
 
-		const indentPx = Math.min(depth, 4) * 16;
-		postEl.style.cssText = `background: ${depth > 0 ? 'rgba(15, 23, 42, 0.25)' : 'rgba(15, 23, 42, 0.45)'}; border-bottom: 1px solid rgba(255,255,255,0.06); padding: 3px 6px 3px ${6 + indentPx}px; display: flex; flex-direction: column; gap: 2px; box-sizing: border-box; font-size: 11px; line-height: 1.45; ${depth > 0 ? 'border-left: 2px solid rgba(56, 189, 248, 0.35); margin-left: 2px;' : ''}`;
+		const indentPx = Math.min(depth, 4) * 22;
+		postEl.style.cssText = `background: ${depth > 0 ? 'rgba(15, 23, 42, 0.28)' : 'rgba(15, 23, 42, 0.45)'}; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 3px 8px; margin-left: ${indentPx}px; display: flex; flex-direction: column; gap: 2px; box-sizing: border-box; font-size: 11px; line-height: 1.45; border-radius: ${depth > 0 ? '0 4px 4px 0' : '4px'}; ${depth > 0 ? 'border-left: 2px solid rgba(56, 189, 248, 0.45);' : ''}`;
 
 		const lineEl = document.createElement("div");
 		lineEl.style.cssText = "display: block; word-break: break-word;";
@@ -12828,7 +12885,7 @@ function renderBbsPosts() {
 		// Bullet symbol (• for root, ◦ for level 1, ▪ for level 2+)
 		const bulletSpan = document.createElement("span");
 		bulletSpan.innerText = depth === 0 ? "• " : (depth === 1 ? "◦ " : "▪ ");
-		bulletSpan.style.cssText = "color: #94a3b8; font-weight: bold; margin-right: 2px; user-select: none;";
+		bulletSpan.style.cssText = `color: ${depth === 0 ? '#94a3b8' : '#38bdf8'}; font-weight: bold; margin-right: 2px; user-select: none; font-size: 11px;`;
 		lineEl.appendChild(bulletSpan);
 
 		// Reply radio circle (◯ or ●)
@@ -12838,9 +12895,9 @@ function renderBbsPosts() {
 		radioSpan.setAttribute("data-post-id", String(post.id));
 		radioSpan.innerText = isCurrentReplyTarget ? "● " : "◯ ";
 		radioSpan.title = isCurrentReplyTarget ? "Cancel reply selection" : `Reply to #${post.id}`;
-		radioSpan.style.cssText = `cursor: pointer; user-select: none; margin-right: 4px; font-size: 10px; color: ${isCurrentReplyTarget ? '#38bdf8' : '#64748b'};`;
-		radioSpan.onpointerdown = (e) => { e.preventDefault(); e.stopPropagation(); };
-		radioSpan.onmousedown = (e) => { e.preventDefault(); e.stopPropagation(); };
+		radioSpan.style.cssText = `cursor: pointer; user-select: none; margin-right: 4px; font-size: 11px; color: ${isCurrentReplyTarget ? '#38bdf8' : '#64748b'};`;
+		radioSpan.onpointerdown = (e) => { e.stopPropagation(); };
+		radioSpan.onmousedown = (e) => { e.stopPropagation(); };
 		radioSpan.onclick = (e) => {
 			e.stopPropagation();
 			setBbsReplyTarget(post.id, post.username);
@@ -12852,8 +12909,8 @@ function renderBbsPosts() {
 		numSpan.innerText = `#${post.id} `;
 		numSpan.style.cssText = "color: #38bdf8; font-weight: bold; cursor: pointer; user-select: none; margin-right: 3px;";
 		numSpan.title = `Click to reply to #${post.id}`;
-		numSpan.onpointerdown = (e) => { e.preventDefault(); e.stopPropagation(); };
-		numSpan.onmousedown = (e) => { e.preventDefault(); e.stopPropagation(); };
+		numSpan.onpointerdown = (e) => { e.stopPropagation(); };
+		numSpan.onmousedown = (e) => { e.stopPropagation(); };
 		numSpan.onclick = (e) => {
 			e.stopPropagation();
 			setBbsReplyTarget(post.id, post.username);
@@ -12933,8 +12990,8 @@ function renderBbsPosts() {
 		replyBtn.innerText = "↩ " + (t("bbsReply") || "Reply");
 		replyBtn.title = "Reply to #" + post.id;
 		replyBtn.style.cssText = "background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #7dd3fc; border-radius: 3px; font-size: 8.5px; padding: 0 4px; height: 16px; cursor: pointer; line-height: 14px;";
-		replyBtn.onpointerdown = (e) => { e.preventDefault(); e.stopPropagation(); };
-		replyBtn.onmousedown = (e) => { e.preventDefault(); e.stopPropagation(); };
+		replyBtn.onpointerdown = (e) => { e.stopPropagation(); };
+		replyBtn.onmousedown = (e) => { e.stopPropagation(); };
 		replyBtn.onclick = (e) => {
 			e.stopPropagation();
 			setBbsReplyTarget(post.id, post.username);
@@ -13010,7 +13067,7 @@ function renderBbsPosts() {
 					targetEl.style.transition = "background 0.3s";
 					targetEl.style.background = "rgba(59, 130, 246, 0.4)";
 					setTimeout(() => {
-						targetEl.style.background = targetEl.dataset.depth > 0 ? "rgba(15, 23, 42, 0.25)" : "rgba(15, 23, 42, 0.45)";
+						targetEl.style.background = targetEl.dataset.depth > 0 ? "rgba(15, 23, 42, 0.28)" : "rgba(15, 23, 42, 0.45)";
 					}, 1200);
 				}
 			};
@@ -13021,7 +13078,7 @@ function renderBbsPosts() {
 		// Render children directly underneath
 		if (Array.isArray(node.children) && node.children.length > 0) {
 			node.children.forEach(child => {
-				renderNode(child, depth + 1);
+				renderNode(child, depth + 1, visited);
 			});
 		}
 	}
@@ -13057,6 +13114,7 @@ async function sendBbsPost() {
 	}
 
 	const replyToId = lunBbsReplyTarget ? lunBbsReplyTarget.id : null;
+	const postMessage = replyToId ? `>>${replyToId} ${msg}` : msg;
 
 	try {
 		const sUrl = getBbsServerUrl();
@@ -13067,7 +13125,7 @@ async function sendBbsPost() {
 				username: me.username,
 				playerId: me.playerId,
 				level: me.level,
-				message: msg,
+				message: postMessage,
 				replyTo: replyToId
 			})
 		});
@@ -13077,11 +13135,23 @@ async function sendBbsPost() {
 			if (bbsModalElements.charCount) bbsModalElements.charCount.innerText = "0/500";
 			lunBbsReplyTarget = null;
 			updateBbsReplyBar();
+			updateBbsRadioIndicators();
 			lunBbsCooldownUntil = Date.now() + 5000;
 			startBbsCooldownTimer(5);
 			await fetchBbsPosts();
-			if (bbsModalElements.postsContainer) {
-				bbsModalElements.postsContainer.scrollTop = bbsModalElements.postsContainer.scrollHeight;
+			const newPostId = data.post && data.post.id;
+			if (newPostId && bbsModalElements.postsContainer) {
+				const newEl = document.getElementById(`spkmod-bbs-post-${newPostId}`);
+				if (newEl) {
+					newEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+					newEl.style.transition = "background 0.3s";
+					newEl.style.background = "rgba(56, 189, 248, 0.4)";
+					setTimeout(() => {
+						newEl.style.background = (newEl.dataset.depth && parseInt(newEl.dataset.depth, 10) > 0) ? "rgba(15, 23, 42, 0.28)" : "rgba(15, 23, 42, 0.45)";
+					}, 1500);
+				} else {
+					bbsModalElements.postsContainer.scrollTop = bbsModalElements.postsContainer.scrollHeight;
+				}
 			}
 		} else {
 			if (bbsModalElements.statusMsg) {
@@ -13285,7 +13355,13 @@ setTimeout(() => {
 		makeDraggable(lunHudElements.bbsModal, [bbsModalElements.headerTitle]);
 	}
 	if (lunHudElements.bbsModal) {
-		lunHudElements.bbsModal.addEventListener("keydown", e => e.stopPropagation());
+		lunHudElements.bbsModal.addEventListener("keydown", e => {
+			if (e.key === "Escape") {
+				if (typeof toggleBbsModal === "function") toggleBbsModal();
+				return;
+			}
+			e.stopPropagation();
+		});
 		lunHudElements.bbsModal.addEventListener("keyup", e => e.stopPropagation());
 		lunHudElements.bbsModal.addEventListener("keypress", e => e.stopPropagation());
 	}
@@ -16381,6 +16457,7 @@ function hookGameStateOnce() {
 							return;
 						}
 						chatLog(t("zoomSetMsg", gameState.cameraController.cameraZoomDistance = Number.parseInt(cmd[1], 10) || 12));
+						if (typeof updateZoomButtonText === "function") updateZoomButtonText();
 						break;
 					case "fppitch":
 						const newPitch = parseFloat(cmd[1]);
@@ -16649,7 +16726,7 @@ function hookGameStateOnce() {
 						for (const [ename, eurl] of Object.entries(spkmodAllEmojis)) {
 							const tag = ":" + ename + ":";
 							if (html.includes(tag)) {
-								html = html.split(tag).join(`<span class="spkmod-custom-emoji" data-url="${eurl}" title="${tag}"><img src="${eurl}" style="height: 1.6em; vertical-align: middle; padding: 0 1px; display: inline-block;"></span>`);
+								html = html.split(tag).join(`<span class="spkmod-custom-emoji" data-name="${ename}" data-url="${eurl}" title="${tag}"><img src="${eurl}" style="height: 1.6em; vertical-align: middle; padding: 0 1px; display: inline-block;"></span>`);
 								changed = true;
 							}
 						}
@@ -16737,7 +16814,7 @@ function appendColoredChatLine(id, name, text) {
 			for (const [ename, eurl] of Object.entries(spkmodAllEmojis)) {
 				const tag = ":" + ename + ":";
 				if (html.includes(tag)) {
-					html = html.split(tag).join(`<span class="spkmod-custom-emoji" data-url="${eurl}" title="${tag}"><img src="${eurl}" style="height: 1.6em; vertical-align: middle; padding: 0 1px; display: inline-block;"></span>`);
+					html = html.split(tag).join(`<span class="spkmod-custom-emoji" data-name="${ename}" data-url="${eurl}" title="${tag}"><img src="${eurl}" style="height: 1.6em; vertical-align: middle; padding: 0 1px; display: inline-block;"></span>`);
 					changed = true;
 				}
 			}
@@ -17363,6 +17440,25 @@ function ensureEmojiTooltip() {
 	});
 }
 ensureEmojiTooltip();
+
+// Right-click rendered emojis in chat to add/remove from favorites
+document.addEventListener("contextmenu", (e) => {
+	const target = e.target.closest('.spkmod-custom-emoji');
+	if (!target) return;
+	if (target.closest("#spkmod-emoji-picker")) return;
+
+	e.preventDefault();
+	e.stopPropagation();
+
+	let name = target.getAttribute("data-name");
+	if (!name) {
+		const title = target.getAttribute("title") || "";
+		name = title.replace(/^:|:$/g, "").trim();
+	}
+	if (name && typeof toggleFavoriteEmoji === "function") {
+		toggleFavoriteEmoji(name);
+	}
+}, true);
 
 // ==========================================
 // EMOJI COOLDOWN SYSTEM
