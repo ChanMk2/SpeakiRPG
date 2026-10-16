@@ -14084,8 +14084,8 @@ var lunTelemetryPingIntervalMs = 60 * 60 * 1000; // 1 hour
 window.spkmodRenderChannelTracker = function() {
 	if (!window.__spkmodLastChannelResp || !lunHudElements.channelTracker) return;
 	const modLine = (lunModPlayersCounts.count1h !== null)
-		? "\n" + t("totalModPlayers", lunModPlayersCounts.count1h, lunModPlayersCounts.count24h, lunModPlayersCounts.count7d, lunModPlayersCounts.countAllTime || "--")
-		: "\n" + t("totalModPlayers", "--", "--", "--", "--");
+		? "\n" + t("totalModPlayers", lunModPlayersCounts.count1h)
+		: "\n" + t("totalModPlayers", "--");
 
 	setText(lunHudElements.channelTracker,
 		window.__spkmodLastChannelResp.map(ch => t("channelTracker", ch.channel, ch.population, ch.capacity)).join("\n")
@@ -14478,8 +14478,8 @@ function tick() {
 				window.__spkmodLastChannelResp = resp;
 				window.__spkmodLastTotalPop = totalPop;
 				var modLine = (lunModPlayersCounts.count1h !== null)
-					? "\n" + t("totalModPlayers", lunModPlayersCounts.count1h, lunModPlayersCounts.count24h, lunModPlayersCounts.count7d, lunModPlayersCounts.countAllTime || "--")
-					: "\n" + t("totalModPlayers", "--", "--", "--", "--");
+					? "\n" + t("totalModPlayers", lunModPlayersCounts.count1h)
+					: "\n" + t("totalModPlayers", "--");
 
 				setText(lunHudElements.channelTracker,
 					resp.map(ch => t("channelTracker", ch.channel, ch.population, ch.capacity)).join("\n")
