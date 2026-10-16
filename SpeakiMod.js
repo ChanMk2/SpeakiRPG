@@ -13662,6 +13662,186 @@ if (!questManagerHooked) {
 	}, 500);
 }
 
+let _fetchingQuests = false;
+async function fetchAllQuests() {
+	if (_fetchingQuests) return;
+	_fetchingQuests = true;
+	try {
+		const token = typeof getAuthToken === "function" ? getAuthToken() : "";
+		const headers = { "Content-Type": "application/json" };
+		if (token) headers["authorization"] = `Bearer ${token}`;
+
+		const periods = ["daily", "weekly", "permanent"];
+		for (const p of periods) {
+			try {
+				const res = await fetch(`/api/quests?period=${p}`, {
+					method: "GET",
+					headers: headers,
+					credentials: "include"
+				});
+				if (res.ok) {
+					const data = await res.json();
+					if (Array.isArray(data)) {
+						window.__spkmodCachedQuests = window.__spkmodCachedQuests || {};
+						for (const q of data) {
+							if (q && q.questId) {
+								q.period = q.period || p;
+								window.__spkmodCachedQuests[q.questId] = q;
+								if (lunPinnedQuestId && String(lunPinnedQuestId) === String(q.questId)) {
+									updatePinnedQuestDisplay(q);
+								}
+							}
+						}
+					}
+				}
+			} catch (_) {}
+		}
+	} finally {
+		_fetchingQuests = false;
+		refreshPinButtons();
+	}
+}
+
+function matchQuestFromTitleText(titleText, item) {
+	if (!titleText) return null;
+
+	// 1. Try matching from cached quests
+	if (window.__spkmodCachedQuests) {
+		for (const q of Object.values(window.__spkmodCachedQuests)) {
+			if (!q) continue;
+			if (q.title && titleText.includes(q.title)) return q;
+			if (q.description && titleText.includes(q.description)) return q;
+			if (q.code) {
+				try {
+					const tVal = typeof window.i18n === "function" ? window.i18n(`content.quest.${q.code}.title`) : "";
+					const dVal = typeof window.i18n === "function" ? window.i18n(`content.quest.${q.code}.description`) : "";
+					if (tVal && titleText.includes(tVal)) return q;
+					if (dVal && titleText.includes(dVal)) return q;
+				} catch (_) {}
+			}
+		}
+	}
+
+	// 2. Parse from DOM row text
+	let currentAmount = 0;
+	let targetAmount = 1;
+	const progressMatch = titleText.match(/\/\s*(\d+)\s*\/\s*(\d+)\s*$/);
+	if (progressMatch) {
+		currentAmount = parseInt(progressMatch[1], 10);
+		targetAmount = parseInt(progressMatch[2], 10);
+	}
+
+	const cleanTitle = titleText.replace(/\/\s*\d+\s*\/\s*\d+\s*$/, "").trim();
+	let hash = 0;
+	for (let i = 0; i < cleanTitle.length; i++) {
+		hash = ((hash << 5) - hash) + cleanTitle.charCodeAt(i);
+		hash |= 0;
+	}
+	const virtualId = "v_" + Math.abs(hash);
+
+	let period = "daily";
+	const activeTab = document.querySelector(".sr-panel__tabs .sr-btn--secondary");
+	if (activeTab) {
+		const tabText = (activeTab.textContent || "").toLowerCase();
+		if (tabText.includes("stand") || tabText.includes("perma")) period = "permanent";
+		else if (tabText.includes("week")) period = "weekly";
+	}
+
+	return {
+		questId: virtualId,
+		title: cleanTitle,
+		description: "",
+		currentAmount: currentAmount,
+		targetAmount: targetAmount,
+		period: period,
+		isCompleted: currentAmount >= targetAmount,
+		isClaimed: false
+	};
+}
+
+function injectPinButtonsIntoQuestList() {
+	const panelBodies = document.querySelectorAll(".sr-panel__body");
+	if (!panelBodies.length) return;
+
+	panelBodies.forEach(panelBody => {
+		const items = panelBody.querySelectorAll(".sr-list-item");
+		if (!items.length) return;
+
+		items.forEach(item => {
+			if (item.querySelector(".spkmod-pq-button")) return;
+
+			const topRow = item.firstElementChild;
+			if (!topRow) return;
+
+			const titleEl = topRow.querySelector(".sr-list-item__title");
+			if (!titleEl) return;
+
+			const titleText = (titleEl.textContent || "").trim();
+			if (!/\/\s*\d+\s*\/\s*\d+/.test(titleText) && !item.querySelector(".sr-item-icon")) return;
+
+			// If already claimed, no pin button needed
+			if (topRow.querySelector(".sr-badge--success") || topRow.textContent.includes("✓")) {
+				return;
+			}
+
+			const quest = matchQuestFromTitleText(titleText, item);
+			const questId = quest?.questId;
+			const isPinned = (lunPinnedQuestId && questId && String(lunPinnedQuestId) === String(questId));
+
+			const pinBtn = document.createElement("button");
+			pinBtn.type = "button";
+			pinBtn.className = "spkmod-pq-button";
+			pinBtn.__quest = quest;
+			if (questId) pinBtn.__questId = questId;
+			pinBtn.innerText = isPinned ? ("✕ " + (t("unpinQuestBtn") !== "unpinQuestBtn" ? t("unpinQuestBtn") : "Unpin")) : ("📌 " + (t("pinQuestBtn") || "Pin Quest"));
+			pinBtn.style.cssText = `
+				flex-shrink: 0;
+				margin-left: 8px;
+				padding: 3px 8px;
+				font-size: 11px;
+				line-height: 1.2;
+				height: auto;
+				border-radius: 4px;
+				cursor: pointer;
+				background: ${isPinned ? "#dc2626" : "#2563eb"};
+				color: #fff;
+				border: 1px solid rgba(255,255,255,0.25);
+				font-weight: bold;
+				user-select: none;
+				transition: background 0.15s ease;
+			`;
+
+			pinBtn.onclick = function (e) {
+				e.preventDefault();
+				e.stopPropagation();
+				const q = pinBtn.__quest || matchQuestFromTitleText(titleText, item);
+				if (q) {
+					pinQuest(q, item);
+				}
+			};
+
+			const statusEl = topRow.querySelector(".sr-list-item__subtitle") || topRow.querySelector("button.sr-btn--primary");
+			if (statusEl && statusEl.parentElement === topRow) {
+				const rightCol = document.createElement("div");
+				rightCol.style.cssText = "display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: 8px;";
+				topRow.replaceChild(rightCol, statusEl);
+				rightCol.appendChild(statusEl);
+				rightCol.appendChild(pinBtn);
+			} else if (!topRow.querySelector(".spkmod-pq-button")) {
+				topRow.appendChild(pinBtn);
+			}
+		});
+	});
+}
+
+// Observer for Quest Panel DOM appearance/tab switching
+if (typeof window !== "undefined" && window.MutationObserver) {
+	const _spkmodQuestDomObserver = new MutationObserver(() => {
+		injectPinButtonsIntoQuestList();
+	});
+	_spkmodQuestDomObserver.observe(document.body, { childList: true, subtree: true });
+}
+
 function onGameDataUpdate() {
 
 }
@@ -13721,6 +13901,9 @@ function tick() {
 		if (typeof hookQuestManagerOnce === "function") {
 			hookQuestManagerOnce();
 		}
+	}
+	if (lunTickCount % 5 === 0) {
+		injectPinButtonsIntoQuestList();
 	}
 
 	const currentNick = (typeof gameState !== "undefined" && gameState && (gameState.myPlayerName || gameState.myStat?.name)) || "";
@@ -14399,6 +14582,45 @@ function hookGameStateOnce() {
 	gameState.__speakiGameStateHooked = true;
 	window.__gameStateHooked = true;
 	if (window.spkmodDebug) spkmodDebug.log("Initializing in-game GameState hooks...");
+
+	if (typeof gameState.handleQuestProgress === "function" && !gameState.__speakiQuestProgressHooked) {
+		gameState.__speakiQuestProgressHooked = true;
+		const origHandleQuestProgress = gameState.handleQuestProgress.bind(gameState);
+		gameState.handleQuestProgress = function(e) {
+			try {
+				if (e && Array.isArray(e.quests)) {
+					for (const n of e.quests) {
+						if (window.__spkmodCachedQuests && window.__spkmodCachedQuests[n.questId]) {
+							const cached = window.__spkmodCachedQuests[n.questId];
+							if (n.currentAmount !== undefined) cached.currentAmount = n.currentAmount;
+							if (n.targetAmount !== undefined) cached.targetAmount = n.targetAmount;
+							if (cached.currentAmount >= cached.targetAmount) cached.isCompleted = true;
+						}
+						if (lunPinnedQuestId && String(n.questId) === String(lunPinnedQuestId)) {
+							const cur = n.currentAmount ?? 0;
+							const tgt = n.targetAmount ?? 1;
+							if (lunHudElements && lunHudElements.pinnedQuest && lunHudElements.pinnedQuest.content) {
+								const regex = /\d+\s*\/\s*\d+$/;
+								if (regex.test(lunPinnedQuestContent || "")) {
+									lunPinnedQuestContent = lunPinnedQuestContent.replace(regex, `${cur}/${tgt}`);
+									setText(lunHudElements.pinnedQuest.content, lunPinnedQuestContent);
+								} else {
+									updatePinnedQuestDisplay({ questId: n.questId, currentAmount: cur, targetAmount: tgt });
+								}
+							}
+							if (lunHudElements && lunHudElements.pinnedQuest && lunHudElements.pinnedQuest.pbar) {
+								const pct = Math.min(100, Math.max(0, (cur / tgt) * 100));
+								lunHudElements.pinnedQuest.pbar.style.width = `${pct.toFixed(0)}%`;
+							}
+						}
+					}
+				}
+			} catch (err) {
+				console.warn("[SpeakiMod+] Error in gameState quest progress hook:", err);
+			}
+			return origHandleQuestProgress(e);
+		};
+	}
 
 	if (gameState.combatAssist && typeof gameState.combatAssist.update === "function" && !gameState.combatAssist.__speakiHooked) {
 		const origCombatAssistUpdate = gameState.combatAssist.update.bind(gameState.combatAssist);
@@ -16499,6 +16721,12 @@ function onInGameReady() {
 	}
 	if (typeof hookQuestManagerOnce === "function") {
 		hookQuestManagerOnce();
+	}
+	if (typeof fetchAllQuests === "function") {
+		fetchAllQuests();
+	}
+	if (typeof injectPinButtonsIntoQuestList === "function") {
+		injectPinButtonsIntoQuestList();
 	}
 	const hudEl = document.getElementById("spkmod-hud");
 	if (hudEl) hudEl.classList.remove("hidden");
