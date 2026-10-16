@@ -122,6 +122,43 @@ if (!window.__speakiFetchHooked) {
 	};
 }
 
+if (!window.__speakiWsHooked && typeof window.WebSocket !== "undefined") {
+	window.__speakiWsHooked = true;
+	const OrigWebSocket = window.WebSocket;
+	window.WebSocket = new Proxy(OrigWebSocket, {
+		construct(target, args) {
+			let [url, protocols] = args;
+			if (typeof url === "string" && (url.includes("/ws/") || url.includes("/game") || url.includes("overture.io.kr"))) {
+				let sep = url.includes("?") ? "&" : "?";
+				if (!url.includes("emoji=1")) {
+					url += sep + "emoji=1";
+					sep = "&";
+				}
+				if (!url.includes("mod=1")) {
+					url += sep + "mod=1";
+				}
+				args[0] = url;
+			}
+			return Reflect.construct(target, args);
+		},
+		apply(target, thisArg, args) {
+			let [url, protocols] = args;
+			if (typeof url === "string" && (url.includes("/ws/") || url.includes("/game") || url.includes("overture.io.kr"))) {
+				let sep = url.includes("?") ? "&" : "?";
+				if (!url.includes("emoji=1")) {
+					url += sep + "emoji=1";
+					sep = "&";
+				}
+				if (!url.includes("mod=1")) {
+					url += sep + "mod=1";
+				}
+				args[0] = url;
+			}
+			return Reflect.construct(target, args);
+		}
+	});
+}
+
 const usingDevToolsOrOldSpeakiInjector = !window.speakiInjectorVer;
 
 window.speakiMod = true;
@@ -3449,9 +3486,9 @@ function updateDynamicStyles() {
 		}
 				#app { filter: ${filterRule}; }
 		#app > *:not(:has(canvas)):not(canvas):not(.sr-click-ripple-layer) { zoom: ${lunGameUiScale} !important; }
-		#spkmod-hud, #spkmod-settings-modal, #spkmod-event-modal, #spkmod-patchnotes-modal, #spkmod-info-modal, #spkmod-effects-modal, #spkmod-stats-modal, #spkmod-edits-modal { transform: scale(var(--spkmod-scale)); transform-origin: top left; }
+		#spkmod-hud, #spkmod-settings-modal, #spkmod-event-modal, #spkmod-patchnotes-modal, #spkmod-bbs-modal, #spkmod-info-modal, #spkmod-effects-modal, #spkmod-stats-modal, #spkmod-edits-modal { transform: scale(var(--spkmod-scale)); transform-origin: top left; }
 		#spkmod-pq, body > #spkmod-panel { transform: scale(var(--spkmod-scale)); transform-origin: top right; }
-		#spkmod-main, #spkmod-pq, #spkmod-settings-modal, #spkmod-gamepad-modal, #spkmod-players-modal, #spkmod-event-modal, #spkmod-patchnotes-modal, #spkmod-info-modal, #spkmod-effects-modal, #spkmod-stats-modal, #spkmod-edits-modal, .spkmod-panel-btn, .spkmod-panel-counter, .spkmod-panel-combo, #spkmod-discord-btn {
+		#spkmod-main, #spkmod-pq, #spkmod-settings-modal, #spkmod-gamepad-modal, #spkmod-players-modal, #spkmod-event-modal, #spkmod-patchnotes-modal, #spkmod-bbs-modal, #spkmod-info-modal, #spkmod-effects-modal, #spkmod-stats-modal, #spkmod-edits-modal, .spkmod-panel-btn, .spkmod-panel-counter, .spkmod-panel-combo, #spkmod-discord-btn {
 			background: var(--spkmod-bg) !important;
 			backdrop-filter: var(--spkmod-blur) !important;
 			border-color: var(--spkmod-accent) !important;
@@ -3772,7 +3809,7 @@ document.head.appendChild(buildElement(
 			border-radius: 8px;
 			padding: 6px;
 		}
-		#spkmod-gamepad-modal, #spkmod-players-modal, #spkmod-event-modal, #spkmod-patchnotes-modal, #spkmod-info-modal, #spkmod-effects-modal, #spkmod-stats-modal, #spkmod-edits-modal {
+		#spkmod-gamepad-modal, #spkmod-players-modal, #spkmod-event-modal, #spkmod-patchnotes-modal, #spkmod-bbs-modal, #spkmod-info-modal, #spkmod-effects-modal, #spkmod-stats-modal, #spkmod-edits-modal {
 			display: flex;
 			flex-direction: column;
 			position: fixed;
@@ -3805,7 +3842,7 @@ document.head.appendChild(buildElement(
 			width: 290px;
 			max-width: 95vw;
 		}
-		#spkmod-patchnotes-modal, #spkmod-info-modal {
+		#spkmod-patchnotes-modal, #spkmod-info-modal, #spkmod-bbs-modal {
 			width: 380px;
 			max-width: 95vw;
 		}
@@ -3868,6 +3905,7 @@ document.head.appendChild(buildElement(
 		body.spkmod-ui-hidden #spkmod-settings-modal,
 		body.spkmod-ui-hidden #spkmod-event-modal,
 		body.spkmod-ui-hidden #spkmod-patchnotes-modal,
+		body.spkmod-ui-hidden #spkmod-bbs-modal,
 		body.spkmod-ui-hidden #spkmod-gamepad-modal,
 		body.spkmod-ui-hidden #spkmod-players-modal,
 		body.spkmod-ui-hidden #spkmod-map-modal,
@@ -4871,6 +4909,16 @@ document.body.appendChild(
 						togglePatchNotesModal();
 					}
 				}),
+				lunPanelElements.bbsBtn = buildElement("button", {
+					id: "spkmod-bbs-btn",
+					className: "spkmod-panel-btn",
+					style: "flex: 1; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 12pt; cursor: pointer; position: relative;",
+					innerText: "💬",
+					title: t("bbsBtnTooltip") || "SpeakiBBS",
+					onclick: _ => {
+						if (typeof toggleBbsModal === "function") toggleBbsModal();
+					}
+				}),
 				lunPanelElements.infoBtn = buildElement("button", {
 					id: "spkmod-info-btn",
 					className: "spkmod-panel-btn",
@@ -5190,6 +5238,20 @@ document.body.appendChild(
 				buildElement("div", { className: "spkmod-panel-cat" }, [
 					lunPanelElements.gamepadRumbleLabel = buildElement("span", { style: "color: #fff; font-size: 11px; font-weight: bold; flex: 1;", innerText: t("gamepadRumbleToggleLabel") }),
 					lunPanelElements.gamepadRumbleToggleInput = buildElement("input", { type: "checkbox", checked: lunGamepadRumbleEnabled, onchange: e => setGamepadRumbleEnabled(e.target.checked) })
+				]),
+				buildElement("div", { className: "spkmod-panel-cat" }, [
+					lunPanelElements.telemetryToggleLabel = buildElement("span", { style: "color: #fff; font-size: 11px; font-weight: bold; flex: 1;", innerText: t("telemetrySettingLabel") }),
+					lunPanelElements.telemetryToggleInput = buildElement("input", {
+						type: "checkbox",
+						checked: (window.localStorage && localStorage.getItem("spkmod-telemetry-consent") === "granted"),
+						onchange: e => {
+							const granted = e.target.checked;
+							if (window.localStorage) localStorage.setItem("spkmod-telemetry-consent", granted ? "granted" : "denied");
+							if (granted && typeof window.spkmodSendTelemetryPing === "function") {
+								window.spkmodSendTelemetryPing();
+							}
+						}
+					})
 				])
 			]),
 
@@ -5473,12 +5535,64 @@ setTimeout(() => {
 }, 500);
 
 
-// --- EMOJI FEATURE REMOVAL & FALLBACKS ---
-// Emoji feature removed upon developer request.
+// --- EMOJI PICKER ---
+let lunEmojiPickerPanel = null;
+let lunEmojiTab = "standard";
+const LUN_EMOJIS = ["👍","👎","👋","🙏","👏","🙌","🤝","😊","😂","🤣","😍","😎","🤔","😅","😭","🥺","🔥","💯","❤️","✨","🎉","💀","👀","🗣️","💰","💎","🟣","⭐","❌","✅", "💪", "🤷", "🤦", "🎈", "🎂", "🥳", "🙄", "🤐", "🥵", "🥶", "🤯", "😴", "🤮", "🤡", "👻", "👽", "💩", "🤖", "🎃"];
+let lunEmojiFreq = JSON.parse((window.localStorage && localStorage.getItem("spkmod-emoji-freq")) || "{}");
+let lunEmojiFavorites = JSON.parse((window.localStorage && localStorage.getItem("spkmod-emoji-fav")) || "[]");
+
+function toggleFavoriteEmoji(id) {
+    if (lunEmojiFavorites.includes(id)) {
+        lunEmojiFavorites = lunEmojiFavorites.filter(x => x !== id);
+        if (typeof chatLog !== "undefined") chatLog(t("emojiFavRemoved", id));
+    } else {
+        lunEmojiFavorites.push(id);
+        if (typeof chatLog !== "undefined") chatLog(t("emojiFavAdded", id));
+    }
+    if (window.localStorage) localStorage.setItem("spkmod-emoji-fav", JSON.stringify(lunEmojiFavorites));
+    if (typeof lunEmojiTab !== "undefined" && lunEmojiTab === "fav") { if (typeof renderEmojiGrid === "function") renderEmojiGrid(); }
+}
+
+function loadEmojiCatalogFile(url, targetObj) {
+    const fallbackUrl = url.replace(/\/main\//, "/161e1bca722be72c67da40a04da2880ea83b1928/").replace(/\/refs\/heads\/main\//, "/161e1bca722be72c67da40a04da2880ea83b1928/");
+    const parse = (txt) => {
+        txt.split("\n").forEach(l => {
+            const line = l.trim();
+            if (!line) return;
+            const parts = line.split(",");
+            if (parts.length >= 2) {
+                const name = parts[0].replace(/:/g, "").trim();
+                const u = parts.slice(1).join(",").trim();
+                if (name && u) {
+                    targetObj[name] = u;
+                }
+            }
+        });
+        if (typeof spkmodAvatarController !== "undefined" && spkmodAvatarController.refreshCatalog) spkmodAvatarController.refreshCatalog();
+    };
+    fetch(url).then(res => {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.text();
+    }).then(parse).catch(() => {
+        fetch(fallbackUrl).then(res => res.text()).then(parse).catch(err => {
+            console.warn("[SpeakiMod+] Failed to load emojis from", url, err);
+        });
+    });
+}
+
+// Custom Emojis (Fetched from GitHub)
 var lunCustomEmojis = {};
+loadEmojiCatalogFile("https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/refs/heads/main/emojis.txt", lunCustomEmojis);
+
 var lunTrickcalEmojis = {};
+loadEmojiCatalogFile("https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/main/emojis2.txt", lunTrickcalEmojis);
+
 var lunTrickcal2Emojis = {};
+loadEmojiCatalogFile("https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/main/emojis3.txt", lunTrickcal2Emojis);
+
 var lunTrickcal3Emojis = {};
+loadEmojiCatalogFile("https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/main/emojis4.txt", lunTrickcal3Emojis);
 
 
 // Local emoji avatars
@@ -5741,6 +5855,288 @@ const spkmodAvatarController = createSpeakiAvatarController({
 	translate: key => t(key)
 });
 
+function getSortedEmojis() {
+    return [...LUN_EMOJIS].sort((a,b) => (lunEmojiFreq[b]||0) - (lunEmojiFreq[a]||0));
+}
+
+function toggleEmojiPicker(anchorBtn) {
+    if (lunEmojiPickerPanel) {
+        lunEmojiPickerPanel.remove();
+        lunEmojiPickerPanel = null;
+        return;
+    }
+    
+    lunEmojiPickerPanel = document.createElement("div");
+    lunEmojiPickerPanel.id = "spkmod-emoji-picker-v2";
+    
+    const isMobile = typeof window.speakiMobile !== "undefined" || (typeof navigator !== "undefined" && /mobi|android/i.test(navigator.userAgent));
+    const defaultW = isMobile ? "360px" : "420px";
+    const defaultH = isMobile ? "320px" : "420px";
+    lunEmojiPickerPanel.style.cssText = `position: fixed; width: ${defaultW}; height: ${defaultH}; max-width: 95vw; max-height: 80vh; min-width: 200px; min-height: 150px; resize: both; overflow: hidden; background: rgba(20, 20, 20, 0.95); border: 1px solid #555; border-radius: 6px; padding: 6px; display: flex; flex-direction: column; gap: 4px; z-index: 999999; box-shadow: 0 4px 12px rgba(0,0,0,0.5); pointer-events: auto;`;
+    
+    if (!(window.localStorage && localStorage.getItem("spkmod-pos-spkmod-emoji-picker-v2"))) {
+        if (isMobile) {
+            lunEmojiPickerPanel.style.left = Math.max(10, (window.innerWidth / 2) - 180) + "px";
+            lunEmojiPickerPanel.style.top = Math.max(10, (window.innerHeight / 2) - 160) + "px";
+            lunEmojiPickerPanel.style.bottom = "auto";
+        } else {
+            const btnRect = anchorBtn.getBoundingClientRect();
+            lunEmojiPickerPanel.style.left = (btnRect.right + 10) + "px";
+            lunEmojiPickerPanel.style.bottom = (window.innerHeight - btnRect.bottom) + "px";
+        }
+    }
+    
+    // Prevent scrolling inside the panel from zooming the game camera
+    lunEmojiPickerPanel.addEventListener("wheel", (e) => { e.stopPropagation(); }, { passive: true });
+    lunEmojiPickerPanel.addEventListener("touchmove", (e) => { e.stopPropagation(); }, { passive: true });
+    lunEmojiPickerPanel.addEventListener("mousedown", (e) => { e.stopPropagation(); });
+    lunEmojiPickerPanel.addEventListener("touchstart", (e) => { e.stopPropagation(); }, { passive: true });
+
+    renderEmojiGrid();
+    document.body.appendChild(lunEmojiPickerPanel);
+    
+    const closeHandler = (e) => {
+        if (!lunEmojiPickerPanel) return;
+        if (e.target && !document.contains(e.target)) return;
+        
+        const path = e.composedPath ? e.composedPath() : [];
+        let isInside = false;
+        if (path.length > 0) {
+            isInside = path.includes(lunEmojiPickerPanel) || path.includes(anchorBtn);
+        }
+        
+        if (!isInside) {
+            let el = e.target;
+            while (el) {
+                if (el === lunEmojiPickerPanel || el === anchorBtn) {
+                    isInside = true;
+                    break;
+                }
+                el = el.parentElement;
+            }
+        }
+        
+        if (!isInside) {
+            lunEmojiPickerPanel.remove();
+            lunEmojiPickerPanel = null;
+            document.removeEventListener("mousedown", closeHandler);
+            document.removeEventListener("touchstart", closeHandler);
+        }
+    };
+    setTimeout(() => {
+        document.addEventListener("mousedown", closeHandler);
+        document.addEventListener("touchstart", closeHandler, {passive: true});
+    }, 10);
+}
+
+function renderEmojiGrid() {
+    if (!lunEmojiPickerPanel) return;
+    
+    let headerWrap = lunEmojiPickerPanel.querySelector(".spkmod-emoji-header");
+    let header = lunEmojiPickerPanel.querySelector("#spkmod-emoji-tabs");
+    let grid = lunEmojiPickerPanel.querySelector("#spkmod-emoji-grid");
+    
+    if (!headerWrap) {
+        lunEmojiPickerPanel.innerHTML = "";
+        
+        headerWrap = document.createElement("div");
+        headerWrap.className = "spkmod-emoji-header";
+        headerWrap.style.cssText = "cursor: move; user-select: none; touch-action: none;";
+        
+        const warningBanner = document.createElement("div");
+        warningBanner.id = "spkmod-emoji-warning";
+        warningBanner.style.cssText = "color: #ffaa00; font-size: 11px; text-align: center; margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px dashed #555; font-weight: bold; font-family: sans-serif;";
+        headerWrap.appendChild(warningBanner);
+
+        header = document.createElement("div");
+        header.id = "spkmod-emoji-tabs";
+        header.style.cssText = "display: flex; gap: 4px; margin-bottom: 4px; border-bottom: 1px solid #444; padding-bottom: 4px; flex-wrap: wrap;";
+        headerWrap.appendChild(header);
+        
+        lunEmojiPickerPanel.appendChild(headerWrap);
+
+        grid = document.createElement("div");
+        grid.id = "spkmod-emoji-grid";
+        grid.style.cssText = "display: flex; flex-wrap: wrap; gap: 4px; flex-grow: 1; overflow-y: auto; align-content: flex-start;";
+        lunEmojiPickerPanel.appendChild(grid);
+        
+        const fixEmojiPanelPos = () => {
+            if (lunEmojiPickerPanel.style.bottom !== "auto") {
+                lunEmojiPickerPanel.style.top = lunEmojiPickerPanel.getBoundingClientRect().top + "px";
+                lunEmojiPickerPanel.style.bottom = "auto";
+            }
+        };
+        headerWrap.addEventListener("mousedown", fixEmojiPanelPos);
+        headerWrap.addEventListener("touchstart", fixEmojiPanelPos, { passive: true });
+
+        if (typeof makeDraggable === 'function') {
+            makeDraggable(lunEmojiPickerPanel, [headerWrap]);
+        }
+    }
+    
+    let warningBannerEl = lunEmojiPickerPanel.querySelector("#spkmod-emoji-warning");
+    if (warningBannerEl) {
+        warningBannerEl.innerText = lunEmojiTab === "fav" ? t("emojiWarningFav") : t("emojiWarning");
+    }
+    
+    header.innerHTML = "";
+    
+    const btnStd = document.createElement("button");
+    btnStd.innerText = "😀 " + t("emojiTabStandard", "Standard");
+    btnStd.style.cssText = `flex: 1; padding: 4px; cursor: pointer; border-radius: 4px; background: ${lunEmojiTab === 'standard' ? 'rgba(255,255,255,0.2)' : 'transparent'}; border: none; color: #fff;`;
+    btnStd.onclick = (e) => { lunEmojiTab = 'standard'; renderEmojiGrid(); };
+    
+    const btnCus = document.createElement("button");
+    btnCus.innerText = "⭐ " + t("emojiTabCustom", "Custom");
+    btnCus.style.cssText = `flex: 1; padding: 4px; cursor: pointer; border-radius: 4px; background: ${lunEmojiTab === 'custom' ? 'rgba(255,255,255,0.2)' : 'transparent'}; border: none; color: #fff;`;
+    btnCus.onclick = (e) => { lunEmojiTab = 'custom'; renderEmojiGrid(); };
+    
+    const btnTrickcal = document.createElement("button");
+    btnTrickcal.innerText = "🍀 " + t("emojiTabTrickcal", "Trickcal");
+    btnTrickcal.style.cssText = `flex: 1; padding: 4px; cursor: pointer; border-radius: 4px; background: ${lunEmojiTab === 'trickcal' ? 'rgba(255,255,255,0.2)' : 'transparent'}; border: none; color: #fff;`;
+    btnTrickcal.onclick = (e) => { lunEmojiTab = 'trickcal'; renderEmojiGrid(); };
+
+    const btnTrickcal2 = document.createElement("button");
+    btnTrickcal2.innerText = "🍀 " + t("emojiTabTrickcal2", "Trickcal 2");
+    btnTrickcal2.style.cssText = `flex: 1; padding: 4px; cursor: pointer; border-radius: 4px; background: ${lunEmojiTab === 'trickcal2' ? 'rgba(255,255,255,0.2)' : 'transparent'}; border: none; color: #fff;`;
+    btnTrickcal2.onclick = (e) => { lunEmojiTab = 'trickcal2'; renderEmojiGrid(); };
+
+    const btnTrickcal3 = document.createElement("button");
+    btnTrickcal3.innerText = "🍀 " + t("emojiTabTrickcal3", "Trick 3");
+    btnTrickcal3.style.cssText = `flex: 1; padding: 4px; cursor: pointer; border-radius: 4px; background: ${lunEmojiTab === 'trickcal3' ? 'rgba(255,255,255,0.2)' : 'transparent'}; border: none; color: #fff;`;
+    btnTrickcal3.onclick = (e) => { lunEmojiTab = 'trickcal3'; renderEmojiGrid(); };
+    
+    header.appendChild(btnStd);
+    header.appendChild(btnCus);
+    header.appendChild(btnTrickcal);
+    header.appendChild(btnTrickcal2);
+    header.appendChild(btnTrickcal3);
+
+    const btnFav = document.createElement("button");
+    btnFav.innerText = t("emojiTabFav", "Fav");
+    btnFav.style.cssText = `flex: 1; padding: 4px; cursor: pointer; border-radius: 4px; background: ${lunEmojiTab === 'fav' ? 'rgba(255,255,255,0.2)' : 'transparent'}; border: none; color: #fff;`;
+    btnFav.onclick = (e) => { lunEmojiTab = 'fav'; renderEmojiGrid(); };
+    header.appendChild(btnFav);
+
+    grid.innerHTML = "";
+    
+    if (lunEmojiTab === 'fav') {
+        if (lunEmojiFavorites.length === 0) {
+            const noFavs = document.createElement("div");
+            noFavs.innerText = t("emojiNoFavs", "No favorites yet. Right click emojis to favorite!");
+            noFavs.style.cssText = "color: #aaa; width: 100%; text-align: center; margin-top: 20px; font-size: 13px;";
+            grid.appendChild(noFavs);
+        } else {
+            lunEmojiFavorites.forEach(id => {
+                let isCustom = false;
+                let url = null;
+                let name = id;
+                if (typeof lunTrickcalEmojis !== 'undefined' && lunTrickcalEmojis[id]) { isCustom = true; url = lunTrickcalEmojis[id]; }
+                else if (typeof lunTrickcal2Emojis !== 'undefined' && lunTrickcal2Emojis[id]) { isCustom = true; url = lunTrickcal2Emojis[id]; }
+                else if (typeof lunTrickcal3Emojis !== 'undefined' && lunTrickcal3Emojis[id]) { isCustom = true; url = lunTrickcal3Emojis[id]; }
+                else if (typeof lunCustomEmojis !== 'undefined' && lunCustomEmojis[id]) { isCustom = true; url = lunCustomEmojis[id]; }
+                
+                const btn = document.createElement("button");
+                if (isCustom) {
+                    btn.title = `:${name}:`;
+                    btn.className = "spkmod-custom-emoji";
+                    btn.setAttribute("data-url", url);
+                    btn.style.cssText = "width: 35px; height: 35px; background: rgba(255,255,255,0.1); border: 1px solid transparent; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.1s; padding: 2px;";
+                    btn.onmouseenter = () => btn.style.background = "rgba(255,255,255,0.2)";
+                    btn.onmouseleave = () => btn.style.background = "rgba(255,255,255,0.1)";
+                    const img = document.createElement("img");
+                    img.src = url;
+                    img.style.cssText = "max-width: 100%; max-height: 100%; object-fit: contain;";
+                    btn.appendChild(img);
+                    btn.onclick = (e) => {
+                        insertEmojiIntoChat(`:${name}: `);
+                    };
+                } else {
+                    btn.innerText = id;
+                    btn.style.cssText = "width: 31px; height: 31px; background: rgba(255,255,255,0.1); border: 1px solid transparent; border-radius: 4px; cursor: pointer; font-size: 19px; display: flex; align-items: center; justify-content: center; transition: background 0.1s;";
+                    btn.onmouseenter = () => btn.style.background = "rgba(255,255,255,0.2)";
+                    btn.onmouseleave = () => btn.style.background = "rgba(255,255,255,0.1)";
+                    btn.onclick = (e) => {
+                        lunEmojiFreq[id] = (lunEmojiFreq[id]||0) + 1;
+                        if (window.localStorage) localStorage.setItem("spkmod-emoji-freq", JSON.stringify(lunEmojiFreq));
+                        insertEmojiIntoChat(id);
+                    };
+                }
+                btn.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    if (typeof toggleFavoriteEmoji === 'function') toggleFavoriteEmoji(id);
+                };
+                grid.appendChild(btn);
+            });
+        }
+    } else if (lunEmojiTab === 'standard') {
+        const sorted = getSortedEmojis();
+        sorted.forEach(emoji => {
+            const btn = document.createElement("button");
+            btn.innerText = emoji;
+            btn.style.cssText = "width: 31px; height: 31px; background: rgba(255,255,255,0.1); border: 1px solid transparent; border-radius: 4px; cursor: pointer; font-size: 19px; display: flex; align-items: center; justify-content: center; transition: background 0.1s;";
+            btn.onmouseenter = () => btn.style.background = "rgba(255,255,255,0.2)";
+            btn.onmouseleave = () => btn.style.background = "rgba(255,255,255,0.1)";
+            btn.onclick = (e) => {
+                lunEmojiFreq[emoji] = (lunEmojiFreq[emoji]||0) + 1;
+                if (window.localStorage) localStorage.setItem("spkmod-emoji-freq", JSON.stringify(lunEmojiFreq));
+                renderEmojiGrid();
+                insertEmojiIntoChat(emoji);
+            };
+            btn.oncontextmenu = (e) => {
+                e.preventDefault();
+                if (typeof toggleFavoriteEmoji === 'function') toggleFavoriteEmoji(emoji);
+            };
+            grid.appendChild(btn);
+        });
+    } else {
+        const targetEmojis = lunEmojiTab === 'trickcal' ? lunTrickcalEmojis : (lunEmojiTab === 'trickcal2' ? lunTrickcal2Emojis : (lunEmojiTab === 'trickcal3' ? lunTrickcal3Emojis : lunCustomEmojis));
+        Object.entries(targetEmojis).forEach(([name, url]) => {
+            const btn = document.createElement("button");
+            btn.title = `:${name}:`;
+            btn.className = "spkmod-custom-emoji";
+            btn.setAttribute("data-url", url);
+            btn.style.cssText = "width: 35px; height: 35px; background: rgba(255,255,255,0.1); border: 1px solid transparent; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.1s; padding: 2px;";
+            btn.onmouseenter = () => btn.style.background = "rgba(255,255,255,0.2)";
+            btn.onmouseleave = () => btn.style.background = "rgba(255,255,255,0.1)";
+            
+            const img = document.createElement("img");
+            img.src = url;
+            img.style.cssText = "max-width: 100%; max-height: 100%; object-fit: contain;";
+            btn.appendChild(img);
+            
+            btn.onclick = (e) => {
+                insertEmojiIntoChat(`:${name}: `);
+            };
+            btn.oncontextmenu = (e) => {
+                e.preventDefault();
+                if (typeof toggleFavoriteEmoji === 'function') toggleFavoriteEmoji(name);
+            };
+            grid.appendChild(btn);
+        });
+    }
+    
+    lunEmojiPickerPanel.appendChild(grid);
+}
+
+function insertEmojiIntoChat(emoji) {
+    const chatInput = document.querySelector(".sr-chatbox__input, .sr-chatbox input, input[placeholder*='chat']");
+    if (!chatInput) return;
+    
+    chatInput.focus();
+    if (!document.execCommand('insertText', false, emoji)) {
+        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+        if (nativeInputValueSetter) {
+            nativeInputValueSetter.call(chatInput, chatInput.value + emoji);
+            chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+            chatInput.dispatchEvent(new Event('change', { bubbles: true }));
+        } else {
+            chatInput.value += emoji;
+            chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    }
+}
+
 // --- FEEDBACK POLL MODAL & EMOJI BUTTON HOOK ---
 let lunPollAnswers = { q1: null, q2: null, q3: null };
 
@@ -5750,28 +6146,29 @@ function hookChatEmojiButton() {
     const container = chatInput.parentElement;
     
     let btn = document.getElementById("spkmod-emoji-btn");
-    const tooltipText = t("emojiRemovedTooltip", "Removed by developer request, our apologies for the inconvenience, click for the feedback icon");
     if (!btn) {
         btn = document.createElement("button");
         btn.id = "spkmod-emoji-btn";
         btn.innerText = "😀";
-        btn.title = tooltipText;
+        btn.title = "Emojis";
         btn.style.cssText = "position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; background: transparent; border: none; cursor: pointer; z-index: 999999; font-size: 16px; display: flex; align-items: center; justify-content: center; filter: grayscale(100%); transition: filter 0.2s; pointer-events: auto; user-select: none;";
         btn.onmousedown = (e) => { e.preventDefault(); };
         btn.onmouseenter = () => btn.style.filter = "none";
         btn.onmouseleave = () => btn.style.filter = "grayscale(100%)";
         btn.onclick = (e) => {
             e.preventDefault();
-            if (typeof window.showPollModal === "function") {
-                window.showPollModal();
-            }
+            toggleEmojiPicker(btn);
         };
         container.style.position = "relative";
         container.appendChild(btn);
         
         chatInput.style.paddingRight = "30px";
     } else {
-        btn.title = tooltipText;
+        btn.title = "Emojis";
+        btn.onclick = (e) => {
+            e.preventDefault();
+            toggleEmojiPicker(btn);
+        };
     }
 }
 
@@ -12112,6 +12509,548 @@ setTimeout(() => {
 	}
 }, 500);
 
+// --- SPEAKI BBS (COMMUNITY BULLETIN BOARD) ---
+var bbsModalElements = {
+	headerTitle: null,
+	countBadge: null,
+	refreshBtn: null,
+	closeBtn: null,
+	postsContainer: null,
+	whoAmILabel: null,
+	input: null,
+	charCount: null,
+	submitBtn: null,
+	statusMsg: null
+};
+
+var lunBbsPosts = [];
+var lunBbsLoading = false;
+var lunBbsPollTimer = null;
+var lunBbsCooldownUntil = 0;
+var lunBbsTranslations = {};
+
+function escapeBbsHtml(text) {
+	if (!text) return '';
+	return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function getBbsServerUrl() {
+	let saved = (window.localStorage && localStorage.getItem("spkmod-poll-server-url")) || "";
+	if (saved.startsWith("http://") || saved.includes("YOUR_RPI")) saved = "";
+	return (window.spkmodPollServerUrl || saved || "https://spk.lena.moe").replace(/\/+$/, "");
+}
+
+function formatBbsTime(ts) {
+	if (!ts) return "";
+	const d = new Date(ts);
+	const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+	const y = d.getFullYear();
+	const m = (d.getMonth() + 1).toString().padStart(2, '0');
+	const day = d.getDate().toString().padStart(2, '0');
+	const dayName = days[d.getDay()];
+	const h = d.getHours().toString().padStart(2, '0');
+	const min = d.getMinutes().toString().padStart(2, '0');
+	const s = d.getSeconds().toString().padStart(2, '0');
+	return `${y}-${m}-${day} (${dayName}) ${h}:${min}:${s}`;
+}
+
+function getMyBbsInfo() {
+	const username = (window.gameState && window.gameState.myPlayerName)
+		? String(window.gameState.myPlayerName).trim()
+		: (localStorage.getItem("spkmod-last-player-name") || "Player");
+	const playerId = (window.gameState && window.gameState.myPlayerId)
+		? String(window.gameState.myPlayerId).trim()
+		: (localStorage.getItem("spkmod-last-player-id") || "");
+	const level = (window.gameState && window.gameState.myStat && window.gameState.myStat.level)
+		? Math.max(1, parseInt(window.gameState.myStat.level, 10) || 1)
+		: 1;
+	const n = username.toLowerCase();
+	const isStaff = n === "glas" || n === "sp1cky" || n === "spk41i" || n === "gmdt" || n === "peiyu" || playerId === "17086812" || playerId === "17125820";
+	return { username, playerId, level, isStaff };
+}
+
+function updateBbsWhoAmI() {
+	if (!bbsModalElements.whoAmILabel) return;
+	const me = getMyBbsInfo();
+	const staffTag = me.isStaff
+		? ` <span style="background: linear-gradient(135deg, #eab308, #ca8a04); color: #000; font-weight: 800; font-size: 8.5px; padding: 1px 5px; border-radius: 3px; letter-spacing: 0.5px; vertical-align: middle;">🛡️ ${t("bbsStaffBadge") || "MOD"}</span>`
+		: '';
+	bbsModalElements.whoAmILabel.innerHTML = `${t("bbsPostingAs", `<strong style="color: ${me.isStaff ? '#fde047' : '#67e8f9'};">${escapeBbsHtml(me.username)}</strong>`, `<span style="color: #a78bfa;">${me.level}</span>`)}${staffTag}`;
+}
+
+function updateBbsUnreadBadge() {
+	const btn = (typeof lunPanelElements !== "undefined" && lunPanelElements.bbsBtn) || document.getElementById("spkmod-bbs-btn");
+	if (!btn) return;
+	let badge = document.getElementById("spkmod-bbs-btn-badge");
+	const lastReadId = parseInt((window.localStorage && localStorage.getItem("spkmod-bbs-last-read-id")) || "0", 10);
+	const hasUnread = Array.isArray(lunBbsPosts) && lunBbsPosts.some(p => (p.id || 0) > lastReadId);
+	if (hasUnread) {
+		if (!badge) {
+			badge = document.createElement("span");
+			badge.id = "spkmod-bbs-btn-badge";
+			badge.innerText = "New!";
+			badge.style.cssText = "position: absolute; top: -5px; right: -5px; background: #ef4444; color: #fff; font-size: 7.5px; font-weight: bold; padding: 1px 3px; border-radius: 4px; pointer-events: none; line-height: 1; box-shadow: 0 1px 3px rgba(0,0,0,0.5);";
+			btn.appendChild(badge);
+		}
+	} else {
+		if (badge) badge.remove();
+	}
+}
+
+function markBbsPostsAsRead() {
+	if (Array.isArray(lunBbsPosts) && lunBbsPosts.length > 0) {
+		const maxId = Math.max(...lunBbsPosts.map(p => p.id || 0));
+		if (window.localStorage) {
+			localStorage.setItem("spkmod-bbs-last-read-id", String(maxId));
+		}
+		updateBbsUnreadBadge();
+	}
+}
+
+window.toggleBbsModal = function() {
+	if (!lunHudElements.bbsModal) return;
+	const isClosed = lunHudElements.bbsModal.classList.contains("hidden");
+	if (isClosed) {
+		if (typeof positionModalNicely === "function") positionModalNicely(lunHudElements.bbsModal);
+		lunHudElements.bbsModal.classList.remove("hidden");
+		updateBbsWhoAmI();
+		markBbsPostsAsRead();
+		fetchBbsPosts();
+		if (!lunBbsPollTimer) {
+			lunBbsPollTimer = setInterval(() => {
+				if (lunHudElements.bbsModal && !lunHudElements.bbsModal.classList.contains("hidden")) {
+					fetchBbsPosts(true);
+				}
+			}, 15000);
+		}
+	} else {
+		lunHudElements.bbsModal.classList.add("hidden");
+		if (lunBbsPollTimer) {
+			clearInterval(lunBbsPollTimer);
+			lunBbsPollTimer = null;
+		}
+	}
+};
+
+async function fetchBbsPosts(isBackground) {
+	if (lunBbsLoading && !isBackground) return;
+	lunBbsLoading = true;
+	if (bbsModalElements.refreshBtn) bbsModalElements.refreshBtn.style.opacity = "0.4";
+
+	try {
+		const sUrl = getBbsServerUrl();
+		const res = await fetch(`${sUrl}/api/bbs/posts?limit=100`);
+		if (res.ok) {
+			const data = await res.json();
+			if (data && data.success && Array.isArray(data.posts)) {
+				lunBbsPosts = data.posts;
+				renderBbsPosts();
+				if (lunHudElements.bbsModal && !lunHudElements.bbsModal.classList.contains("hidden")) {
+					markBbsPostsAsRead();
+				} else {
+					updateBbsUnreadBadge();
+				}
+			}
+		}
+	} catch (err) {
+		console.warn("[SpeakiMod+] Failed to fetch BBS posts:", err);
+		if (!isBackground && bbsModalElements.postsContainer && lunBbsPosts.length === 0) {
+			bbsModalElements.postsContainer.innerHTML = `<div style="text-align: center; color: #f87171; font-size: 11px; padding: 20px 0;">${t("bbsError")}</div>`;
+		}
+	} finally {
+		lunBbsLoading = false;
+		if (bbsModalElements.refreshBtn) bbsModalElements.refreshBtn.style.opacity = "0.8";
+	}
+}
+
+function renderBbsPosts() {
+	if (!bbsModalElements.postsContainer) return;
+	const container = bbsModalElements.postsContainer;
+	const me = getMyBbsInfo();
+
+	if (bbsModalElements.countBadge) {
+		bbsModalElements.countBadge.innerText = String(lunBbsPosts.length);
+	}
+
+	if (lunBbsPosts.length === 0) {
+		container.innerHTML = `<div style="text-align: center; color: #94a3b8; font-size: 11px; padding: 30px 10px;">${t("bbsEmpty")}</div>`;
+		return;
+	}
+
+	const wasAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 40;
+
+	container.innerHTML = "";
+	const lastReadId = parseInt((window.localStorage && localStorage.getItem("spkmod-bbs-last-read-id")) || "0", 10);
+	lunBbsPosts.forEach(post => {
+		const postEl = document.createElement("div");
+		postEl.id = `spkmod-bbs-post-${post.id}`;
+		postEl.style.cssText = "background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 6px 8px; display: flex; flex-direction: column; gap: 4px; box-sizing: border-box;";
+
+		// Header row
+		const headerRow = document.createElement("div");
+		headerRow.style.cssText = "display: flex; justify-content: space-between; align-items: center; font-size: 10px;";
+
+		const leftMeta = document.createElement("div");
+		leftMeta.style.cssText = "display: flex; align-items: center; gap: 5px; flex-wrap: wrap;";
+
+		// #ID anchor
+		const numSpan = document.createElement("span");
+		numSpan.innerText = `#${post.id}`;
+		numSpan.style.cssText = "color: #38bdf8; font-weight: bold; cursor: pointer; user-select: none;";
+		numSpan.title = "Click to reply >>" + post.id;
+		numSpan.onclick = () => {
+			if (bbsModalElements.input) {
+				const cur = bbsModalElements.input.value;
+				const replyTag = `>>${post.id} `;
+				if (!cur.includes(replyTag)) {
+					bbsModalElements.input.value = cur ? `${cur} ${replyTag}` : replyTag;
+				}
+				bbsModalElements.input.focus();
+				if (bbsModalElements.charCount) bbsModalElements.charCount.innerText = `${bbsModalElements.input.value.length}/500`;
+			}
+		};
+		leftMeta.appendChild(numSpan);
+
+		// Staff badge
+		if (post.isStaff) {
+			const modBadge = document.createElement("span");
+			modBadge.innerText = "🛡️ " + (t("bbsStaffBadge") || "MOD");
+			modBadge.style.cssText = "background: linear-gradient(135deg, #eab308, #ca8a04); color: #000; font-weight: 800; font-size: 8px; padding: 1px 4px; border-radius: 3px; letter-spacing: 0.5px;";
+			leftMeta.appendChild(modBadge);
+		}
+
+		// Username
+		const nameSpan = document.createElement("span");
+		nameSpan.innerText = post.username || "Player";
+		nameSpan.style.cssText = `font-weight: 600; color: ${post.isStaff ? '#fde047' : '#e2e8f0'};`;
+		leftMeta.appendChild(nameSpan);
+
+		// Level
+		const lvSpan = document.createElement("span");
+		lvSpan.innerText = `(Lv.${post.level || 1})`;
+		lvSpan.style.cssText = "color: #94a3b8;";
+		leftMeta.appendChild(lvSpan);
+
+		// Time
+		const timeSpan = document.createElement("span");
+		timeSpan.innerText = formatBbsTime(post.createdAt);
+		timeSpan.style.cssText = "color: #64748b; font-size: 9.5px;";
+		leftMeta.appendChild(timeSpan);
+
+		// New! badge
+		const isRecent = (Date.now() - (post.createdAt || 0)) < 3600000;
+		if (isRecent || (post.id && post.id > lastReadId)) {
+			const newBadge = document.createElement("span");
+			newBadge.innerText = "New!";
+			newBadge.style.cssText = "color: #ef4444; font-weight: bold; font-size: 9.5px; margin-left: 2px;";
+			leftMeta.appendChild(newBadge);
+		}
+
+		headerRow.appendChild(leftMeta);
+
+		// Delete button (Only for staff)
+		if (me.isStaff) {
+			const delBtn = document.createElement("button");
+			delBtn.innerText = "🗑️";
+			delBtn.title = "Delete post (Staff)";
+			delBtn.style.cssText = "background: transparent; border: none; cursor: pointer; color: #ef4444; font-size: 11px; padding: 0 2px; opacity: 0.75;";
+			delBtn.onmouseenter = () => delBtn.style.opacity = "1";
+			delBtn.onmouseleave = () => delBtn.style.opacity = "0.75";
+			delBtn.onclick = () => {
+				const confirmMsg = t("bbsDeleteConfirm", post.id, post.username) || `Delete post #${post.id} by ${post.username}?`;
+				if (window.confirm(confirmMsg)) {
+					deleteBbsPost(post.id);
+				}
+			};
+			headerRow.appendChild(delBtn);
+		}
+
+		postEl.appendChild(headerRow);
+
+		// Message body
+		const bodyEl = document.createElement("div");
+		bodyEl.style.cssText = "font-size: 11.5px; line-height: 1.45; color: #f1f5f9; word-break: break-word; white-space: pre-wrap; margin: 2px 0;";
+
+		// Parse >>(\d+) reply anchors
+		const escapedMsg = escapeBbsHtml(post.message || "");
+		const linkedMsg = escapedMsg.replace(/&gt;&gt;(\d+)/g, (match, pNum) => {
+			return `<span class="spkmod-bbs-quote-anchor" data-target="${pNum}" style="color: #38bdf8; text-decoration: underline; cursor: pointer; font-weight: 600;">&gt;&gt;${pNum}</span>`;
+		});
+		bodyEl.innerHTML = linkedMsg;
+
+		// Attach click listener for quote anchors
+		bodyEl.querySelectorAll(".spkmod-bbs-quote-anchor").forEach(anchor => {
+			anchor.onclick = (e) => {
+				e.stopPropagation();
+				const targetId = anchor.getAttribute("data-target");
+				const targetEl = document.getElementById(`spkmod-bbs-post-${targetId}`);
+				if (targetEl) {
+					targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+					targetEl.style.transition = "background 0.3s";
+					targetEl.style.background = "rgba(59, 130, 246, 0.4)";
+					setTimeout(() => {
+						targetEl.style.background = "rgba(15, 23, 42, 0.65)";
+					}, 1200);
+				}
+			};
+		});
+
+		postEl.appendChild(bodyEl);
+
+		// Translation Container
+		const transContainer = document.createElement("div");
+		transContainer.style.cssText = "display: flex; flex-direction: column; gap: 3px;";
+
+		if (lunBbsTranslations[post.id]) {
+			const transBox = document.createElement("div");
+			transBox.style.cssText = "padding: 4px 6px; background: rgba(30, 58, 138, 0.35); border-left: 2px solid #3b82f6; border-radius: 3px; font-size: 11px; color: #bfdbfe; line-height: 1.4; word-break: break-word;";
+			transBox.innerHTML = `<span style="font-size: 9.5px; opacity: 0.8; display: block; margin-bottom: 2px;">🌐 [${(spkmodLang || 'en').toUpperCase()}]</span>${escapeBbsHtml(lunBbsTranslations[post.id])}`;
+			transContainer.appendChild(transBox);
+		}
+
+		// Action footer: Translate button
+		const footerRow = document.createElement("div");
+		footerRow.style.cssText = "display: flex; justify-content: flex-end; align-items: center; margin-top: 1px;";
+
+		const transBtn = document.createElement("button");
+		transBtn.innerText = lunBbsTranslations[post.id] ? ("🌐 " + (t("bbsShowOriginal") || "Original")) : ("🌐 " + (t("bbsTranslateBtn") || "Translate"));
+		transBtn.style.cssText = "background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #93c5fd; border-radius: 4px; font-size: 9.5px; padding: 1px 6px; cursor: pointer;";
+		transBtn.onclick = async () => {
+			if (lunBbsTranslations[post.id]) {
+				delete lunBbsTranslations[post.id];
+				renderBbsPosts();
+			} else {
+				transBtn.innerText = "⏳ ...";
+				transBtn.disabled = true;
+				try {
+					const targetLang = spkmodLang === "es-419" ? "es" : spkmodLang;
+					const translated = (typeof translateTextToLang === "function")
+						? await translateTextToLang(post.message, targetLang)
+						: post.message;
+					lunBbsTranslations[post.id] = translated;
+				} catch (_) {
+					lunBbsTranslations[post.id] = post.message;
+				}
+				renderBbsPosts();
+			}
+		};
+		footerRow.appendChild(transBtn);
+		transContainer.appendChild(footerRow);
+
+		postEl.appendChild(transContainer);
+		container.appendChild(postEl);
+	});
+
+	if (wasAtBottom) {
+		container.scrollTop = container.scrollHeight;
+	}
+}
+
+async function sendBbsPost() {
+	if (!bbsModalElements.input) return;
+	const msg = bbsModalElements.input.value.trim();
+	if (!msg) return;
+
+	if (Date.now() < lunBbsCooldownUntil) {
+		const waitSec = Math.ceil((lunBbsCooldownUntil - Date.now()) / 1000);
+		if (bbsModalElements.statusMsg) {
+			bbsModalElements.statusMsg.innerText = t("bbsCooldownMsg", waitSec) || `Wait ${waitSec}s...`;
+			bbsModalElements.statusMsg.style.display = "";
+			setTimeout(() => { if (bbsModalElements.statusMsg) bbsModalElements.statusMsg.style.display = "none"; }, 2500);
+		}
+		return;
+	}
+
+	const me = getMyBbsInfo();
+	if (bbsModalElements.submitBtn) {
+		bbsModalElements.submitBtn.disabled = true;
+		bbsModalElements.submitBtn.innerText = t("bbsSending") || "Posting...";
+	}
+
+	try {
+		const sUrl = getBbsServerUrl();
+		const res = await fetch(`${sUrl}/api/bbs/post`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				username: me.username,
+				playerId: me.playerId,
+				level: me.level,
+				message: msg
+			})
+		});
+		const data = await res.json();
+		if (data && data.success) {
+			bbsModalElements.input.value = "";
+			if (bbsModalElements.charCount) bbsModalElements.charCount.innerText = "0/500";
+			lunBbsCooldownUntil = Date.now() + 5000;
+			startBbsCooldownTimer(5);
+			await fetchBbsPosts();
+			if (bbsModalElements.postsContainer) {
+				bbsModalElements.postsContainer.scrollTop = bbsModalElements.postsContainer.scrollHeight;
+			}
+		} else {
+			if (bbsModalElements.statusMsg) {
+				bbsModalElements.statusMsg.innerText = data.error || "Failed to post";
+				bbsModalElements.statusMsg.style.display = "";
+				setTimeout(() => { if (bbsModalElements.statusMsg) bbsModalElements.statusMsg.style.display = "none"; }, 3000);
+			}
+			if (bbsModalElements.submitBtn) {
+				bbsModalElements.submitBtn.disabled = false;
+				bbsModalElements.submitBtn.innerText = "📤 " + (t("bbsPostBtn") || "Post");
+			}
+		}
+	} catch (err) {
+		console.warn("[SpeakiMod+] Error posting to BBS:", err);
+		if (bbsModalElements.statusMsg) {
+			bbsModalElements.statusMsg.innerText = t("bbsError") || "Network error";
+			bbsModalElements.statusMsg.style.display = "";
+			setTimeout(() => { if (bbsModalElements.statusMsg) bbsModalElements.statusMsg.style.display = "none"; }, 3000);
+		}
+		if (bbsModalElements.submitBtn) {
+			bbsModalElements.submitBtn.disabled = false;
+			bbsModalElements.submitBtn.innerText = "📤 " + (t("bbsPostBtn") || "Post");
+		}
+	}
+}
+
+function startBbsCooldownTimer(sec) {
+	if (!bbsModalElements.submitBtn) return;
+	bbsModalElements.submitBtn.disabled = true;
+	let left = sec;
+	bbsModalElements.submitBtn.innerText = `⏳ (${left}s)`;
+	const timer = setInterval(() => {
+		left--;
+		if (left <= 0) {
+			clearInterval(timer);
+			if (bbsModalElements.submitBtn) {
+				bbsModalElements.submitBtn.disabled = false;
+				bbsModalElements.submitBtn.innerText = "📤 " + (t("bbsPostBtn") || "Post");
+			}
+		} else if (bbsModalElements.submitBtn) {
+			bbsModalElements.submitBtn.innerText = `⏳ (${left}s)`;
+		}
+	}, 1000);
+}
+
+async function deleteBbsPost(postId) {
+	const me = getMyBbsInfo();
+	try {
+		const sUrl = getBbsServerUrl();
+		const res = await fetch(`${sUrl}/api/bbs/delete`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				postId,
+				username: me.username,
+				playerId: me.playerId
+			})
+		});
+		const data = await res.json();
+		if (data && data.success) {
+			lunBbsPosts = lunBbsPosts.filter(p => p.id !== postId);
+			renderBbsPosts();
+		} else {
+			alert(data.error || "Failed to delete post");
+		}
+	} catch (err) {
+		console.warn("[SpeakiMod+] Failed to delete BBS post:", err);
+	}
+}
+
+document.body.appendChild(
+	lunHudElements.bbsModal = buildElement("div", {
+		id: "spkmod-bbs-modal",
+		className: "hidden",
+		style: "max-height: 80vh; display: flex; flex-direction: column; gap: 6px; padding: 8px 10px;"
+	}, [
+		// Header row
+		buildElement("div", { className: "spkmod-panel-cat", style: "justify-content: space-between; align-items: center; margin-bottom: 2px;" }, [
+			buildElement("div", { style: "display: flex; align-items: center; gap: 6px;" }, [
+				bbsModalElements.headerTitle = buildElement("span", {
+					innerText: "💬 " + (t("bbsTitle") || "SpeakiBBS"),
+					style: "font-weight: bold; font-size: 12px; cursor: move; user-select: none;"
+				}),
+				bbsModalElements.countBadge = buildElement("span", {
+					innerText: "0",
+					style: "font-size: 9.5px; background: rgba(255,255,255,0.12); padding: 1px 6px; border-radius: 8px; color: #94a3b8; font-weight: bold;"
+				})
+			]),
+			buildElement("div", { style: "display: flex; align-items: center; gap: 6px;" }, [
+				bbsModalElements.refreshBtn = buildElement("span", {
+					innerText: "🔄",
+					title: "Refresh posts",
+					style: "cursor: pointer; font-size: 11px; opacity: 0.8; user-select: none;",
+					onclick: () => fetchBbsPosts()
+				}),
+				bbsModalElements.closeBtn = buildElement("span", {
+					id: "spkmod-bbs-close",
+					innerText: "✕",
+					style: "cursor: pointer; padding: 0 4px; font-size: 12px; line-height: 1; user-select: none;",
+					onclick: () => toggleBbsModal()
+				})
+			])
+		]),
+		// Posts container
+		bbsModalElements.postsContainer = buildElement("div", {
+			id: "spkmod-bbs-posts",
+			style: "display: flex; flex-direction: column; gap: 6px; max-height: 52vh; min-height: 220px; overflow-y: auto; padding-right: 3px; scrollbar-width: thin;"
+		}),
+		// Status feedback
+		bbsModalElements.statusMsg = buildElement("div", {
+			style: "color: #f87171; font-size: 10px; text-align: center; display: none; padding: 2px 0;"
+		}),
+		// Composer bottom
+		buildElement("div", {
+			style: "display: flex; flex-direction: column; gap: 4px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.1);"
+		}, [
+			buildElement("div", { style: "display: flex; justify-content: space-between; align-items: center; font-size: 10px;" }, [
+				bbsModalElements.whoAmILabel = buildElement("div", { style: "font-size: 10px; color: #94a3b8;" }),
+				bbsModalElements.charCount = buildElement("span", {
+					innerText: "0/500",
+					style: "color: #64748b; font-size: 9.5px;"
+				})
+			]),
+			bbsModalElements.input = buildElement("textarea", {
+				id: "spkmod-bbs-input",
+				rows: 2,
+				maxLength: 500,
+				placeholder: t("bbsPlaceholder") || "Write a message... (Enter to send, Shift+Enter for newline)",
+				style: "width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #fff; padding: 6px; font-size: 11px; resize: none; outline: none; font-family: inherit;",
+				oninput: () => {
+					if (bbsModalElements.charCount && bbsModalElements.input) {
+						bbsModalElements.charCount.innerText = `${bbsModalElements.input.value.length}/500`;
+					}
+				},
+				onkeydown: (e) => {
+					if (e.key === "Enter" && !e.shiftKey) {
+						e.preventDefault();
+						sendBbsPost();
+					}
+				}
+			}),
+			bbsModalElements.submitBtn = buildElement("button", {
+				id: "spkmod-bbs-submit-btn",
+				className: "spkmod-panel-btn",
+				innerText: "📤 " + (t("bbsPostBtn") || "Post"),
+				style: "width: 100%; height: 26px; padding: 0; background: #2563eb; color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 5px; font-weight: bold; font-size: 11px; cursor: pointer;",
+				onclick: () => sendBbsPost()
+			})
+		])
+	])
+);
+setTimeout(() => {
+	if (typeof makeDraggable === 'function' && lunHudElements.bbsModal && bbsModalElements.headerTitle) {
+		makeDraggable(lunHudElements.bbsModal, [bbsModalElements.headerTitle]);
+	}
+	setTimeout(() => {
+		fetchBbsPosts(true);
+		setInterval(() => {
+			fetchBbsPosts(true);
+		}, 60000);
+	}, 3000);
+}, 500);
+
 document.body.appendChild(
 	lunHudElements.statsModal = buildElement("div", {
 		id: "spkmod-stats-modal",
@@ -13484,6 +14423,7 @@ spkmodI18nRenderers.push(() => {
 	if (lunPanelElements.settingsCatHUD) setText(lunPanelElements.settingsCatHUD, "📊 " + t("settingsCatHUD"));
 	if (lunPanelElements.eventBtn) lunPanelElements.eventBtn.title = t("eventInfoBtnTooltip");
 	if (lunPanelElements.patchNotesBtn) lunPanelElements.patchNotesBtn.title = t("patchNotesBtnTooltip");
+	if (lunPanelElements.bbsBtn) lunPanelElements.bbsBtn.title = t("bbsBtnTooltip");
 	if (lunPanelElements.mapBtn) lunPanelElements.mapBtn.title = t("mapModalTitle");
 	if (typeof mapModalElements !== "undefined" && mapModalElements.titleLabel) mapModalElements.titleLabel.innerText = t("mapModalTitle");
 	const qlBtn = document.getElementById("spkmod-settings-accounts-btn");
@@ -14548,6 +15488,7 @@ function tick() {
 	}
 
 	if (lunPinnedQuestId && lunTickCount >= lunPinnedQuestNextQueryTick) {
+		lunPinnedQuestNextQueryTick = lunTickCount + lunPinnedQuestInterval;
 		const period = lunPinnedQuestPeriod || "daily";
 		const token = typeof getAuthToken === "function" ? getAuthToken() : "";
 		const headers = { "Content-Type": "application/json" };
@@ -14559,6 +15500,13 @@ function tick() {
 			credentials: "include"
 		}).then(async x => {
 			if (!x.ok) {
+				if (x.status === 404) {
+					lunPinnedQuestNextQueryTick = lunTickCount + (lunPinnedQuestInterval * 5);
+					if (window.__spkmodCachedQuests && window.__spkmodCachedQuests[lunPinnedQuestId]) {
+						updatePinnedQuestDisplay(window.__spkmodCachedQuests[lunPinnedQuestId]);
+					}
+					return;
+				}
 				console.warn(`[SpeakiMod+] Pinned quest query returned HTTP ${x.status}`);
 				return;
 			}
@@ -14571,10 +15519,8 @@ function tick() {
 			}
 			updatePinnedQuestDisplay(q);
 		}).catch(err => {
-			console.warn("[SpeakiMod+] Failed to fetch pinned quest update:", err);
+			lunPinnedQuestNextQueryTick = lunTickCount + (lunPinnedQuestInterval * 2);
 		});
-
-		lunPinnedQuestNextQueryTick += lunPinnedQuestInterval;
 	}
 
 	if ((lunMinigameTrackerEnabled || (lunHudElements.eventModal && !lunHudElements.eventModal.classList.contains("hidden")) || (lunHudElements.statsModal && !lunHudElements.statsModal.classList.contains("hidden"))) && lunTickCount >= lunMinigameTrackerNextTicks) {
@@ -15444,11 +16390,36 @@ function hookGameStateOnce() {
 					if (lunGmChatHighlightEnabled && name && name.trim().toUpperCase() === "GMDT") {
 						bodyText.classList.add("spkmod-gmdt-line");
 					}
+
+					const spkmodAllEmojis = {...(typeof lunCustomEmojis !== "undefined" ? lunCustomEmojis : {}), ...(typeof lunTrickcalEmojis !== "undefined" ? lunTrickcalEmojis : {}), ...(typeof lunTrickcal2Emojis !== "undefined" ? lunTrickcal2Emojis : {}), ...(typeof lunTrickcal3Emojis !== "undefined" ? lunTrickcal3Emojis : {})};
+					if (Object.keys(spkmodAllEmojis).length > 0) {
+						let html = bodyText.innerHTML;
+						let changed = false;
+						for (const [ename, eurl] of Object.entries(spkmodAllEmojis)) {
+							const tag = ":" + ename + ":";
+							if (html.includes(tag)) {
+								html = html.split(tag).join(`<span class="spkmod-custom-emoji" data-url="${eurl}" title="${tag}"><img src="${eurl}" style="height: 1.6em; vertical-align: middle; padding: 0 1px; display: inline-block;"></span>`);
+								changed = true;
+							}
+						}
+						if (changed) bodyText.innerHTML = html;
+					}
+
 					if (id !== -1337 && id !== -1338) {
 						bodyText.classList.add("spkmod-clickable-line");
 						bodyText.title = t("clickToTranslateTooltip");
-						bodyText.addEventListener("click", () => {
-							forceTranslateMessage(name, filteredMsg);
+						bodyText.addEventListener("click", (e) => {
+							const emojiEl = e.target.closest('.spkmod-custom-emoji');
+							if (emojiEl) {
+								e.stopPropagation();
+								e.preventDefault();
+								const tag = emojiEl.getAttribute('title');
+								if (tag && typeof insertEmojiIntoChat === 'function') {
+									insertEmojiIntoChat(tag);
+								}
+							} else {
+								forceTranslateMessage(name, filteredMsg);
+							}
 						});
 						
 						const senderEl = rowNode.classList?.contains("sr-chatbox__sender") ? rowNode : rowNode.querySelector?.(".sr-chatbox__sender");
@@ -15507,6 +16478,20 @@ function appendColoredChatLine(id, name, text) {
 
 	observeNextChatNode(text, (bodyText) => {
 		bodyText.classList.add("spkmod-translated-line");
+
+		const spkmodAllEmojis = {...(typeof lunCustomEmojis !== "undefined" ? lunCustomEmojis : {}), ...(typeof lunTrickcalEmojis !== "undefined" ? lunTrickcalEmojis : {}), ...(typeof lunTrickcal2Emojis !== "undefined" ? lunTrickcal2Emojis : {}), ...(typeof lunTrickcal3Emojis !== "undefined" ? lunTrickcal3Emojis : {})};
+		if (Object.keys(spkmodAllEmojis).length > 0) {
+			let html = bodyText.innerHTML;
+			let changed = false;
+			for (const [ename, eurl] of Object.entries(spkmodAllEmojis)) {
+				const tag = ":" + ename + ":";
+				if (html.includes(tag)) {
+					html = html.split(tag).join(`<span class="spkmod-custom-emoji" data-url="${eurl}" title="${tag}"><img src="${eurl}" style="height: 1.6em; vertical-align: middle; padding: 0 1px; display: inline-block;"></span>`);
+					changed = true;
+				}
+			}
+			if (changed) bodyText.innerHTML = html;
+		}
 
 		if (wasAtBottom && !lunChatUserScrolledUp && scrollEl) {
 			scrollEl.scrollTop = scrollEl.scrollHeight;
@@ -16072,6 +17057,7 @@ window.addEventListener("keydown", e => {
 			lunHudElements.settingsModal,
 			lunHudElements.gamepadModal,
 			lunHudElements.patchNotesModal,
+			lunHudElements.bbsModal,
 			lunHudElements.eventModal,
 			lunHudElements.statsModal
 		].filter(m => m && !m.classList.contains("hidden"));
@@ -16092,6 +17078,172 @@ window.addEventListener("keydown", e => {
 		}
 	}
 });
+
+// Global hover preview for custom emojis (avoids chatbox overflow clipping)
+let lunEmojiPreviewTooltip = null;
+function ensureEmojiTooltip() {
+	if (lunEmojiPreviewTooltip) return;
+	lunEmojiPreviewTooltip = document.createElement("img");
+	lunEmojiPreviewTooltip.id = "spkmod-global-emoji-preview";
+	lunEmojiPreviewTooltip.style.cssText = "display: none; position: fixed; max-height: 250px; max-width: 250px; z-index: 9999999; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.8); pointer-events: none; border: 2px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.8);";
+	document.body.appendChild(lunEmojiPreviewTooltip);
+
+	document.addEventListener("mouseover", (e) => {
+		const target = e.target.closest('.spkmod-custom-emoji');
+		if (target) {
+			const url = target.getAttribute("data-url");
+			if (!url) return;
+			lunEmojiPreviewTooltip.src = url;
+			lunEmojiPreviewTooltip.style.display = "block";
+			
+			const rect = target.getBoundingClientRect();
+			// Position above the emoji
+			lunEmojiPreviewTooltip.style.bottom = (window.innerHeight - rect.top + 10) + "px";
+			lunEmojiPreviewTooltip.style.left = (rect.left + rect.width / 2) + "px";
+			lunEmojiPreviewTooltip.style.transform = "translateX(-50%)";
+		}
+	});
+
+	document.addEventListener("mouseout", (e) => {
+		const target = e.target.closest('.spkmod-custom-emoji');
+		if (target) {
+			lunEmojiPreviewTooltip.style.display = "none";
+		}
+	});
+}
+ensureEmojiTooltip();
+
+// ==========================================
+// EMOJI COOLDOWN SYSTEM
+// ==========================================
+let lunLastEmojiSentTime = 0;
+let lunEmojiCdInterval = null;
+const lunEmojiCooldownMs = 20000;
+
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+        const active = document.activeElement;
+        if (active && (active.classList.contains("sr-chatbox__input") || (active.placeholder && active.placeholder.toLowerCase().includes("chat")))) {
+            let val = active.value;
+            if (!val || typeof lunCustomEmojis === 'undefined') return;
+            
+            const emojiRegex = /:[a-zA-Z0-9_]+:/g;
+            const matches = val.match(emojiRegex);
+            if (!matches) return;
+            
+            let hasCustomEmoji = false;
+            for (const match of matches) {
+                const name = match.slice(1, -1);
+                if (lunCustomEmojis[name] || (typeof lunTrickcalEmojis !== 'undefined' && lunTrickcalEmojis[name]) || (typeof lunTrickcal2Emojis !== 'undefined' && lunTrickcal2Emojis[name]) || (typeof lunTrickcal3Emojis !== 'undefined' && lunTrickcal3Emojis[name])) {
+                    hasCustomEmoji = true;
+                    break;
+                }
+            }
+            
+            if (hasCustomEmoji) {
+                const now = Date.now();
+                const elapsed = now - lunLastEmojiSentTime;
+                
+                if (elapsed < lunEmojiCooldownMs) {
+                    // Cooldown ACTIVE
+                    for (const name of Object.keys(lunCustomEmojis)) {
+                        val = val.split(`:${name}:`).join("");
+                    }
+                    if (typeof lunTrickcalEmojis !== 'undefined') {
+                        for (const name of Object.keys(lunTrickcalEmojis)) {
+                            val = val.split(`:${name}:`).join("");
+                        }
+                    }
+                    if (typeof lunTrickcal2Emojis !== 'undefined') {
+                        for (const name of Object.keys(lunTrickcal2Emojis)) {
+                            val = val.split(`:${name}:`).join("");
+                        }
+                    }
+                    if (typeof lunTrickcal3Emojis !== 'undefined') {
+                        for (const name of Object.keys(lunTrickcal3Emojis)) {
+                            val = val.split(`:${name}:`).join("");
+                        }
+                    }
+                    val = val.replace(/\s+/g, " ").trim();
+                    
+                    if (val === "") {
+                        // Emoji only -> Block entirely
+                        e.stopPropagation();
+                        e.preventDefault();
+                        
+                        const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+                        if (nativeSetter) {
+                            nativeSetter.call(active, "");
+                            active.dispatchEvent(new Event('input', { bubbles: true }));
+                        } else {
+                            active.value = "";
+                        }
+                        
+                        const remaining = Math.ceil((lunEmojiCooldownMs - elapsed) / 1000);
+                        chatLog(t("emojiCooldownWait", remaining));
+                        return; // Done
+                    } else {
+                        // Text + Emoji -> Strip emojis and send text
+                        const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+                        if (nativeSetter) {
+                            nativeSetter.call(active, val);
+                            active.dispatchEvent(new Event('input', { bubbles: true }));
+                        } else {
+                            active.value = val;
+                        }
+                        chatLog(t("emojiCooldownStripped"));
+                    }
+                } else {
+                    // Cooldown INACTIVE -> Allow and start cooldown
+                    lunLastEmojiSentTime = now;
+                    startEmojiCooldownUI();
+                }
+            }
+        }
+    }
+}, true); // Use capture phase
+
+function startEmojiCooldownUI() {
+    if (lunEmojiCdInterval) clearInterval(lunEmojiCdInterval);
+    const chatInput = document.querySelector(".sr-chatbox__input, .sr-chatbox input, input[placeholder*='chat']");
+    const originalPlaceholder = chatInput ? chatInput.placeholder.split(" (")[0] : "Press Enter to chat";
+    const emojiBtn = document.getElementById("spkmod-emoji-btn");
+    
+    // Add badge
+    if (emojiBtn) {
+        let badge = document.getElementById("spkmod-emoji-btn-cd");
+        if (!badge) {
+            badge = document.createElement("div");
+            badge.id = "spkmod-emoji-btn-cd";
+            badge.style.cssText = "position: absolute; top: -5px; right: -5px; background: red; color: white; border-radius: 50%; font-size: 10px; width: 14px; height: 14px; display: flex; justify-content: center; align-items: center; font-weight: bold;";
+            emojiBtn.appendChild(badge);
+        }
+    }
+    
+    lunEmojiCdInterval = setInterval(() => {
+        const remaining = Math.ceil((lunEmojiCooldownMs - (Date.now() - lunLastEmojiSentTime)) / 1000);
+        if (remaining <= 0) {
+            clearInterval(lunEmojiCdInterval);
+            lunEmojiCdInterval = null;
+            if (chatInput) chatInput.placeholder = originalPlaceholder;
+            const badge = document.getElementById("spkmod-emoji-btn-cd");
+            if (badge) badge.remove();
+        } else {
+            if (chatInput) chatInput.placeholder = `${originalPlaceholder} (CD: ${remaining}s)`;
+            const badge = document.getElementById("spkmod-emoji-btn-cd");
+            if (badge) badge.innerText = remaining;
+        }
+    }, 500);
+}
+
+// Emoji Picker Language Mutator
+if (typeof spkmodI18nRenderers !== 'undefined') {
+    spkmodI18nRenderers.push(() => {
+        if (typeof lunEmojiPickerPanel !== 'undefined' && lunEmojiPickerPanel && typeof renderEmojiGrid === 'function') {
+            renderEmojiGrid();
+        }
+    });
+}
 
 
 
