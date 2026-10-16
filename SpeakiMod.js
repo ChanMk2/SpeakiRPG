@@ -96,7 +96,29 @@ if (!window.__speakiFetchHooked) {
 				window.speakiAuthToken = authHeader.trim();
 			}
 		}
-		return origFetch.apply(this, args);
+		const res = await origFetch.apply(this, args);
+		try {
+			const url = typeof resource === "string" ? resource : (resource?.url || "");
+			if (url && url.includes("/api/quests")) {
+				const clone = res.clone();
+				clone.json().then(data => {
+					if (Array.isArray(data)) {
+						window.__spkmodCachedQuests = window.__spkmodCachedQuests || {};
+						for (const q of data) {
+							if (q && q.questId) {
+								window.__spkmodCachedQuests[q.questId] = q;
+								if (typeof lunPinnedQuestId !== "undefined" && lunPinnedQuestId && String(lunPinnedQuestId) === String(q.questId)) {
+									if (typeof updatePinnedQuestDisplay === "function") {
+										updatePinnedQuestDisplay(q);
+									}
+								}
+							}
+						}
+					}
+				}).catch(() => {});
+			}
+		} catch (_) {}
+		return res;
 	};
 }
 
@@ -13391,63 +13413,253 @@ if (typeof refreshI18n === "function") {
 	refreshI18n();
 }
 
-const lunPinnedQuestInterval = sec(60); // [SpeakiMod+] Reduced to 60s to prevent 429 Too Many Requests
+const lunPinnedQuestInterval = sec(60); // [SpeakiMod+] 60s periodic refresh
 var lunPinnedQuestPeriod = null;
 var lunPinnedQuestId = 0;
 var lunPinnedQuestContent = null;
 var lunPinnedQuestNextQueryTick = 0;
 
+function getQuestDisplayText(quest) {
+	if (!quest) return "";
+	let title = quest.title || "";
+	let desc = quest.description || "";
+	if (quest.code && typeof window.i18n === "function") {
+		try {
+			const tKey = `content.quest.${quest.code}.title`;
+			const dKey = `content.quest.${quest.code}.description`;
+			const tVal = window.i18n(tKey);
+			const dVal = window.i18n(dKey);
+			if (tVal && tVal !== tKey) title = tVal;
+			if (dVal && dVal !== dKey) desc = dVal;
+		} catch (_) {}
+	}
+	return desc ? `${title ? title + " — " : ""}${desc}` : (title || quest.code || "Quest");
+}
+
 function updatePinnedQuestDisplay(quest) {
-	lunPinnedQuestContent = `${i18n(`content.quest.${quest.code}.description`)} ${quest.currentAmount} / ${quest.targetAmount}`;
-	setText(lunHudElements.pinnedQuest.content, lunPinnedQuestContent);
-	lunHudElements.pinnedQuest.pbar.style.width = `${((quest.currentAmount / quest.targetAmount) * 100).toFixed(0)}%`;
+	if (!quest) return;
+	const text = getQuestDisplayText(quest);
+	const cur = quest.currentAmount ?? 0;
+	const tgt = quest.targetAmount ?? 1;
+	lunPinnedQuestContent = `${text} / ${cur}/${tgt}`;
+	if (lunHudElements && lunHudElements.pinnedQuest && lunHudElements.pinnedQuest.content) {
+		setText(lunHudElements.pinnedQuest.content, lunPinnedQuestContent);
+	}
+	const pct = Math.min(100, Math.max(0, (cur / tgt) * 100));
+	if (lunHudElements && lunHudElements.pinnedQuest && lunHudElements.pinnedQuest.pbar) {
+		lunHudElements.pinnedQuest.pbar.style.width = `${pct.toFixed(0)}%`;
+	}
+	if (typeof window !== "undefined" && window.localStorage) {
+		try {
+			localStorage.setItem("spkmod-pinned-quest", JSON.stringify({
+				period: lunPinnedQuestPeriod,
+				questId: lunPinnedQuestId,
+				content: lunPinnedQuestContent,
+				pbar: `${pct.toFixed(0)}%`
+			}));
+		} catch (_) {}
+	}
+}
+
+function refreshPinButtons() {
+	document.querySelectorAll(".spkmod-pq-button").forEach(btn => {
+		const isThisPinned = lunPinnedQuestId && String(btn.__questId) === String(lunPinnedQuestId);
+		btn.innerText = isThisPinned ? ("✕ " + (t("unpinQuestBtn") !== "unpinQuestBtn" ? t("unpinQuestBtn") : "Unpin")) : ("📌 " + (t("pinQuestBtn") || "Pin"));
+		btn.style.background = isThisPinned ? "#dc2626" : "#2563eb";
+	});
 }
 
 function unpinQuest() {
-	lunHudElements.pinnedQuest.panel.className = "hidden";
+	if (lunHudElements && lunHudElements.pinnedQuest && lunHudElements.pinnedQuest.panel) {
+		lunHudElements.pinnedQuest.panel.className = "hidden";
+	}
 
 	lunPinnedQuestContent = null;
 	lunPinnedQuestPeriod = null;
 	lunPinnedQuestId = 0;
 	lunPinnedQuestNextQueryTick = 0;
+
+	if (typeof window !== "undefined" && window.localStorage) {
+		try {
+			localStorage.removeItem("spkmod-pinned-quest");
+		} catch (_) {}
+	}
+
+	refreshPinButtons();
 }
 
-function pinQuest(quest) {
-	lunPinnedQuestPeriod = quest.period;
+function pinQuest(quest, questElm) {
+	if (lunPinnedQuestId && String(lunPinnedQuestId) === String(quest.questId)) {
+		unpinQuest();
+		return;
+	}
+
+	lunPinnedQuestPeriod = quest.period || "daily";
 	lunPinnedQuestId = quest.questId;
 	lunPinnedQuestNextQueryTick = lunTickCount + sec(1);
 
 	updatePinnedQuestDisplay(quest);
 
-	lunHudElements.pinnedQuest.panel.className = "";
+	if (lunHudElements && lunHudElements.pinnedQuest && lunHudElements.pinnedQuest.panel) {
+		lunHudElements.pinnedQuest.panel.className = "";
+	}
+
+	refreshPinButtons();
 }
+
+// Restore saved pinned quest on initialization
+(function restoreSavedPinnedQuest() {
+	if (typeof window === "undefined" || !window.localStorage) return;
+	try {
+		const saved = localStorage.getItem("spkmod-pinned-quest");
+		if (saved) {
+			const parsed = JSON.parse(saved);
+			if (parsed && parsed.questId) {
+				lunPinnedQuestPeriod = parsed.period || "daily";
+				lunPinnedQuestId = parsed.questId;
+				lunPinnedQuestNextQueryTick = 0;
+				if (parsed.content) {
+					lunPinnedQuestContent = parsed.content;
+					if (lunHudElements && lunHudElements.pinnedQuest && lunHudElements.pinnedQuest.content) {
+						setText(lunHudElements.pinnedQuest.content, lunPinnedQuestContent);
+					}
+					if (lunHudElements && lunHudElements.pinnedQuest && lunHudElements.pinnedQuest.pbar && parsed.pbar) {
+						lunHudElements.pinnedQuest.pbar.style.width = parsed.pbar;
+					}
+					if (lunHudElements && lunHudElements.pinnedQuest && lunHudElements.pinnedQuest.panel) {
+						lunHudElements.pinnedQuest.panel.className = "";
+					}
+				}
+			}
+		}
+	} catch (_) {}
+})();
 
 let questManagerHooked = false;
 function hookQuestManagerOnce() {
-	if (questManagerHooked) return;
-	if (window.questManager) {
+	if (questManagerHooked) return true;
+	if (typeof window.questManager !== "undefined" && window.questManager && window.questManager.prototype) {
 		questManagerHooked = true;
-		const hkRenderRow = questManager.prototype.renderRow;
-		questManager.prototype.renderRow = function (quest) {
-			var questElm = hkRenderRow.apply(this, [quest]);
+		const qmProto = window.questManager.prototype;
 
-			if (!quest.isCompleted) {
-				questElm.querySelector(".sr-list-item__subtitle")
-					.replaceWith(
-						buildElement("button", {
-							value: "",
-							className: "spkmod-pq-button",
-							innerText: t("pinQuestBtn"),
-							onclick: _ => {
-								pinQuest(quest, questElm);
+		// 1. Hook renderRow to non-destructively attach Pin button
+		if (typeof qmProto.renderRow === "function") {
+			const hkRenderRow = qmProto.renderRow;
+			qmProto.renderRow = function (quest) {
+				const questElm = hkRenderRow.apply(this, [quest]);
+				try {
+					if (!quest.isClaimed) {
+						const topRow = questElm.firstElementChild || questElm;
+						const isPinned = (lunPinnedQuestId && String(lunPinnedQuestId) === String(quest.questId));
+						const pinBtn = document.createElement("button");
+						pinBtn.type = "button";
+						pinBtn.className = "spkmod-pq-button";
+						pinBtn.__questId = quest.questId;
+						pinBtn.innerText = isPinned ? ("✕ " + (t("unpinQuestBtn") !== "unpinQuestBtn" ? t("unpinQuestBtn") : "Unpin")) : ("📌 " + (t("pinQuestBtn") || "Pin"));
+						pinBtn.style.cssText = `
+							flex-shrink: 0;
+							margin-left: 8px;
+							padding: 3px 8px;
+							font-size: 12px;
+							line-height: 1.2;
+							height: auto;
+							border-radius: 4px;
+							cursor: pointer;
+							background: ${isPinned ? "#dc2626" : "#2563eb"};
+							color: #fff;
+							border: 1px solid rgba(255,255,255,0.2);
+							font-weight: bold;
+							user-select: none;
+							transition: background 0.15s ease;
+						`;
+						pinBtn.onclick = function (e) {
+							e.stopPropagation();
+							pinQuest(quest, questElm);
+						};
+
+						// Safely group with the right-side element (In progress or Claim)
+						const statusEl = topRow.children && topRow.children[1];
+						if (statusEl) {
+							const rightCol = document.createElement("div");
+							rightCol.style.cssText = "display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: 8px;";
+							topRow.replaceChild(rightCol, statusEl);
+							rightCol.appendChild(statusEl);
+							rightCol.appendChild(pinBtn);
+						} else {
+							topRow.appendChild(pinBtn);
+						}
+					}
+				} catch (err) {
+					console.warn("[SpeakiMod+] Error attaching pin button to quest row:", err);
+				}
+				return questElm;
+			};
+		}
+
+		// 2. Hook applyProgress for instant zero-latency WebSocket quest progress updates
+		if (typeof qmProto.applyProgress === "function") {
+			const hkApplyProgress = qmProto.applyProgress;
+			qmProto.applyProgress = function (e) {
+				try {
+					if (e && Array.isArray(e.quests)) {
+						for (const n of e.quests) {
+							if (window.__spkmodCachedQuests && window.__spkmodCachedQuests[n.questId]) {
+								const cached = window.__spkmodCachedQuests[n.questId];
+								if (n.currentAmount !== undefined) cached.currentAmount = n.currentAmount;
+								if (n.targetAmount !== undefined) cached.targetAmount = n.targetAmount;
+								if (cached.currentAmount >= cached.targetAmount) cached.isCompleted = true;
 							}
-						})
-					);
-			}
+							if (lunPinnedQuestId && String(n.questId) === String(lunPinnedQuestId)) {
+								const cur = n.currentAmount ?? 0;
+								const tgt = n.targetAmount ?? 1;
+								if (lunHudElements && lunHudElements.pinnedQuest && lunHudElements.pinnedQuest.content) {
+									const regex = /\d+\s*\/\s*\d+$/;
+									if (regex.test(lunPinnedQuestContent || "")) {
+										lunPinnedQuestContent = lunPinnedQuestContent.replace(regex, `${cur}/${tgt}`);
+										setText(lunHudElements.pinnedQuest.content, lunPinnedQuestContent);
+									} else {
+										updatePinnedQuestDisplay({ questId: n.questId, currentAmount: cur, targetAmount: tgt });
+									}
+								}
+								if (lunHudElements && lunHudElements.pinnedQuest && lunHudElements.pinnedQuest.pbar) {
+									const pct = Math.min(100, Math.max(0, (cur / tgt) * 100));
+									lunHudElements.pinnedQuest.pbar.style.width = `${pct.toFixed(0)}%`;
+								}
+							}
+						}
+					}
+				} catch (err) {
+					console.warn("[SpeakiMod+] Error in quest progress hook:", err);
+				}
+				return hkApplyProgress.apply(this, arguments);
+			};
+		}
 
-			return questElm;
-		};
+		// 3. Hook handleClaim so claiming the pinned quest unpins immediately
+		if (typeof qmProto.handleClaim === "function") {
+			const hkHandleClaim = qmProto.handleClaim;
+			qmProto.handleClaim = async function (quest, btn) {
+				const res = await hkHandleClaim.apply(this, arguments);
+				if (quest && quest.questId && lunPinnedQuestId && String(lunPinnedQuestId) === String(quest.questId)) {
+					unpinQuest();
+				}
+				return res;
+			};
+		}
+
+		console.log("[SpeakiMod+] Successfully hooked questManager.");
+		return true;
 	}
+	return false;
+}
+
+// Background poller until questManager is ready
+if (!questManagerHooked) {
+	const _qmPollInterval = setInterval(() => {
+		if (hookQuestManagerOnce()) {
+			clearInterval(_qmPollInterval);
+		}
+	}, 500);
 }
 
 function onGameDataUpdate() {
@@ -13503,6 +13715,11 @@ function tick() {
 	if (!window.__gameStateHooked && typeof gameState !== "undefined" && gameState) {
 		if (typeof hookGameStateOnce === "function") {
 			hookGameStateOnce();
+		}
+	}
+	if (!questManagerHooked && typeof window.questManager !== "undefined" && window.questManager) {
+		if (typeof hookQuestManagerOnce === "function") {
+			hookQuestManagerOnce();
 		}
 	}
 
@@ -13879,26 +14096,30 @@ function tick() {
 	}
 
 	if (lunPinnedQuestId && lunTickCount >= lunPinnedQuestNextQueryTick) {
-		fetch(`https://sr1.overture.io.kr/api/quests?period=${lunPinnedQuestPeriod}`, {
-			"method": "GET",
-			"headers": {
-				"authorization": `Bearer ${getAuthToken()}`
-			},
-			"mode": "cors"
+		const period = lunPinnedQuestPeriod || "daily";
+		const token = typeof getAuthToken === "function" ? getAuthToken() : "";
+		const headers = { "Content-Type": "application/json" };
+		if (token) headers["authorization"] = `Bearer ${token}`;
+
+		fetch(`/api/quests?period=${period}`, {
+			method: "GET",
+			headers: headers,
+			credentials: "include"
 		}).then(async x => {
-			var resp = (await x.json());
 			if (!x.ok) {
-				setText(lunHudElements.pinnedQuest.content, `Failed to update quest info: ${x.status}`);
+				console.warn(`[SpeakiMod+] Pinned quest query returned HTTP ${x.status}`);
 				return;
 			}
-
-			var q = resp.find(t => t.questId == lunPinnedQuestId);
+			const resp = await x.json();
+			if (!Array.isArray(resp)) return;
+			const q = resp.find(t => String(t.questId) === String(lunPinnedQuestId));
 			if (!q || q.isClaimed) {
 				unpinQuest();
 				return;
 			}
-
 			updatePinnedQuestDisplay(q);
+		}).catch(err => {
+			console.warn("[SpeakiMod+] Failed to fetch pinned quest update:", err);
 		});
 
 		lunPinnedQuestNextQueryTick += lunPinnedQuestInterval;

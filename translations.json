@@ -70,6 +70,7 @@
         "followBtn": "[SM] Follow",
         "stareBtn": "[SM] Stare",
         "pinQuestBtn": "Pin Quest",
+        "unpinQuestBtn": "Unpin",
         "pinnedQuestHeader": "Pinned Quest",
         "pinnedQuestDefault": "Pin a quest to be displayed here until completion.",
         "shakeActivatedMsg": "Shake mode activated!",
