@@ -5843,7 +5843,9 @@ window.showPollModal = function(forceLang) {
     content.appendChild(bodyContainer);
 
     const getPollServerUrl = () => {
-        return window.spkmodPollServerUrl || (window.localStorage && localStorage.getItem("spkmod-poll-server-url")) || "http://YOUR_RPI_IP_OR_DOMAIN:3000";
+        let saved = (window.localStorage && localStorage.getItem("spkmod-poll-server-url")) || "";
+        if (saved.startsWith("http://") || saved.includes("YOUR_RPI")) saved = "";
+        return window.spkmodPollServerUrl || saved || "https://spk.lena.moe";
     };
 
     let storedVote = null;
@@ -13994,7 +13996,9 @@ window.spkmodRenderChannelTracker = function() {
 };
 
 window.spkmodSendTelemetryPing = function() {
-	const sUrl = (window.spkmodPollServerUrl || (window.localStorage && localStorage.getItem("spkmod-poll-server-url")) || "http://YOUR_RPI_IP_OR_DOMAIN:3000").replace(/\/+$/, "");
+	let saved = (window.localStorage && localStorage.getItem("spkmod-poll-server-url")) || "";
+	if (saved.startsWith("http://") || saved.includes("YOUR_RPI")) saved = "";
+	const sUrl = (window.spkmodPollServerUrl || saved || "https://spk.lena.moe").replace(/\/+$/, "");
 	const consent = window.localStorage ? localStorage.getItem("spkmod-telemetry-consent") : null;
 
 	if (consent === "granted") {
