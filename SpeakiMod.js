@@ -12907,6 +12907,9 @@ function markBbsPostsAsRead() {
 function updateBbsComposerState() {
 	if (!bbsModalElements.input) return;
 	const me = getMyBbsInfo();
+	if (bbsModalElements.staffKeyBtn) {
+		bbsModalElements.staffKeyBtn.style.display = me.isStaff ? "inline-block" : "none";
+	}
 	const canPost = (me.level >= 3 || me.isStaff);
 
 	if (!canPost) {
@@ -13453,16 +13456,25 @@ async function sendBbsPost() {
 
 	try {
 		const sUrl = getBbsServerUrl();
+		const adminSecret = (me.isStaff && window.localStorage && localStorage.getItem("spkmod-admin-secret")) || "";
+		const headers = { "Content-Type": "application/json" };
+		if (adminSecret) {
+			headers["Authorization"] = `Bearer ${adminSecret}`;
+		}
+		const bodyPayload = {
+			username: me.username,
+			playerId: me.playerId,
+			level: me.level,
+			message: postMessage,
+			replyTo: replyToId
+		};
+		if (adminSecret) {
+			bodyPayload.adminSecret = adminSecret;
+		}
 		const res = await fetch(`${sUrl}/api/bbs/post`, {
 			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				username: me.username,
-				playerId: me.playerId,
-				level: me.level,
-				message: postMessage,
-				replyTo: replyToId
-			})
+			headers: headers,
+			body: JSON.stringify(bodyPayload)
 		});
 		const data = await res.json();
 		if (data && data.success) {
@@ -13541,15 +13553,27 @@ function startBbsCooldownTimer(sec) {
 
 async function deleteBbsPost(postId) {
 	const me = getMyBbsInfo();
+	if (!me.isStaff) return;
+	let adminSecret = (window.localStorage && localStorage.getItem("spkmod-admin-secret")) || "";
+	if (!adminSecret) {
+		adminSecret = window.prompt("Enter Staff Admin Secret Key:") || "";
+		adminSecret = adminSecret.trim();
+		if (!adminSecret) return;
+		if (window.localStorage) localStorage.setItem("spkmod-admin-secret", adminSecret);
+	}
 	try {
 		const sUrl = getBbsServerUrl();
 		const res = await fetch(`${sUrl}/api/bbs/delete`, {
 			method: "POST",
-			headers: { "Content-Type": "application/json" },
+			headers: {
+				"Content-Type": "application/json",
+				"Authorization": `Bearer ${adminSecret}`
+			},
 			body: JSON.stringify({
 				postId,
 				username: me.username,
-				playerId: me.playerId
+				playerId: me.playerId,
+				adminSecret
 			})
 		});
 		const data = await res.json();
@@ -13557,7 +13581,12 @@ async function deleteBbsPost(postId) {
 			lunBbsPosts = lunBbsPosts.filter(p => p.id !== postId);
 			renderBbsPosts();
 		} else {
-			alert(data.error || "Failed to delete post");
+			if (res.status === 401 || res.status === 403 || (data.error && data.error.toLowerCase().includes("secret"))) {
+				if (window.localStorage) localStorage.removeItem("spkmod-admin-secret");
+				alert("Staff authentication failed. Key cleared: " + (data.error || "Unauthorized"));
+			} else {
+				alert(data.error || "Failed to delete post");
+			}
 		}
 	} catch (err) {
 		console.warn("[SpeakiMod+] Failed to delete BBS post:", err);
@@ -13587,6 +13616,25 @@ document.body.appendChild(
 				})
 			]),
 			buildElement("div", { style: "display: flex; align-items: center; gap: 6px;" }, [
+				bbsModalElements.staffKeyBtn = buildElement("span", {
+					id: "spkmod-bbs-staff-key",
+					innerText: "🔑",
+					title: "Staff Admin Key",
+					style: "cursor: pointer; font-size: 11px; opacity: 0.8; user-select: none; display: none;",
+					onclick: () => {
+						const cur = (window.localStorage && localStorage.getItem("spkmod-admin-secret")) || "";
+						const val = window.prompt("Staff Admin Secret Key (leave empty to clear):", cur);
+						if (val !== null) {
+							if (val.trim()) {
+								localStorage.setItem("spkmod-admin-secret", val.trim());
+								alert("Staff Admin Secret saved!");
+							} else {
+								localStorage.removeItem("spkmod-admin-secret");
+								alert("Staff Admin Secret cleared.");
+							}
+						}
+					}
+				}),
 				bbsModalElements.refreshBtn = buildElement("span", {
 					id: "spkmod-bbs-refresh",
 					innerText: "🔄",
