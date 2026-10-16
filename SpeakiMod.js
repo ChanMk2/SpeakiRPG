@@ -14077,15 +14077,15 @@ if (!window.__beyBladeLoopRunning) {
 	requestAnimationFrame(beyBladeRenderLoop);
 }
 // --- MOD PLAYERS TELEMETRY & HOURLY PING ---
-var lunModPlayersCounts = { count1h: null, count24h: null, count7d: null };
+var lunModPlayersCounts = { count1h: null, count24h: null, count7d: null, countAllTime: null };
 var lunLastTelemetryPingTime = 0;
 var lunTelemetryPingIntervalMs = 60 * 60 * 1000; // 1 hour
 
 window.spkmodRenderChannelTracker = function() {
 	if (!window.__spkmodLastChannelResp || !lunHudElements.channelTracker) return;
 	const modLine = (lunModPlayersCounts.count1h !== null)
-		? "\n" + t("totalModPlayers", lunModPlayersCounts.count1h, lunModPlayersCounts.count24h, lunModPlayersCounts.count7d)
-		: "\n" + t("totalModPlayers", "--", "--", "--");
+		? "\n" + t("totalModPlayers", lunModPlayersCounts.count1h, lunModPlayersCounts.count24h, lunModPlayersCounts.count7d, lunModPlayersCounts.countAllTime || "--")
+		: "\n" + t("totalModPlayers", "--", "--", "--", "--");
 
 	setText(lunHudElements.channelTracker,
 		window.__spkmodLastChannelResp.map(ch => t("channelTracker", ch.channel, ch.population, ch.capacity)).join("\n")
@@ -14111,7 +14111,7 @@ window.spkmodSendTelemetryPing = function() {
 		.then(res => res.json())
 		.then(data => {
 			if (data && data.success) {
-				lunModPlayersCounts = { count1h: data.count1h, count24h: data.count24h, count7d: data.count7d };
+				lunModPlayersCounts = { count1h: data.count1h, count24h: data.count24h, count7d: data.count7d, countAllTime: data.countAllTime };
 				lunLastTelemetryPingTime = Date.now();
 				window.spkmodRenderChannelTracker();
 			}
@@ -14122,7 +14122,7 @@ window.spkmodSendTelemetryPing = function() {
 		.then(res => res.json())
 		.then(data => {
 			if (data && data.success) {
-				lunModPlayersCounts = { count1h: data.count1h, count24h: data.count24h, count7d: data.count7d };
+				lunModPlayersCounts = { count1h: data.count1h, count24h: data.count24h, count7d: data.count7d, countAllTime: data.countAllTime };
 				window.spkmodRenderChannelTracker();
 			}
 		})
@@ -14478,8 +14478,8 @@ function tick() {
 				window.__spkmodLastChannelResp = resp;
 				window.__spkmodLastTotalPop = totalPop;
 				var modLine = (lunModPlayersCounts.count1h !== null)
-					? "\n" + t("totalModPlayers", lunModPlayersCounts.count1h, lunModPlayersCounts.count24h, lunModPlayersCounts.count7d)
-					: "\n" + t("totalModPlayers", "--", "--", "--");
+					? "\n" + t("totalModPlayers", lunModPlayersCounts.count1h, lunModPlayersCounts.count24h, lunModPlayersCounts.count7d, lunModPlayersCounts.countAllTime || "--")
+					: "\n" + t("totalModPlayers", "--", "--", "--", "--");
 
 				setText(lunHudElements.channelTracker,
 					resp.map(ch => t("channelTracker", ch.channel, ch.population, ch.capacity)).join("\n")
