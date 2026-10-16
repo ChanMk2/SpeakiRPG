@@ -113,10 +113,16 @@
 - Session & Performance Stats Window (Real-time session clock, EXP/hr, time to level, Gold & Elif gains, and network ping via ⏱️ button)
 - Quick Login & Account Manager (Open via 🔑 on HUD or press F2 to securely save, view, and copy your recovery code; stored strictly locally and never shared)
 - Update & News Bulletin Window (Delivers client update notices and changelogs directly in-game)
-- **[NEW]** **Stealth Blocklist (Radar)**: A completely new UI in the local effects menu allows you to track specific players, hide them from your screen, and receive directional arrows pointing to their location on the map.
-- **[NEW]** **Local Effects Studio Enhancements**: Added Dance, Farm, and Knockout visual states to the Local Effects panel, and ensured characters smoothly restore their true server animation when deactivated.
-- **[NEW]** **Sit-up Macro & Faint**: Added a fun new "Situps" macro button near the health bar that alternates the faint and joayo emotes at lightning speed for a hilarious workout effect, alongside a standalone "Faint" button.
-- **[NEW]** **Stare Toggle**: The 'Stare' player interaction button now acts as a toggle, allowing you to easily stop staring by pressing the button again.
+- **Stealth Blocklist (Radar)**: A completely new UI in the local effects menu allows you to track specific players, hide them from your screen, and receive directional arrows pointing to their location on the map.
+- **Local Effects Studio Enhancements**: Added Dance, Farm, and Knockout visual states to the Local Effects panel, and ensured characters smoothly restore their true server animation when deactivated.
+- **Sit-up Macro & Faint**: Added a fun new "Situps" macro button near the health bar that alternates the faint and joayo emotes at lightning speed for a hilarious workout effect, alongside a standalone "Faint" button.
+- **Stare Toggle**: The 'Stare' player interaction button now acts as a toggle, allowing you to easily stop staring by pressing the button again.
+- **[NEW]** **SpeakiBBS In-Game Community Board**: In-game bulletin board with threaded replies, real-time message translation, emoji support, and a Level 3 anti-spam requirement (accessible via the `💬` button).
+- **[NEW]** **Right-Click Chat Emoji Favorites**: Right-click any custom emoji rendered in chat to instantly pin or unpin it from your favorite emojis list.
+- **[NEW]** **Smart Emoji Hover Previews**: Custom emoji hover tooltips that automatically clamp within the screen boundaries and stay on top of all windows without clipping.
+- **[NEW]** **Quick Camera Zoom Button**: New HUD button to quickly cycle camera distance through preset zoom steps (5, 10, 15, 20, 30, 40, 50, 60, 70, 80, 90).
+- **[NEW]** **Reset Window Positions (<kbd>F3</kbd>)**: Press <kbd>F3</kbd> or click the Settings button to instantly snap all HUD panels and windows back to their default on-screen positions.
+- **[NEW]** **Chroma Skybox & Local Edits Studio**: Choose from various studio backgrounds (White Studio, Black Void, Chroma Green, Cyber, etc.) for clean screenshots, along with facial expression locking and step trails.
 
 <img width="320" height="130" alt="image" src="https://github.com/user-attachments/assets/baef0617-c9df-4ff9-a294-78d914c67e93" />
 
