@@ -13206,19 +13206,20 @@ function renderBbsPosts() {
 		};
 		lineEl.appendChild(numSpan);
 
-		// Staff badge (shield icon only)
-		if (post.isStaff) {
-			const modBadge = document.createElement("span");
-			modBadge.innerText = "🛡️";
-			modBadge.title = "Staff";
-			modBadge.style.cssText = "margin-right: 2px; font-size: 10px; vertical-align: middle;";
-			lineEl.appendChild(modBadge);
-		}
+		// // Staff badge (shield icon only)
+		// if (post.isStaff) {
+		// 	const modBadge = document.createElement("span");
+		// 	modBadge.innerText = "🛡️";
+		// 	modBadge.title = "Staff";
+		// 	modBadge.style.cssText = "margin-right: 2px; font-size: 10px; vertical-align: middle;";
+		// 	lineEl.appendChild(modBadge);
+		// }
 
 		// Username
 		const nameSpan = document.createElement("span");
 		nameSpan.innerText = post.username || "Player";
-		nameSpan.style.cssText = `font-weight: 600; color: ${post.isStaff ? '#fde047' : '#e2e8f0'}; margin-right: 2px;`;
+		// nameSpan.style.cssText = `font-weight: 600; color: ${post.isStaff ? '#fde047' : '#e2e8f0'}; margin-right: 2px;`;
+		nameSpan.style.cssText = `font-weight: 600; color: #e2e8f0; margin-right: 2px;`;
 		lineEl.appendChild(nameSpan);
 
 		// Level
