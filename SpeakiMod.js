@@ -2480,10 +2480,26 @@ function positionModalNicely(modal) {
 	}
 
 	if (modal === lunHudElements.bbsModal || modal.id === "spkmod-bbs-modal") {
-		const modalWidth = modal.offsetWidth || 520;
+		const modalWidth = modal.offsetWidth || Math.min(520, Math.round(window.innerWidth * 0.96));
 		const safeLeft = Math.max(20, Math.round((window.innerWidth - modalWidth) / 2));
 		modal.style.left = safeLeft + "px";
 		modal.style.top = "60px";
+		return;
+	}
+
+	if (modal === lunHudElements.effectsModal || modal.id === "spkmod-effects-modal") {
+		const modalWidth = modal.offsetWidth || Math.min(960, Math.round(window.innerWidth * 0.96));
+		const safeLeft = Math.max(10, Math.round((window.innerWidth - modalWidth) / 2));
+		modal.style.left = safeLeft + "px";
+		modal.style.top = Math.max(10, Math.round(window.innerHeight * 0.15)) + "px";
+		return;
+	}
+
+	if (modal === lunHudElements.editsModal || modal.id === "spkmod-edits-modal") {
+		const modalWidth = modal.offsetWidth || Math.min(440, Math.round(window.innerWidth * 0.95));
+		const safeLeft = Math.max(10, Math.round((window.innerWidth - modalWidth) / 2));
+		modal.style.left = safeLeft + "px";
+		modal.style.top = Math.max(10, Math.round(window.innerHeight * 0.15)) + "px";
 		return;
 	}
 
@@ -2496,8 +2512,6 @@ function positionModalNicely(modal) {
 		lunHudElements.statsModal,
 		lunHudElements.eventModal,
 		lunHudElements.patchNotesModal,
-		lunHudElements.effectsModal,
-		lunHudElements.editsModal,
 		lunHudElements.hotkeysModal
 	];
 
@@ -2570,31 +2584,46 @@ function resetWindowPositions() {
 	allKnownModals.forEach(m => {
 		if (m) {
 			delete m.dataset.userDragged;
-			m.style.left = "";
-			m.style.top = "";
 		}
 	});
 
-	if (lunHudElements.bbsModal && !lunHudElements.bbsModal.classList.contains("hidden")) {
-		const modalWidth = lunHudElements.bbsModal.offsetWidth || 520;
+	if (lunHudElements.bbsModal) {
+		const modalWidth = lunHudElements.bbsModal.offsetWidth || Math.min(520, Math.round(window.innerWidth * 0.96));
 		const safeLeft = Math.max(20, Math.round((window.innerWidth - modalWidth) / 2));
 		lunHudElements.bbsModal.style.left = safeLeft + "px";
 		lunHudElements.bbsModal.style.top = "60px";
 	}
 
-	const otherOpenModals = [
+	if (lunHudElements.effectsModal) {
+		const effWidth = lunHudElements.effectsModal.offsetWidth || Math.min(960, Math.round(window.innerWidth * 0.96));
+		const safeLeft = Math.max(10, Math.round((window.innerWidth - effWidth) / 2));
+		lunHudElements.effectsModal.style.left = safeLeft + "px";
+		lunHudElements.effectsModal.style.top = Math.max(10, Math.round(window.innerHeight * 0.15)) + "px";
+	}
+
+	if (lunHudElements.editsModal) {
+		const editsWidth = lunHudElements.editsModal.offsetWidth || Math.min(440, Math.round(window.innerWidth * 0.95));
+		const safeLeft = Math.max(10, Math.round((window.innerWidth - editsWidth) / 2));
+		lunHudElements.editsModal.style.left = safeLeft + "px";
+		lunHudElements.editsModal.style.top = Math.max(10, Math.round(window.innerHeight * 0.15)) + "px";
+	}
+
+	if (typeof mapModalElements !== "undefined" && mapModalElements.modalWindow) {
+		mapModalElements.modalWindow.style.top = "20px";
+		mapModalElements.modalWindow.style.left = Math.max(10, window.innerWidth - 1060) + "px";
+	}
+
+	const otherModals = [
 		lunHudElements.settingsModal,
 		lunHudElements.statsModal,
 		lunHudElements.eventModal,
 		lunHudElements.patchNotesModal,
-		lunHudElements.effectsModal,
-		lunHudElements.editsModal,
 		lunHudElements.hotkeysModal,
 		lunHudElements.infoModal
 	];
 
-	otherOpenModals.forEach(m => {
-		if (m && !m.classList.contains("hidden")) {
+	otherModals.forEach(m => {
+		if (m) {
 			positionModalNicely(m);
 		}
 	});
@@ -3968,13 +3997,16 @@ document.head.appendChild(buildElement(
 			max-width: 96vw;
 		}
 		#spkmod-effects-modal {
-			width: 260px;
-			max-width: 95vw;
+			width: 960px;
+			min-width: 600px;
+			max-width: 96vw;
+			top: 15%;
 		}
 		#spkmod-edits-modal {
 			width: fit-content;
 			min-width: 420px;
 			max-width: 95vw;
+			top: 15%;
 			overflow-x: hidden;
 			box-sizing: border-box;
 		}
@@ -4960,11 +4992,14 @@ document.body.appendChild(
 					innerText: t("localEffectsBtn"),
 					onclick: (e) => {
 						e.preventDefault();
-						
-						if (lunHudElements.effectsModal) {
-							lunHudElements.effectsModal.classList.toggle("hidden");
-							if (!lunHudElements.effectsModal.classList.contains("hidden") && typeof updateLocalEditsUI === "function") {
-								updateLocalEditsUI();
+						if (typeof toggleEffectsModal === "function") {
+							toggleEffectsModal();
+						} else if (lunHudElements.effectsModal) {
+							const isHidden = lunHudElements.effectsModal.classList.toggle("hidden");
+							if (!isHidden) {
+								if (typeof bringToFront === "function") bringToFront(lunHudElements.effectsModal);
+								if (typeof positionModalNicely === "function") positionModalNicely(lunHudElements.effectsModal);
+								if (typeof updateLocalEditsUI === "function") updateLocalEditsUI();
 							}
 						}
 					}
@@ -4981,6 +5016,7 @@ document.body.appendChild(
 							const isHidden = lunHudElements.editsModal.classList.toggle("hidden");
 							if (!isHidden) {
 								if (typeof bringToFront === "function") bringToFront(lunHudElements.editsModal);
+								if (typeof positionModalNicely === "function") positionModalNicely(lunHudElements.editsModal);
 								if (typeof updateLocalEditsUI === "function") updateLocalEditsUI();
 							}
 						}
@@ -5037,16 +5073,6 @@ document.body.appendChild(
 					title: t("invisibleBtn") || "Invisible Self",
 					onclick: _ => {
 						if (window.spkmodToggleInvisibility) window.spkmodToggleInvisibility();
-					}
-				}),
-				lunPanelElements.pollBtn = buildElement("button", {
-					id: "spkmod-poll-btn",
-					className: "spkmod-panel-btn spkmod-rainbow-btn",
-					style: "flex: 1; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 12pt; cursor: pointer;",
-					innerText: "📊",
-					title: t("pollBtnTooltip", "Feedback Poll"),
-					onclick: _ => {
-						if (window.showPollModal) window.showPollModal();
 					}
 				}),
 				lunPanelElements.settingsBtn = buildElement("button", {
@@ -6964,20 +6990,9 @@ setTimeout(() => {
     } catch (_) {}
 }, 1000);
 
-// Auto popup poll once in the whole game per device/user
-setTimeout(() => {
-    try {
-        if (!localStorage.getItem("spkmod-poll-popup-seen-v1")) {
-            localStorage.setItem("spkmod-poll-popup-seen-v1", "true");
-            window.showPollModal();
-        }
-    } catch (_) {}
-}, 2500);
-
 if (typeof spkmodI18nRenderers !== 'undefined') {
     spkmodI18nRenderers.push(() => {
         if (typeof lunPanelElements !== 'undefined') {
-            if (lunPanelElements.pollBtn) lunPanelElements.pollBtn.title = t("pollBtnTooltip", "Feedback Poll");
             if (lunPanelElements.telemetryToggleLabel) lunPanelElements.telemetryToggleLabel.innerText = t("telemetrySettingLabel");
         }
         const emojiBtn = document.getElementById("spkmod-emoji-btn");
@@ -11787,6 +11802,20 @@ setTimeout(() => {
 	}
 }, 500);
 
+function toggleEffectsModal() {
+	if (!lunHudElements.effectsModal) return;
+	const isClosed = lunHudElements.effectsModal.classList.contains("hidden");
+	if (isClosed) {
+		lunHudElements.effectsModal.classList.remove("hidden");
+		if (typeof bringToFront === "function") bringToFront(lunHudElements.effectsModal);
+		if (typeof positionModalNicely === "function") positionModalNicely(lunHudElements.effectsModal);
+		if (typeof updateLocalEditsUI === "function") updateLocalEditsUI();
+	} else {
+		lunHudElements.effectsModal.classList.add("hidden");
+	}
+}
+window.toggleEffectsModal = toggleEffectsModal;
+
 function setCameraEffectLocal(effectKey) {
 	if (effectKey && effectKey !== "none" && lunCameraEffect === effectKey) {
 		effectKey = "none";
@@ -12256,9 +12285,9 @@ function toggleLocalEditsModal() {
 	if (!lunHudElements.editsModal) return;
 	const isClosed = lunHudElements.editsModal.classList.contains("hidden");
 	if (isClosed) {
+		lunHudElements.editsModal.classList.remove("hidden");
 		if (typeof bringToFront === "function") bringToFront(lunHudElements.editsModal);
 		if (typeof positionModalNicely === "function") positionModalNicely(lunHudElements.editsModal);
-		lunHudElements.editsModal.classList.remove("hidden");
 		if (typeof updateLocalEditsUI === "function") updateLocalEditsUI();
 	} else {
 		lunHudElements.editsModal.classList.add("hidden");
