@@ -12839,18 +12839,207 @@ function getBbsServerUrl() {
 	return (window.spkmodPollServerUrl || saved || "https://spk.lena.moe").replace(/\/+$/, "");
 }
 
-function formatBbsTime(ts) {
+// --- BBS THEMING & FONT SCALING ---
+var lunBbsTheme = (window.localStorage && localStorage.getItem("spkmod-bbs-theme")) || "normal";
+var lunBbsFontSize = parseInt((window.localStorage && localStorage.getItem("spkmod-bbs-font-size")) || "11", 10);
+if (isNaN(lunBbsFontSize) || lunBbsFontSize < 9 || lunBbsFontSize > 18) {
+	lunBbsFontSize = 11;
+}
+
+const LUN_BBS_THEMES = {
+	"normal": {
+		id: "normal",
+		name: "Normal",
+		icon: "🌙",
+		modalBg: "rgba(30, 41, 59, 0.98)",
+		modalBorder: "2px solid #334155",
+		postsBg: "transparent",
+		postRootBg: "rgba(15, 23, 42, 0.45)",
+		postReplyBg: "rgba(15, 23, 42, 0.28)",
+		postBorder: "1px solid rgba(255, 255, 255, 0.05)",
+		replyBorderLeft: "2px solid rgba(56, 189, 248, 0.45)",
+		textColor: "#f1f5f9",
+		nameColor: "#e2e8f0",
+		levelColor: "#94a3b8",
+		anchorColor: "#38bdf8",
+		timeColor: "#64748b",
+		bulletColorRoot: "#94a3b8",
+		bulletColorChild: "#38bdf8",
+		fontFamily: "inherit",
+		padding: "3px 8px",
+		lineHeight: "1.45"
+	},
+	"simple": {
+		id: "simple",
+		name: "Simple (Briefer)",
+		icon: "⚡",
+		modalBg: "rgba(22, 30, 46, 0.98)",
+		modalBorder: "1px solid #3b82f6",
+		postsBg: "transparent",
+		postRootBg: "rgba(13, 21, 36, 0.55)",
+		postReplyBg: "rgba(13, 21, 36, 0.35)",
+		postBorder: "1px solid rgba(255, 255, 255, 0.04)",
+		replyBorderLeft: "2px solid #3b82f6",
+		textColor: "#e2e8f0",
+		nameColor: "#60a5fa",
+		levelColor: "#64748b",
+		anchorColor: "#38bdf8",
+		timeColor: "#475569",
+		bulletColorRoot: "#64748b",
+		bulletColorChild: "#60a5fa",
+		fontFamily: "inherit",
+		padding: "2px 6px",
+		lineHeight: "1.35"
+	},
+	"retro": {
+		id: "retro",
+		name: "Retro 2ch",
+		icon: "📜",
+		modalBg: "rgba(27, 25, 23, 0.98)",
+		modalBorder: "2px solid #78350f",
+		postsBg: "transparent",
+		postRootBg: "rgba(41, 37, 36, 0.65)",
+		postReplyBg: "rgba(28, 25, 23, 0.65)",
+		postBorder: "1px solid rgba(245, 158, 11, 0.12)",
+		replyBorderLeft: "2px solid #f59e0b",
+		textColor: "#f5f5f4",
+		nameColor: "#22c55e",
+		levelColor: "#a8a29e",
+		anchorColor: "#38bdf8",
+		timeColor: "#78716c",
+		bulletColorRoot: "#a8a29e",
+		bulletColorChild: "#f59e0b",
+		fontFamily: "'MS PGothic', 'IPAMonaPGothic', monospace, sans-serif",
+		padding: "3px 8px",
+		lineHeight: "1.4"
+	},
+	"terminal": {
+		id: "terminal",
+		name: "Terminal",
+		icon: "📟",
+		modalBg: "rgba(5, 8, 12, 0.98)",
+		modalBorder: "2px solid #16a34a",
+		postsBg: "transparent",
+		postRootBg: "rgba(13, 22, 16, 0.75)",
+		postReplyBg: "rgba(9, 15, 11, 0.75)",
+		postBorder: "1px solid rgba(34, 197, 94, 0.15)",
+		replyBorderLeft: "2px solid #22c55e",
+		textColor: "#4ade80",
+		nameColor: "#86efac",
+		levelColor: "#15803d",
+		anchorColor: "#22d3ee",
+		timeColor: "#166534",
+		bulletColorRoot: "#16a34a",
+		bulletColorChild: "#22c55e",
+		fontFamily: "'Consolas', 'Courier New', monospace",
+		padding: "3px 8px",
+		lineHeight: "1.4"
+	},
+	"amber": {
+		id: "amber",
+		name: "Cyber Amber",
+		icon: "✨",
+		modalBg: "rgba(18, 13, 6, 0.98)",
+		modalBorder: "2px solid #d97706",
+		postsBg: "transparent",
+		postRootBg: "rgba(36, 24, 11, 0.7)",
+		postReplyBg: "rgba(24, 16, 7, 0.7)",
+		postBorder: "1px solid rgba(251, 191, 36, 0.15)",
+		replyBorderLeft: "2px solid #f59e0b",
+		textColor: "#fef3c7",
+		nameColor: "#fbbf24",
+		levelColor: "#92400e",
+		anchorColor: "#fde68a",
+		timeColor: "#78350f",
+		bulletColorRoot: "#b45309",
+		bulletColorChild: "#fbbf24",
+		fontFamily: "'Consolas', monospace",
+		padding: "3px 8px",
+		lineHeight: "1.4"
+	}
+};
+
+function formatBbsTime(ts, themeId) {
 	if (!ts) return "";
 	const d = new Date(ts);
-	const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+	const activeTheme = themeId || lunBbsTheme || "normal";
+
 	const y = d.getFullYear();
+	const yy = String(y).slice(-2);
 	const m = (d.getMonth() + 1).toString().padStart(2, '0');
 	const day = d.getDate().toString().padStart(2, '0');
+	const monthNum = d.getMonth() + 1;
+	const dateNum = d.getDate();
+	const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 	const dayName = days[d.getDay()];
-	const h = d.getHours().toString().padStart(2, '0');
+
+	const h24 = d.getHours().toString().padStart(2, '0');
 	const min = d.getMinutes().toString().padStart(2, '0');
 	const s = d.getSeconds().toString().padStart(2, '0');
-	return `${y}-${m}-${day} (${dayName}) ${h}:${min}:${s}`;
+
+	let h12 = d.getHours() % 12;
+	if (h12 === 0) h12 = 12;
+	const ampm = d.getHours() >= 12 ? "PM" : "AM";
+
+	if (activeTheme === "simple" || activeTheme === "briefer") {
+		// Concise brief format: e.g. 10/16 7:01PM
+		return `${monthNum}/${dateNum} ${h12}:${min}${ampm}`;
+	} else if (activeTheme === "retro") {
+		// 2ch format: 26/10/16(Fri) 19:01:23
+		return `${yy}/${m}/${day}(${dayName}) ${h24}:${min}:${s}`;
+	} else if (activeTheme === "terminal") {
+		// Terminal format: [10/16 19:01:23]
+		return `[${m}/${day} ${h24}:${min}:${s}]`;
+	} else if (activeTheme === "amber") {
+		// Amber format: 10/16 7:01PM
+		return `${monthNum}/${dateNum} ${h12}:${min}${ampm}`;
+	} else {
+		// Normal / actual detailed format: 2026-10-16 (Fri) 19:30:00
+		return `${y}-${m}-${day} (${dayName}) ${h24}:${min}:${s}`;
+	}
+}
+
+function setBbsTheme(themeId) {
+	if (!LUN_BBS_THEMES[themeId]) themeId = "normal";
+	lunBbsTheme = themeId;
+	if (window.localStorage) {
+		localStorage.setItem("spkmod-bbs-theme", themeId);
+	}
+	applyBbsThemeVisuals();
+	renderBbsPosts();
+}
+
+function applyBbsThemeVisuals() {
+	const t = LUN_BBS_THEMES[lunBbsTheme] || LUN_BBS_THEMES["normal"];
+	if (lunHudElements.bbsModal) {
+		lunHudElements.bbsModal.style.background = t.modalBg;
+		lunHudElements.bbsModal.style.border = t.modalBorder;
+		lunHudElements.bbsModal.style.fontFamily = t.fontFamily;
+	}
+	if (bbsModalElements.postsContainer) {
+		bbsModalElements.postsContainer.style.fontFamily = t.fontFamily;
+	}
+	if (bbsModalElements.input) {
+		bbsModalElements.input.style.fontFamily = t.fontFamily;
+		bbsModalElements.input.style.fontSize = Math.max(10.5, lunBbsFontSize) + "px";
+	}
+	if (bbsModalElements.themeSelect) {
+		bbsModalElements.themeSelect.value = lunBbsTheme;
+		bbsModalElements.themeSelect.style.fontFamily = t.fontFamily;
+	}
+	if (bbsModalElements.fontSizeBadge) {
+		bbsModalElements.fontSizeBadge.innerText = `${lunBbsFontSize}px`;
+		bbsModalElements.fontSizeBadge.style.fontFamily = t.fontFamily;
+	}
+}
+
+function changeBbsFontSize(delta) {
+	lunBbsFontSize = Math.max(9, Math.min(18, (lunBbsFontSize || 11) + delta));
+	if (window.localStorage) {
+		localStorage.setItem("spkmod-bbs-font-size", String(lunBbsFontSize));
+	}
+	applyBbsThemeVisuals();
+	renderBbsPosts();
 }
 
 function getMyBbsInfo() {
@@ -12956,6 +13145,7 @@ window.toggleBbsModal = function() {
 		if (typeof positionModalNicely === "function") positionModalNicely(lunHudElements.bbsModal);
 		lunHudElements.bbsModal.classList.remove("hidden");
 		updateBbsComposerState();
+		if (typeof applyBbsThemeVisuals === "function") applyBbsThemeVisuals();
 		if (bbsModalElements.postsContainer) {
 			bbsModalElements.postsContainer.scrollTop = 0;
 		}
@@ -13139,17 +13329,230 @@ function buildBbsTree(posts) {
 	return roots;
 }
 
+function setBbsStatusMessage(msg, isError = true, durationMs = 4000) {
+	if (!bbsModalElements.statusMsg) return;
+	bbsModalElements.statusMsg.innerText = msg;
+	bbsModalElements.statusMsg.style.color = isError ? "#f87171" : "#4ade80";
+	bbsModalElements.statusMsg.style.display = "";
+	if (bbsModalElements._statusTimer) clearTimeout(bbsModalElements._statusTimer);
+	bbsModalElements._statusTimer = setTimeout(() => {
+		if (bbsModalElements.statusMsg) bbsModalElements.statusMsg.style.display = "none";
+	}, durationMs);
+}
+
+function spkmodPrompt({ title = "Enter Value", label = "", defaultValue = "", placeholder = "", isPassword = false, showClear = false } = {}) {
+	return new Promise((resolve) => {
+		const existing = document.getElementById("spkmod-custom-dialog-backdrop");
+		if (existing) existing.remove();
+
+		const backdrop = document.createElement("div");
+		backdrop.id = "spkmod-custom-dialog-backdrop";
+		backdrop.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(2px); z-index: 9999999; display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; box-sizing: border-box; padding: 12px;";
+
+		const dialog = document.createElement("div");
+		dialog.style.cssText = "background: #1e293b; border: 1px solid #475569; border-radius: 8px; box-shadow: 0 20px 40px rgba(0,0,0,0.8); width: 340px; max-width: 92vw; padding: 16px; color: #f1f5f9; display: flex; flex-direction: column; gap: 10px; box-sizing: border-box;";
+
+		const titleRow = document.createElement("div");
+		titleRow.style.cssText = "display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: bold; color: #38bdf8;";
+		const titleText = document.createElement("span");
+		titleText.innerText = title;
+		titleRow.appendChild(titleText);
+
+		const closeDialog = (val) => {
+			window.removeEventListener("keydown", onDialogKey, true);
+			backdrop.remove();
+			resolve(val);
+		};
+
+		const closeX = document.createElement("span");
+		closeX.innerText = "✕";
+		closeX.style.cssText = "cursor: pointer; color: #94a3b8; font-size: 13px; padding: 0 4px; line-height: 1;";
+		closeX.onmouseenter = () => closeX.style.color = "#fff";
+		closeX.onmouseleave = () => closeX.style.color = "#94a3b8";
+		closeX.onclick = (e) => { e.stopPropagation(); closeDialog(null); };
+		titleRow.appendChild(closeX);
+		dialog.appendChild(titleRow);
+
+		if (label) {
+			const labelEl = document.createElement("div");
+			labelEl.style.cssText = "font-size: 11px; color: #cbd5e1; line-height: 1.4;";
+			labelEl.innerText = label;
+			dialog.appendChild(labelEl);
+		}
+
+		const input = document.createElement("input");
+		input.type = isPassword ? "password" : "text";
+		input.value = defaultValue || "";
+		input.placeholder = placeholder || "";
+		input.style.cssText = "background: rgba(15, 23, 42, 0.85); border: 1px solid #334155; border-radius: 5px; color: #f8fafc; font-size: 11.5px; padding: 6px 8px; outline: none; width: 100%; box-sizing: border-box;";
+		input.onfocus = () => input.style.borderColor = "#38bdf8";
+		input.onblur = () => input.style.borderColor = "#334155";
+		dialog.appendChild(input);
+
+		const btnRow = document.createElement("div");
+		btnRow.style.cssText = "display: flex; justify-content: flex-end; align-items: center; gap: 6px; margin-top: 4px;";
+
+		if (showClear) {
+			const clearBtn = document.createElement("button");
+			clearBtn.innerText = "Clear Key";
+			clearBtn.style.cssText = "background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; font-size: 11px; padding: 4px 8px; border-radius: 4px; cursor: pointer; margin-right: auto;";
+			clearBtn.onclick = (e) => { e.stopPropagation(); closeDialog(""); };
+			btnRow.appendChild(clearBtn);
+		}
+
+		const cancelBtn = document.createElement("button");
+		cancelBtn.innerText = "Cancel";
+		cancelBtn.style.cssText = "background: rgba(148, 163, 184, 0.15); border: 1px solid rgba(148, 163, 184, 0.3); color: #cbd5e1; font-size: 11px; padding: 4px 10px; border-radius: 4px; cursor: pointer;";
+		cancelBtn.onclick = (e) => { e.stopPropagation(); closeDialog(null); };
+		btnRow.appendChild(cancelBtn);
+
+		const okBtn = document.createElement("button");
+		okBtn.innerText = "Save";
+		okBtn.style.cssText = "background: #2563eb; border: 1px solid #3b82f6; color: #fff; font-size: 11px; font-weight: bold; padding: 4px 12px; border-radius: 4px; cursor: pointer;";
+		okBtn.onclick = (e) => { e.stopPropagation(); closeDialog(input.value); };
+		btnRow.appendChild(okBtn);
+
+		dialog.appendChild(btnRow);
+		backdrop.appendChild(dialog);
+		document.body.appendChild(backdrop);
+
+		dialog.onclick = (e) => e.stopPropagation();
+		dialog.onpointerdown = (e) => e.stopPropagation();
+		dialog.onmousedown = (e) => e.stopPropagation();
+
+		backdrop.onclick = (e) => { e.stopPropagation(); closeDialog(null); };
+		backdrop.onpointerdown = (e) => e.stopPropagation();
+		backdrop.onmousedown = (e) => e.stopPropagation();
+
+		input.onkeydown = (e) => {
+			e.stopPropagation();
+			if (e.key === "Enter") {
+				e.preventDefault();
+				closeDialog(input.value);
+			} else if (e.key === "Escape") {
+				e.preventDefault();
+				closeDialog(null);
+			}
+		};
+		input.onkeyup = (e) => e.stopPropagation();
+		input.onkeypress = (e) => e.stopPropagation();
+
+		const onDialogKey = (e) => {
+			if (e.key === "Escape") {
+				e.stopPropagation();
+				e.preventDefault();
+				closeDialog(null);
+			}
+		};
+		window.addEventListener("keydown", onDialogKey, true);
+
+		setTimeout(() => {
+			input.focus();
+			input.select();
+		}, 30);
+	});
+}
+window.spkmodPrompt = spkmodPrompt;
+
+function spkmodConfirm({ title = "Confirm", message = "Are you sure?", confirmText = "Confirm", confirmDanger = true, cancelText = "Cancel" } = {}) {
+	return new Promise((resolve) => {
+		const existing = document.getElementById("spkmod-custom-dialog-backdrop");
+		if (existing) existing.remove();
+
+		const backdrop = document.createElement("div");
+		backdrop.id = "spkmod-custom-dialog-backdrop";
+		backdrop.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(2px); z-index: 9999999; display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; box-sizing: border-box; padding: 12px;";
+
+		const dialog = document.createElement("div");
+		dialog.style.cssText = "background: #1e293b; border: 1px solid #475569; border-radius: 8px; box-shadow: 0 20px 40px rgba(0,0,0,0.8); width: 320px; max-width: 92vw; padding: 16px; color: #f1f5f9; display: flex; flex-direction: column; gap: 10px; box-sizing: border-box;";
+
+		const titleRow = document.createElement("div");
+		titleRow.style.cssText = "display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: bold; color: " + (confirmDanger ? "#f87171" : "#38bdf8") + ";";
+		const titleText = document.createElement("span");
+		titleText.innerText = title;
+		titleRow.appendChild(titleText);
+
+		const closeDialog = (val) => {
+			window.removeEventListener("keydown", onConfirmKey, true);
+			backdrop.remove();
+			resolve(val);
+		};
+
+		const closeX = document.createElement("span");
+		closeX.innerText = "✕";
+		closeX.style.cssText = "cursor: pointer; color: #94a3b8; font-size: 13px; padding: 0 4px; line-height: 1;";
+		closeX.onmouseenter = () => closeX.style.color = "#fff";
+		closeX.onmouseleave = () => closeX.style.color = "#94a3b8";
+		closeX.onclick = (e) => { e.stopPropagation(); closeDialog(false); };
+		titleRow.appendChild(closeX);
+		dialog.appendChild(titleRow);
+
+		const msgEl = document.createElement("div");
+		msgEl.style.cssText = "font-size: 11.5px; color: #cbd5e1; line-height: 1.4;";
+		msgEl.innerText = message;
+		dialog.appendChild(msgEl);
+
+		const btnRow = document.createElement("div");
+		btnRow.style.cssText = "display: flex; justify-content: flex-end; align-items: center; gap: 6px; margin-top: 4px;";
+
+		const cancelBtn = document.createElement("button");
+		cancelBtn.innerText = cancelText;
+		cancelBtn.style.cssText = "background: rgba(148, 163, 184, 0.15); border: 1px solid rgba(148, 163, 184, 0.3); color: #cbd5e1; font-size: 11px; padding: 4px 10px; border-radius: 4px; cursor: pointer;";
+		cancelBtn.onclick = (e) => { e.stopPropagation(); closeDialog(false); };
+		btnRow.appendChild(cancelBtn);
+
+		const confirmBtn = document.createElement("button");
+		confirmBtn.innerText = confirmText;
+		confirmBtn.style.cssText = confirmDanger
+			? "background: #dc2626; border: 1px solid #ef4444; color: #fff; font-size: 11px; font-weight: bold; padding: 4px 12px; border-radius: 4px; cursor: pointer;"
+			: "background: #2563eb; border: 1px solid #3b82f6; color: #fff; font-size: 11px; font-weight: bold; padding: 4px 12px; border-radius: 4px; cursor: pointer;";
+		confirmBtn.onclick = (e) => { e.stopPropagation(); closeDialog(true); };
+		btnRow.appendChild(confirmBtn);
+
+		dialog.appendChild(btnRow);
+		backdrop.appendChild(dialog);
+		document.body.appendChild(backdrop);
+
+		dialog.onclick = (e) => e.stopPropagation();
+		dialog.onpointerdown = (e) => e.stopPropagation();
+		dialog.onmousedown = (e) => e.stopPropagation();
+
+		backdrop.onclick = (e) => { e.stopPropagation(); closeDialog(false); };
+		backdrop.onpointerdown = (e) => e.stopPropagation();
+		backdrop.onmousedown = (e) => e.stopPropagation();
+
+		confirmBtn.focus();
+		const onConfirmKey = (e) => {
+			if (e.key === "Escape") {
+				e.stopPropagation();
+				e.preventDefault();
+				closeDialog(false);
+			} else if (e.key === "Enter") {
+				e.stopPropagation();
+				e.preventDefault();
+				closeDialog(true);
+			}
+		};
+		window.addEventListener("keydown", onConfirmKey, true);
+	});
+}
+window.spkmodConfirm = spkmodConfirm;
+
 function renderBbsPosts() {
 	if (!bbsModalElements.postsContainer) return;
 	const container = bbsModalElements.postsContainer;
 	const me = getMyBbsInfo();
+	const curTheme = LUN_BBS_THEMES[lunBbsTheme] || LUN_BBS_THEMES["normal"];
+	const baseFs = lunBbsFontSize || 11;
+	const smallFs = Math.max(8, Math.round(baseFs * 0.86 * 10) / 10);
+	const btnFs = Math.max(7.5, Math.round(baseFs * 0.78 * 10) / 10);
 
 	if (bbsModalElements.countBadge) {
 		bbsModalElements.countBadge.innerText = String(lunBbsPosts.length);
 	}
 
 	if (lunBbsPosts.length === 0) {
-		container.innerHTML = `<div style="text-align: center; color: #94a3b8; font-size: 11px; padding: 30px 10px;">${t("bbsEmpty")}</div>`;
+		container.innerHTML = `<div style="text-align: center; color: #94a3b8; font-size: ${baseFs}px; padding: 30px 10px;">${t("bbsEmpty")}</div>`;
 		return;
 	}
 
@@ -13168,16 +13571,16 @@ function renderBbsPosts() {
 		postEl.id = `spkmod-bbs-post-${post.id}`;
 		postEl.dataset.depth = String(depth);
 
-		const indentPx = Math.min(depth, 4) * 22;
-		postEl.style.cssText = `background: ${depth > 0 ? 'rgba(15, 23, 42, 0.28)' : 'rgba(15, 23, 42, 0.45)'}; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 3px 8px; margin-left: ${indentPx}px; display: flex; flex-direction: column; gap: 2px; box-sizing: border-box; font-size: 11px; line-height: 1.45; border-radius: ${depth > 0 ? '0 4px 4px 0' : '4px'}; ${depth > 0 ? 'border-left: 2px solid rgba(56, 189, 248, 0.45);' : ''}`;
+		const indentPx = Math.min(depth, 4) * (curTheme.id === "simple" ? 16 : 22);
+		postEl.style.cssText = `background: ${depth > 0 ? curTheme.postReplyBg : curTheme.postRootBg}; border-bottom: ${curTheme.postBorder}; padding: ${curTheme.padding}; margin-left: ${indentPx}px; display: flex; flex-direction: column; gap: 2px; box-sizing: border-box; font-size: ${baseFs}px; line-height: ${curTheme.lineHeight}; border-radius: ${depth > 0 ? '0 4px 4px 0' : '4px'}; ${depth > 0 ? ('border-left: ' + curTheme.replyBorderLeft + ';') : ''}`;
 
 		const lineEl = document.createElement("div");
-		lineEl.style.cssText = "display: block; word-break: break-word;";
+		lineEl.style.cssText = `display: block; word-break: break-word; font-size: ${baseFs}px;`;
 
 		// Bullet symbol (• for root, ◦ for level 1, ▪ for level 2+)
 		const bulletSpan = document.createElement("span");
 		bulletSpan.innerText = depth === 0 ? "• " : (depth === 1 ? "◦ " : "▪ ");
-		bulletSpan.style.cssText = `color: ${depth === 0 ? '#94a3b8' : '#38bdf8'}; font-weight: bold; margin-right: 2px; user-select: none; font-size: 11px;`;
+		bulletSpan.style.cssText = `color: ${depth === 0 ? curTheme.bulletColorRoot : curTheme.bulletColorChild}; font-weight: bold; margin-right: 2px; user-select: none; font-size: ${baseFs}px;`;
 		lineEl.appendChild(bulletSpan);
 
 		// Reply radio circle (◯ or ●)
@@ -13187,7 +13590,7 @@ function renderBbsPosts() {
 		radioSpan.setAttribute("data-post-id", String(post.id));
 		radioSpan.innerText = isCurrentReplyTarget ? "● " : "◯ ";
 		radioSpan.title = isCurrentReplyTarget ? "Cancel reply selection" : `Reply to #${post.id}`;
-		radioSpan.style.cssText = `cursor: pointer; user-select: none; margin-right: 4px; font-size: 11px; color: ${isCurrentReplyTarget ? '#38bdf8' : '#64748b'};`;
+		radioSpan.style.cssText = `cursor: pointer; user-select: none; margin-right: 4px; font-size: ${baseFs}px; color: ${isCurrentReplyTarget ? curTheme.anchorColor : curTheme.timeColor};`;
 		radioSpan.onpointerdown = (e) => { e.stopPropagation(); };
 		radioSpan.onmousedown = (e) => { e.stopPropagation(); };
 		radioSpan.onclick = (e) => {
@@ -13199,7 +13602,7 @@ function renderBbsPosts() {
 		// #ID anchor
 		const numSpan = document.createElement("span");
 		numSpan.innerText = `#${post.id} `;
-		numSpan.style.cssText = "color: #38bdf8; font-weight: bold; cursor: pointer; user-select: none; margin-right: 3px;";
+		numSpan.style.cssText = `color: ${curTheme.anchorColor}; font-weight: bold; cursor: pointer; user-select: none; margin-right: 3px; font-size: ${baseFs}px;`;
 		numSpan.title = `Click to reply to #${post.id}`;
 		numSpan.onpointerdown = (e) => { e.stopPropagation(); };
 		numSpan.onmousedown = (e) => { e.stopPropagation(); };
@@ -13209,31 +13612,21 @@ function renderBbsPosts() {
 		};
 		lineEl.appendChild(numSpan);
 
-		// // Staff badge (shield icon only)
-		// if (post.isStaff) {
-		// 	const modBadge = document.createElement("span");
-		// 	modBadge.innerText = "🛡️";
-		// 	modBadge.title = "Staff";
-		// 	modBadge.style.cssText = "margin-right: 2px; font-size: 10px; vertical-align: middle;";
-		// 	lineEl.appendChild(modBadge);
-		// }
-
 		// Username
 		const nameSpan = document.createElement("span");
 		nameSpan.innerText = post.username || "Player";
-		// nameSpan.style.cssText = `font-weight: 600; color: ${post.isStaff ? '#fde047' : '#e2e8f0'}; margin-right: 2px;`;
-		nameSpan.style.cssText = `font-weight: 600; color: #e2e8f0; margin-right: 2px;`;
+		nameSpan.style.cssText = `font-weight: 600; color: ${curTheme.nameColor}; margin-right: 2px; font-size: ${baseFs}px;`;
 		lineEl.appendChild(nameSpan);
 
 		// Level
 		const lvSpan = document.createElement("span");
 		lvSpan.innerText = `(Lv.${post.level || 1}): `;
-		lvSpan.style.cssText = "color: #94a3b8; margin-right: 4px;";
+		lvSpan.style.cssText = `color: ${curTheme.levelColor}; margin-right: 4px; font-size: ${baseFs}px;`;
 		lineEl.appendChild(lvSpan);
 
 		// Message body - if replying to parent, strip redundant >>parentId prefix
 		const msgSpan = document.createElement("span");
-		msgSpan.style.cssText = "color: #f1f5f9; font-weight: 400; white-space: pre-wrap;";
+		msgSpan.style.cssText = `color: ${curTheme.textColor}; font-weight: 400; white-space: pre-wrap; font-size: ${baseFs}px;`;
 		let rawMsg = post.message || "";
 		if (node.parentId) {
 			const stripped = rawMsg.replace(new RegExp(`^>>${node.parentId}\\s*`), "");
@@ -13247,15 +13640,15 @@ function renderBbsPosts() {
 			linkedMsg = parseCustomEmojisToHtml(linkedMsg);
 		}
 		linkedMsg = linkedMsg.replace(/&gt;&gt;(\d+)/g, (match, pNum) => {
-			return `<span class="spkmod-bbs-quote-anchor" data-target="${pNum}" style="color: #38bdf8; text-decoration: underline; cursor: pointer; font-weight: 600;">&gt;&gt;${pNum}</span>`;
+			return `<span class="spkmod-bbs-quote-anchor" data-target="${pNum}" style="color: ${curTheme.anchorColor}; text-decoration: underline; cursor: pointer; font-weight: 600;">&gt;&gt;${pNum}</span>`;
 		});
 		msgSpan.innerHTML = linkedMsg;
 		lineEl.appendChild(msgSpan);
 
 		// Timestamp
 		const timeSpan = document.createElement("span");
-		timeSpan.innerText = ` -- ${formatBbsTime(post.createdAt)}`;
-		timeSpan.style.cssText = "color: #64748b; font-size: 9.5px; margin-left: 6px; white-space: nowrap;";
+		timeSpan.innerText = ` -- ${formatBbsTime(post.createdAt, curTheme.id)}`;
+		timeSpan.style.cssText = `color: ${curTheme.timeColor}; font-size: ${smallFs}px; margin-left: 6px; white-space: nowrap;`;
 		lineEl.appendChild(timeSpan);
 
 		// New! badge
@@ -13263,7 +13656,7 @@ function renderBbsPosts() {
 			const newBadge = document.createElement("span");
 			newBadge.className = "spkmod-bbs-new-badge";
 			newBadge.innerText = " New!";
-			newBadge.style.cssText = "color: #ef4444; font-weight: bold; font-size: 9.5px; margin-left: 2px; white-space: nowrap; cursor: pointer;";
+			newBadge.style.cssText = `color: #ef4444; font-weight: bold; font-size: ${smallFs}px; margin-left: 2px; white-space: nowrap; cursor: pointer;`;
 			newBadge.title = "Click to dismiss";
 			newBadge.onclick = (e) => {
 				e.stopPropagation();
@@ -13286,7 +13679,7 @@ function renderBbsPosts() {
 		const replyBtn = document.createElement("button");
 		replyBtn.innerText = "↩ " + (t("bbsReply") || "Reply");
 		replyBtn.title = "Reply to #" + post.id;
-		replyBtn.style.cssText = "background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #7dd3fc; border-radius: 3px; font-size: 8.5px; padding: 0 4px; height: 16px; cursor: pointer; line-height: 14px;";
+		replyBtn.style.cssText = `background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: ${curTheme.anchorColor}; border-radius: 3px; font-size: ${btnFs}px; padding: 0 4px; height: 16px; cursor: pointer; line-height: 14px;`;
 		replyBtn.onpointerdown = (e) => { e.stopPropagation(); };
 		replyBtn.onmousedown = (e) => { e.stopPropagation(); };
 		replyBtn.onclick = (e) => {
@@ -13299,7 +13692,7 @@ function renderBbsPosts() {
 		const transBtn = document.createElement("button");
 		transBtn.innerText = lunBbsTranslations[post.id] ? ("🌐 " + (t("bbsShowOriginal") || "Orig")) : ("🌐 " + (t("bbsTranslateBtn") || "Trans"));
 		transBtn.title = lunBbsTranslations[post.id] ? "Show original" : "Translate message";
-		transBtn.style.cssText = "background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #93c5fd; border-radius: 3px; font-size: 8.5px; padding: 0 4px; height: 16px; cursor: pointer; line-height: 14px;";
+		transBtn.style.cssText = `background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: ${curTheme.anchorColor}; border-radius: 3px; font-size: ${btnFs}px; padding: 0 4px; height: 16px; cursor: pointer; line-height: 14px;`;
 		transBtn.onclick = async (e) => {
 			e.stopPropagation();
 			if (lunBbsTranslations[post.id]) {
@@ -13330,13 +13723,20 @@ function renderBbsPosts() {
 			const delBtn = document.createElement("button");
 			delBtn.innerText = "🗑️";
 			delBtn.title = "Delete post (Staff)";
-			delBtn.style.cssText = "background: transparent; border: none; cursor: pointer; color: #ef4444; font-size: 10px; padding: 0 2px; opacity: 0.75; line-height: 1;";
+			delBtn.style.cssText = `background: transparent; border: none; cursor: pointer; color: #ef4444; font-size: ${Math.max(9, baseFs - 1)}px; padding: 0 2px; opacity: 0.75; line-height: 1;`;
 			delBtn.onmouseenter = () => delBtn.style.opacity = "1";
 			delBtn.onmouseleave = () => delBtn.style.opacity = "0.75";
-			delBtn.onclick = (e) => {
+			delBtn.onclick = async (e) => {
 				e.stopPropagation();
 				const confirmMsg = t("bbsDeleteConfirm", post.id, post.username) || `Delete post #${post.id} by ${post.username}?`;
-				if (window.confirm(confirmMsg)) {
+				const confirmed = await spkmodConfirm({
+					title: "🗑️ Delete BBS Post",
+					message: confirmMsg,
+					confirmText: "Delete",
+					confirmDanger: true,
+					cancelText: "Cancel"
+				});
+				if (confirmed) {
 					deleteBbsPost(post.id);
 				}
 			};
@@ -13357,12 +13757,12 @@ function renderBbsPosts() {
 			if (transLangCode === "en-US") transLangCode = "en";
 
 			const transBox = document.createElement("div");
-			transBox.style.cssText = "margin-top: 2px; padding: 2px 6px; background: rgba(30, 58, 138, 0.35); border-left: 2px solid #3b82f6; border-radius: 3px; font-size: 10.5px; color: #bfdbfe; word-break: break-word;";
+			transBox.style.cssText = `margin-top: 2px; padding: 2px 6px; background: rgba(30, 58, 138, 0.35); border-left: 2px solid ${curTheme.anchorColor}; border-radius: 3px; font-size: ${smallFs}px; color: ${curTheme.textColor}; word-break: break-word;`;
 			let transText = escapeBbsHtml(transStr);
 			if (typeof parseCustomEmojisToHtml === "function") {
 				transText = parseCustomEmojisToHtml(transText);
 			}
-			transBox.innerHTML = `<span style="font-size: 9px; opacity: 0.8; margin-right: 4px;">🌐 [${(transLangCode || 'en').toUpperCase()}]:</span>${transText}`;
+			transBox.innerHTML = `<span style="font-size: ${Math.max(7.5, smallFs - 1.5)}px; opacity: 0.8; margin-right: 4px;">🌐 [${(transLangCode || 'en').toUpperCase()}]:</span>${transText}`;
 			postEl.appendChild(transBox);
 		}
 
@@ -13556,9 +13956,14 @@ async function deleteBbsPost(postId) {
 	if (!me.isStaff) return;
 	let adminSecret = (window.localStorage && localStorage.getItem("spkmod-admin-secret")) || "";
 	if (!adminSecret) {
-		adminSecret = window.prompt("Enter Staff Admin Secret Key:") || "";
-		adminSecret = adminSecret.trim();
-		if (!adminSecret) return;
+		const entered = await spkmodPrompt({
+			title: "🔑 Staff Admin Secret Required",
+			label: "Please enter the Staff Admin Secret Key to delete posts:",
+			placeholder: "Secret key...",
+			isPassword: true
+		});
+		if (!entered || !entered.trim()) return;
+		adminSecret = entered.trim();
 		if (window.localStorage) localStorage.setItem("spkmod-admin-secret", adminSecret);
 	}
 	try {
@@ -13580,16 +13985,18 @@ async function deleteBbsPost(postId) {
 		if (data && data.success) {
 			lunBbsPosts = lunBbsPosts.filter(p => p.id !== postId);
 			renderBbsPosts();
+			setBbsStatusMessage(`🗑️ Post #${postId} deleted.`, false);
 		} else {
 			if (res.status === 401 || res.status === 403 || (data.error && data.error.toLowerCase().includes("secret"))) {
 				if (window.localStorage) localStorage.removeItem("spkmod-admin-secret");
-				alert("Staff authentication failed. Key cleared: " + (data.error || "Unauthorized"));
+				setBbsStatusMessage("Staff authentication failed. Key cleared: " + (data.error || "Unauthorized"), true);
 			} else {
-				alert(data.error || "Failed to delete post");
+				setBbsStatusMessage(data.error || "Failed to delete post", true);
 			}
 		}
 	} catch (err) {
 		console.warn("[SpeakiMod+] Failed to delete BBS post:", err);
+		setBbsStatusMessage("Failed to delete post (network error)", true);
 	}
 }
 
@@ -13615,26 +14022,87 @@ document.body.appendChild(
 					style: "font-size: 9.5px; background: rgba(255,255,255,0.12); padding: 1px 6px; border-radius: 8px; color: #94a3b8; font-weight: bold; cursor: move; user-select: none;"
 				})
 			]),
-			buildElement("div", { style: "display: flex; align-items: center; gap: 6px;" }, [
+			buildElement("div", { style: "display: flex; align-items: center; gap: 5px; flex-wrap: wrap;" }, [
 				bbsModalElements.staffKeyBtn = buildElement("span", {
 					id: "spkmod-bbs-staff-key",
 					innerText: "🔑",
 					title: "Staff Admin Key",
 					style: "cursor: pointer; font-size: 11px; opacity: 0.8; user-select: none; display: none;",
-					onclick: () => {
+					onpointerdown: (e) => e.stopPropagation(),
+					onmousedown: (e) => e.stopPropagation(),
+					onclick: async (e) => {
+						e.stopPropagation();
 						const cur = (window.localStorage && localStorage.getItem("spkmod-admin-secret")) || "";
-						const val = window.prompt("Staff Admin Secret Key (leave empty to clear):", cur);
+						const val = await spkmodPrompt({
+							title: "🔑 Staff Admin Secret Key",
+							label: cur ? "A key is currently configured. Enter a new key, or click 'Clear Key' to remove it:" : "Enter the Staff Admin Secret Key to authorize post deletions:",
+							defaultValue: cur,
+							placeholder: "Secret key...",
+							isPassword: true,
+							showClear: !!cur
+						});
 						if (val !== null) {
 							if (val.trim()) {
-								localStorage.setItem("spkmod-admin-secret", val.trim());
-								alert("Staff Admin Secret saved!");
+								if (window.localStorage) localStorage.setItem("spkmod-admin-secret", val.trim());
+								setBbsStatusMessage("🔑 Staff Admin Secret saved!", false);
 							} else {
-								localStorage.removeItem("spkmod-admin-secret");
-								alert("Staff Admin Secret cleared.");
+								if (window.localStorage) localStorage.removeItem("spkmod-admin-secret");
+								setBbsStatusMessage("🔑 Staff Admin Secret cleared.", false);
 							}
 						}
 					}
 				}),
+				bbsModalElements.themeSelect = buildElement("select", {
+					id: "spkmod-bbs-theme-select",
+					title: "BBS Theme",
+					style: "background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.2); color: #cbd5e1; font-size: 10px; border-radius: 4px; padding: 1px 3px; cursor: pointer; height: 18px; outline: none; line-height: 1;",
+					onpointerdown: (e) => e.stopPropagation(),
+					onmousedown: (e) => e.stopPropagation(),
+					onclick: (e) => e.stopPropagation(),
+					onchange: (e) => { e.stopPropagation(); setBbsTheme(e.target.value); }
+				}, [
+					buildElement("option", { value: "normal", innerText: "🌙 Normal" }),
+					buildElement("option", { value: "simple", innerText: "⚡ Simple (Briefer)" }),
+					buildElement("option", { value: "retro", innerText: "📜 Retro 2ch" }),
+					buildElement("option", { value: "terminal", innerText: "📟 Terminal" }),
+					buildElement("option", { value: "amber", innerText: "✨ Cyber Amber" })
+				]),
+				buildElement("div", {
+					id: "spkmod-bbs-font-controls",
+					title: "BBS Font Size",
+					style: "display: inline-flex; align-items: center; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 4px; height: 18px; padding: 0 2px; gap: 1px;",
+					onpointerdown: (e) => e.stopPropagation(),
+					onmousedown: (e) => e.stopPropagation()
+				}, [
+					bbsModalElements.fontMinusBtn = buildElement("button", {
+						id: "spkmod-bbs-font-minus",
+						innerText: "−",
+						title: "Decrease BBS font size",
+						style: "background: transparent; border: none; color: #94a3b8; font-size: 11px; font-weight: bold; width: 14px; height: 16px; line-height: 14px; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; user-select: none;",
+						onmouseenter: (e) => { e.target.style.color = "#fff"; },
+						onmouseleave: (e) => { e.target.style.color = "#94a3b8"; },
+						onpointerdown: (e) => e.stopPropagation(),
+						onmousedown: (e) => e.stopPropagation(),
+						onclick: (e) => { e.stopPropagation(); changeBbsFontSize(-1); }
+					}),
+					bbsModalElements.fontSizeBadge = buildElement("span", {
+						id: "spkmod-bbs-font-badge",
+						innerText: `${lunBbsFontSize || 11}px`,
+						title: "Current BBS font size",
+						style: "font-size: 9px; color: #cbd5e1; user-select: none; min-width: 22px; text-align: center; line-height: 18px;"
+					}),
+					bbsModalElements.fontPlusBtn = buildElement("button", {
+						id: "spkmod-bbs-font-plus",
+						innerText: "+",
+						title: "Increase BBS font size",
+						style: "background: transparent; border: none; color: #94a3b8; font-size: 11px; font-weight: bold; width: 14px; height: 16px; line-height: 14px; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; user-select: none;",
+						onmouseenter: (e) => { e.target.style.color = "#fff"; },
+						onmouseleave: (e) => { e.target.style.color = "#94a3b8"; },
+						onpointerdown: (e) => e.stopPropagation(),
+						onmousedown: (e) => e.stopPropagation(),
+						onclick: (e) => { e.stopPropagation(); changeBbsFontSize(+1); }
+					})
+				]),
 				bbsModalElements.refreshBtn = buildElement("span", {
 					id: "spkmod-bbs-refresh",
 					innerText: "🔄",
@@ -13766,6 +14234,7 @@ document.body.appendChild(
 	])
 );
 updateBbsComposerState();
+applyBbsThemeVisuals();
 function updateBbsI18n() {
 	if (bbsModalElements.headerTitle) {
 		bbsModalElements.headerTitle.innerText = "💬 " + (t("bbsTitle") || "SpeakiBBS");
