@@ -2480,26 +2480,10 @@ function positionModalNicely(modal) {
 	}
 
 	if (modal === lunHudElements.bbsModal || modal.id === "spkmod-bbs-modal") {
-		const modalWidth = modal.offsetWidth || Math.min(520, Math.round(window.innerWidth * 0.96));
+		const modalWidth = modal.offsetWidth || 520;
 		const safeLeft = Math.max(20, Math.round((window.innerWidth - modalWidth) / 2));
 		modal.style.left = safeLeft + "px";
 		modal.style.top = "60px";
-		return;
-	}
-
-	if (modal === lunHudElements.effectsModal || modal.id === "spkmod-effects-modal") {
-		const modalWidth = modal.offsetWidth || Math.min(960, Math.round(window.innerWidth * 0.96));
-		const safeLeft = Math.max(10, Math.round((window.innerWidth - modalWidth) / 2));
-		modal.style.left = safeLeft + "px";
-		modal.style.top = Math.max(10, Math.round(window.innerHeight * 0.15)) + "px";
-		return;
-	}
-
-	if (modal === lunHudElements.editsModal || modal.id === "spkmod-edits-modal") {
-		const modalWidth = modal.offsetWidth || Math.min(440, Math.round(window.innerWidth * 0.95));
-		const safeLeft = Math.max(10, Math.round((window.innerWidth - modalWidth) / 2));
-		modal.style.left = safeLeft + "px";
-		modal.style.top = Math.max(10, Math.round(window.innerHeight * 0.15)) + "px";
 		return;
 	}
 
@@ -2512,6 +2496,8 @@ function positionModalNicely(modal) {
 		lunHudElements.statsModal,
 		lunHudElements.eventModal,
 		lunHudElements.patchNotesModal,
+		lunHudElements.effectsModal,
+		lunHudElements.editsModal,
 		lunHudElements.hotkeysModal
 	];
 
@@ -2584,46 +2570,31 @@ function resetWindowPositions() {
 	allKnownModals.forEach(m => {
 		if (m) {
 			delete m.dataset.userDragged;
+			m.style.left = "";
+			m.style.top = "";
 		}
 	});
 
-	if (lunHudElements.bbsModal) {
-		const modalWidth = lunHudElements.bbsModal.offsetWidth || Math.min(520, Math.round(window.innerWidth * 0.96));
+	if (lunHudElements.bbsModal && !lunHudElements.bbsModal.classList.contains("hidden")) {
+		const modalWidth = lunHudElements.bbsModal.offsetWidth || 520;
 		const safeLeft = Math.max(20, Math.round((window.innerWidth - modalWidth) / 2));
 		lunHudElements.bbsModal.style.left = safeLeft + "px";
 		lunHudElements.bbsModal.style.top = "60px";
 	}
 
-	if (lunHudElements.effectsModal) {
-		const effWidth = lunHudElements.effectsModal.offsetWidth || Math.min(960, Math.round(window.innerWidth * 0.96));
-		const safeLeft = Math.max(10, Math.round((window.innerWidth - effWidth) / 2));
-		lunHudElements.effectsModal.style.left = safeLeft + "px";
-		lunHudElements.effectsModal.style.top = Math.max(10, Math.round(window.innerHeight * 0.15)) + "px";
-	}
-
-	if (lunHudElements.editsModal) {
-		const editsWidth = lunHudElements.editsModal.offsetWidth || Math.min(440, Math.round(window.innerWidth * 0.95));
-		const safeLeft = Math.max(10, Math.round((window.innerWidth - editsWidth) / 2));
-		lunHudElements.editsModal.style.left = safeLeft + "px";
-		lunHudElements.editsModal.style.top = Math.max(10, Math.round(window.innerHeight * 0.15)) + "px";
-	}
-
-	if (typeof mapModalElements !== "undefined" && mapModalElements.modalWindow) {
-		mapModalElements.modalWindow.style.top = "20px";
-		mapModalElements.modalWindow.style.left = Math.max(10, window.innerWidth - 1060) + "px";
-	}
-
-	const otherModals = [
+	const otherOpenModals = [
 		lunHudElements.settingsModal,
 		lunHudElements.statsModal,
 		lunHudElements.eventModal,
 		lunHudElements.patchNotesModal,
+		lunHudElements.effectsModal,
+		lunHudElements.editsModal,
 		lunHudElements.hotkeysModal,
 		lunHudElements.infoModal
 	];
 
-	otherModals.forEach(m => {
-		if (m) {
+	otherOpenModals.forEach(m => {
+		if (m && !m.classList.contains("hidden")) {
 			positionModalNicely(m);
 		}
 	});
@@ -12285,9 +12256,9 @@ function toggleLocalEditsModal() {
 	if (!lunHudElements.editsModal) return;
 	const isClosed = lunHudElements.editsModal.classList.contains("hidden");
 	if (isClosed) {
-		lunHudElements.editsModal.classList.remove("hidden");
 		if (typeof bringToFront === "function") bringToFront(lunHudElements.editsModal);
 		if (typeof positionModalNicely === "function") positionModalNicely(lunHudElements.editsModal);
+		lunHudElements.editsModal.classList.remove("hidden");
 		if (typeof updateLocalEditsUI === "function") updateLocalEditsUI();
 	} else {
 		lunHudElements.editsModal.classList.add("hidden");
@@ -12933,12 +12904,55 @@ function markBbsPostsAsRead() {
 	if (badge) badge.remove();
 }
 
+function updateBbsComposerState() {
+	if (!bbsModalElements.input) return;
+	const me = getMyBbsInfo();
+	const canPost = (me.level >= 3 || me.isStaff);
+
+	if (!canPost) {
+		bbsModalElements.input.readOnly = true;
+		bbsModalElements.input.placeholder = t("bbsLevelRequired") || "Your level is not enough to post here (Level 3+ required)";
+		bbsModalElements.input.style.cursor = "not-allowed";
+		bbsModalElements.input.style.opacity = "0.75";
+		bbsModalElements.input.style.borderColor = "rgba(239, 68, 68, 0.4)";
+		if (bbsModalElements.submitBtn) {
+			bbsModalElements.submitBtn.disabled = true;
+			bbsModalElements.submitBtn.style.opacity = "0.5";
+			bbsModalElements.submitBtn.style.cursor = "not-allowed";
+			bbsModalElements.submitBtn.title = t("bbsLevelRequired") || "Your level is not enough to post here (Level 3+ required)";
+		}
+		if (bbsModalElements.emojiBtn) {
+			bbsModalElements.emojiBtn.disabled = true;
+			bbsModalElements.emojiBtn.style.opacity = "0.4";
+			bbsModalElements.emojiBtn.style.cursor = "not-allowed";
+		}
+	} else {
+		bbsModalElements.input.readOnly = false;
+		bbsModalElements.input.placeholder = t("bbsPlaceholder") || "Write a message... (Enter to send, Shift+Enter for newline)";
+		bbsModalElements.input.style.cursor = "";
+		bbsModalElements.input.style.opacity = "1";
+		bbsModalElements.input.style.borderColor = "rgba(255, 255, 255, 0.2)";
+		if (bbsModalElements.submitBtn && (!lunBbsCooldownUntil || Date.now() >= lunBbsCooldownUntil)) {
+			bbsModalElements.submitBtn.disabled = false;
+			bbsModalElements.submitBtn.style.opacity = "1";
+			bbsModalElements.submitBtn.style.cursor = "pointer";
+			bbsModalElements.submitBtn.title = "";
+		}
+		if (bbsModalElements.emojiBtn) {
+			bbsModalElements.emojiBtn.disabled = false;
+			bbsModalElements.emojiBtn.style.opacity = "0.85";
+			bbsModalElements.emojiBtn.style.cursor = "pointer";
+		}
+	}
+}
+
 window.toggleBbsModal = function() {
 	if (!lunHudElements.bbsModal) return;
 	const isClosed = lunHudElements.bbsModal.classList.contains("hidden");
 	if (isClosed) {
 		if (typeof positionModalNicely === "function") positionModalNicely(lunHudElements.bbsModal);
 		lunHudElements.bbsModal.classList.remove("hidden");
+		updateBbsComposerState();
 		if (bbsModalElements.postsContainer) {
 			bbsModalElements.postsContainer.scrollTop = 0;
 		}
@@ -13019,6 +13033,16 @@ async function fetchBbsPosts(isBackground) {
 }
 
 function setBbsReplyTarget(id, username) {
+	const me = getMyBbsInfo();
+	if (me.level < 3 && !me.isStaff) {
+		if (bbsModalElements.statusMsg) {
+			bbsModalElements.statusMsg.innerText = t("bbsLevelRequired") || "Your level is not enough to post here (Level 3+ required)";
+			bbsModalElements.statusMsg.style.display = "";
+			setTimeout(() => { if (bbsModalElements.statusMsg) bbsModalElements.statusMsg.style.display = "none"; }, 3500);
+		}
+		if (typeof updateBbsComposerState === "function") updateBbsComposerState();
+		return;
+	}
 	if (!id || (lunBbsReplyTarget && lunBbsReplyTarget.id === id)) {
 		lunBbsReplyTarget = null;
 	} else {
@@ -13397,6 +13421,17 @@ async function sendBbsPost() {
 	const msg = bbsModalElements.input.value.trim();
 	if (!msg) return;
 
+	const me = getMyBbsInfo();
+	if (me.level < 3 && !me.isStaff) {
+		if (bbsModalElements.statusMsg) {
+			bbsModalElements.statusMsg.innerText = t("bbsLevelRequired") || "Your level is not enough to post here (Level 3+ required)";
+			bbsModalElements.statusMsg.style.display = "";
+			setTimeout(() => { if (bbsModalElements.statusMsg) bbsModalElements.statusMsg.style.display = "none"; }, 3500);
+		}
+		if (typeof updateBbsComposerState === "function") updateBbsComposerState();
+		return;
+	}
+
 	if (Date.now() < lunBbsCooldownUntil) {
 		const waitSec = Math.ceil((lunBbsCooldownUntil - Date.now()) / 1000);
 		if (bbsModalElements.statusMsg) {
@@ -13407,7 +13442,6 @@ async function sendBbsPost() {
 		return;
 	}
 
-	const me = getMyBbsInfo();
 	if (bbsModalElements.submitBtn) {
 		bbsModalElements.submitBtn.disabled = true;
 		bbsModalElements.submitBtn.innerText = t("bbsSending") || "Posting...";
@@ -13633,6 +13667,16 @@ document.body.appendChild(
 				style: "width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #fff; padding: 6px; font-size: 11px; resize: none; outline: none; font-family: inherit;",
 				onpointerdown: (e) => { e.stopPropagation(); },
 				onmousedown: (e) => { e.stopPropagation(); },
+				onfocus: () => {
+					const me = getMyBbsInfo();
+					if (me.level < 3 && !me.isStaff) {
+						if (bbsModalElements.statusMsg) {
+							bbsModalElements.statusMsg.innerText = t("bbsLevelRequired") || "Your level is not enough to post here (Level 3+ required)";
+							bbsModalElements.statusMsg.style.display = "";
+							setTimeout(() => { if (bbsModalElements.statusMsg) bbsModalElements.statusMsg.style.display = "none"; }, 3500);
+						}
+					}
+				},
 				oninput: () => {
 					if (bbsModalElements.charCount && bbsModalElements.input) {
 						bbsModalElements.charCount.innerText = `${bbsModalElements.input.value.length}/500`;
@@ -13640,6 +13684,16 @@ document.body.appendChild(
 				},
 				onkeydown: (e) => {
 					e.stopPropagation();
+					const me = getMyBbsInfo();
+					if (me.level < 3 && !me.isStaff) {
+						e.preventDefault();
+						if (bbsModalElements.statusMsg) {
+							bbsModalElements.statusMsg.innerText = t("bbsLevelRequired") || "Your level is not enough to post here (Level 3+ required)";
+							bbsModalElements.statusMsg.style.display = "";
+							setTimeout(() => { if (bbsModalElements.statusMsg) bbsModalElements.statusMsg.style.display = "none"; }, 3500);
+						}
+						return;
+					}
 					if (e.key === "Enter" && !e.shiftKey) {
 						e.preventDefault();
 						sendBbsPost();
@@ -13662,6 +13716,7 @@ document.body.appendChild(
 		])
 	])
 );
+updateBbsComposerState();
 function updateBbsI18n() {
 	if (bbsModalElements.headerTitle) {
 		bbsModalElements.headerTitle.innerText = "💬 " + (t("bbsTitle") || "SpeakiBBS");
@@ -13669,9 +13724,7 @@ function updateBbsI18n() {
 	if (bbsModalElements.emojiBtn) {
 		bbsModalElements.emojiBtn.title = t("bbsEmojiBtnTooltip") || "Insert emoji";
 	}
-	if (bbsModalElements.input) {
-		bbsModalElements.input.placeholder = t("bbsPlaceholder") || "Write a message... (Enter to send, Shift+Enter for newline)";
-	}
+	updateBbsComposerState();
 	if (bbsModalElements.submitBtn && (!lunBbsCooldownUntil || Date.now() >= lunBbsCooldownUntil)) {
 		bbsModalElements.submitBtn.innerText = "📤 " + (t("bbsPostBtn") || "Post");
 	}
