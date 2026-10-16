@@ -12721,10 +12721,25 @@ function setBbsReplyTarget(id, username) {
 		lunBbsReplyTarget = { id: parseInt(id, 10), username: String(username || "Player") };
 	}
 	updateBbsReplyBar();
-	renderBbsPosts();
-	if (lunBbsReplyTarget && bbsModalElements.input) {
-		bbsModalElements.input.focus({ preventScroll: true });
+	updateBbsRadioIndicators();
+	if (bbsModalElements.input) {
+		setTimeout(() => {
+			if (bbsModalElements.input) {
+				bbsModalElements.input.focus({ preventScroll: true });
+			}
+		}, 30);
 	}
+}
+
+function updateBbsRadioIndicators() {
+	if (!bbsModalElements.postsContainer) return;
+	const radios = bbsModalElements.postsContainer.querySelectorAll(".spkmod-bbs-radio");
+	radios.forEach(el => {
+		const pId = parseInt(el.getAttribute("data-post-id"), 10);
+		const isActive = lunBbsReplyTarget && lunBbsReplyTarget.id === pId;
+		el.innerText = isActive ? "● " : "◯ ";
+		el.style.color = isActive ? "#38bdf8" : "#64748b";
+	});
 }
 
 function updateBbsReplyBar() {
@@ -12819,9 +12834,13 @@ function renderBbsPosts() {
 		// Reply radio circle (◯ or ●)
 		const isCurrentReplyTarget = lunBbsReplyTarget && lunBbsReplyTarget.id === post.id;
 		const radioSpan = document.createElement("span");
+		radioSpan.className = "spkmod-bbs-radio";
+		radioSpan.setAttribute("data-post-id", String(post.id));
 		radioSpan.innerText = isCurrentReplyTarget ? "● " : "◯ ";
 		radioSpan.title = isCurrentReplyTarget ? "Cancel reply selection" : `Reply to #${post.id}`;
 		radioSpan.style.cssText = `cursor: pointer; user-select: none; margin-right: 4px; font-size: 10px; color: ${isCurrentReplyTarget ? '#38bdf8' : '#64748b'};`;
+		radioSpan.onpointerdown = (e) => { e.preventDefault(); e.stopPropagation(); };
+		radioSpan.onmousedown = (e) => { e.preventDefault(); e.stopPropagation(); };
 		radioSpan.onclick = (e) => {
 			e.stopPropagation();
 			setBbsReplyTarget(post.id, post.username);
@@ -12833,6 +12852,8 @@ function renderBbsPosts() {
 		numSpan.innerText = `#${post.id} `;
 		numSpan.style.cssText = "color: #38bdf8; font-weight: bold; cursor: pointer; user-select: none; margin-right: 3px;";
 		numSpan.title = `Click to reply to #${post.id}`;
+		numSpan.onpointerdown = (e) => { e.preventDefault(); e.stopPropagation(); };
+		numSpan.onmousedown = (e) => { e.preventDefault(); e.stopPropagation(); };
 		numSpan.onclick = (e) => {
 			e.stopPropagation();
 			setBbsReplyTarget(post.id, post.username);
@@ -12912,6 +12933,8 @@ function renderBbsPosts() {
 		replyBtn.innerText = "↩ " + (t("bbsReply") || "Reply");
 		replyBtn.title = "Reply to #" + post.id;
 		replyBtn.style.cssText = "background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #7dd3fc; border-radius: 3px; font-size: 8.5px; padding: 0 4px; height: 16px; cursor: pointer; line-height: 14px;";
+		replyBtn.onpointerdown = (e) => { e.preventDefault(); e.stopPropagation(); };
+		replyBtn.onmousedown = (e) => { e.preventDefault(); e.stopPropagation(); };
 		replyBtn.onclick = (e) => {
 			e.stopPropagation();
 			setBbsReplyTarget(post.id, post.username);
@@ -13203,6 +13226,8 @@ document.body.appendChild(
 				maxLength: 500,
 				placeholder: t("bbsPlaceholder") || "Write a message... (Enter to send, Shift+Enter for newline)",
 				style: "width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; color: #fff; padding: 6px; font-size: 11px; resize: none; outline: none; font-family: inherit;",
+				onpointerdown: (e) => { e.stopPropagation(); },
+				onmousedown: (e) => { e.stopPropagation(); },
 				oninput: () => {
 					if (bbsModalElements.charCount && bbsModalElements.input) {
 						bbsModalElements.charCount.innerText = `${bbsModalElements.input.value.length}/500`;
