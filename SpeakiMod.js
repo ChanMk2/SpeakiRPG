@@ -5849,9 +5849,20 @@ window.showPollModal = function(forceLang) {
     };
 
     let storedVote = null;
+    let pendingVote = null;
     try {
         storedVote = JSON.parse(localStorage.getItem("spkmod-poll-voted-v1") || "null");
     } catch (_) {}
+    try {
+        pendingVote = JSON.parse(localStorage.getItem("spkmod-poll-pending-v1") || "null");
+    } catch (_) {}
+
+    const initialVote = storedVote || pendingVote;
+    if (initialVote) {
+        if (initialVote.q1) lunPollAnswers.q1 = initialVote.q1;
+        if (initialVote.q2) lunPollAnswers.q2 = initialVote.q2;
+        if (initialVote.q3) lunPollAnswers.q3 = initialVote.q3;
+    }
 
     function renderResults(results, isAlreadyVoted, offlineMsg) {
         bodyContainer.innerHTML = "";
@@ -5964,6 +5975,26 @@ window.showPollModal = function(forceLang) {
             bodyContainer.appendChild(qBox);
         });
 
+        // If all 3 answers are ready, provide a clear Submit button
+        if (lunPollAnswers.q1 && lunPollAnswers.q2 && lunPollAnswers.q3) {
+            const submitRow = document.createElement("div");
+            submitRow.style.cssText = "display: flex; justify-content: center; margin-top: 4px;";
+            const submitBtn = document.createElement("button");
+            submitBtn.innerText = "🚀 " + getTranslation("pollSubmitNow");
+            submitBtn.style.cssText = "padding: 10px 28px; font-size: 15px; font-weight: bold; color: white; background: #10b981; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);";
+            submitBtn.onmouseover = () => submitBtn.style.background = '#059669';
+            submitBtn.onmouseleave = () => submitBtn.style.background = '#10b981';
+            submitBtn.onclick = () => {
+                if (isSubmitting) return;
+                isSubmitting = true;
+                submitBtn.disabled = true;
+                submitBtn.innerText = getTranslation("pollSubmitting");
+                submitPoll();
+            };
+            submitRow.appendChild(submitBtn);
+            bodyContainer.appendChild(submitRow);
+        }
+
         const statusArea = document.createElement("div");
         statusArea.id = "spkmod-poll-status";
         statusArea.style.cssText = "font-size: 14px; text-align: center; color: #94a3b8; min-height: 20px;";
@@ -5997,8 +6028,9 @@ window.showPollModal = function(forceLang) {
                 timestamp: Date.now()
             };
 
+            // Store in pending key temporarily so user selections aren't lost if connection drops
             try {
-                localStorage.setItem("spkmod-poll-voted-v1", JSON.stringify(voteData));
+                localStorage.setItem("spkmod-poll-pending-v1", JSON.stringify(voteData));
             } catch (_) {}
 
             const sUrl = getPollServerUrl().replace(/\/+$/, "");
@@ -6007,9 +6039,17 @@ window.showPollModal = function(forceLang) {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(voteData)
             })
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return res.json();
+            })
             .then(data => {
-                if (data && data.results) {
+                if (data && (data.success || data.alreadyVoted)) {
+                    // Permanently record completion only upon server confirmation
+                    try {
+                        localStorage.setItem("spkmod-poll-voted-v1", JSON.stringify(voteData));
+                        localStorage.removeItem("spkmod-poll-pending-v1");
+                    } catch (_) {}
                     renderResults(data.results, data.alreadyVoted);
                 } else {
                     renderOfflineFallback(voteData);
@@ -6024,29 +6064,87 @@ window.showPollModal = function(forceLang) {
         function renderOfflineFallback(voteData) {
             const fakeResults = {
                 totalVotes: 1,
-                q1: { yes: voteData.q1 === 'yes' ? 1 : 0, no: voteData.q1 === 'no' ? 1 : 0, yesPct: voteData.q1 === 'yes' ? 100 : 0, noPct: voteData.q1 === 'no' ? 100 : 0 },
-                q2: { yes: voteData.q2 === 'yes' ? 1 : 0, no: voteData.q2 === 'no' ? 1 : 0, yesPct: voteData.q2 === 'yes' ? 100 : 0, noPct: voteData.q2 === 'no' ? 100 : 0 },
-                q3: { yes: voteData.q3 === 'yes' ? 1 : 0, no: voteData.q3 === 'no' ? 1 : 0, yesPct: voteData.q3 === 'yes' ? 100 : 0, noPct: voteData.q3 === 'no' ? 100 : 0 }
+                q1: { yes: voteData && voteData.q1 === 'yes' ? 1 : 0, no: voteData && voteData.q1 === 'no' ? 1 : 0, yesPct: voteData && voteData.q1 === 'yes' ? 100 : 0, noPct: voteData && voteData.q1 === 'no' ? 100 : 0 },
+                q2: { yes: voteData && voteData.q2 === 'yes' ? 1 : 0, no: voteData && voteData.q2 === 'no' ? 1 : 0, yesPct: voteData && voteData.q2 === 'yes' ? 100 : 0, noPct: voteData && voteData.q2 === 'no' ? 100 : 0 },
+                q3: { yes: voteData && voteData.q3 === 'yes' ? 1 : 0, no: voteData && voteData.q3 === 'no' ? 1 : 0, yesPct: voteData && voteData.q3 === 'yes' ? 100 : 0, noPct: voteData && voteData.q3 === 'no' ? 100 : 0 }
             };
             renderResults(fakeResults, false, getTranslation("pollServerOffline"));
+
+            const actionRow = document.createElement("div");
+            actionRow.style.cssText = "display: flex; gap: 12px; justify-content: center; margin-top: 10px; flex-wrap: wrap;";
+
+            const retryBtn = document.createElement("button");
+            retryBtn.innerText = "🔄 " + getTranslation("pollRetry");
+            retryBtn.style.cssText = "padding: 9px 20px; font-size: 14px; font-weight: bold; color: white; background: #10b981; border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s;";
+            retryBtn.onmouseover = () => retryBtn.style.background = '#059669';
+            retryBtn.onmouseleave = () => retryBtn.style.background = '#10b981';
+            retryBtn.onclick = () => {
+                retryBtn.disabled = true;
+                retryBtn.innerText = getTranslation("pollSubmitting");
+                if (voteData) {
+                    if (voteData.q1) lunPollAnswers.q1 = voteData.q1;
+                    if (voteData.q2) lunPollAnswers.q2 = voteData.q2;
+                    if (voteData.q3) lunPollAnswers.q3 = voteData.q3;
+                }
+                submitPoll();
+            };
+
+            const editBtn = document.createElement("button");
+            editBtn.innerText = "✏️ " + getTranslation("pollChangeVote");
+            editBtn.style.cssText = "padding: 9px 20px; font-size: 14px; font-weight: bold; color: #cbd5e1; background: #334155; border: 1px solid #475569; border-radius: 6px; cursor: pointer; transition: all 0.2s;";
+            editBtn.onmouseover = () => editBtn.style.background = '#475569';
+            editBtn.onmouseleave = () => editBtn.style.background = '#334155';
+            editBtn.onclick = () => {
+                try {
+                    localStorage.removeItem("spkmod-poll-voted-v1");
+                } catch (_) {}
+                if (voteData) {
+                    if (voteData.q1) lunPollAnswers.q1 = voteData.q1;
+                    if (voteData.q2) lunPollAnswers.q2 = voteData.q2;
+                    if (voteData.q3) lunPollAnswers.q3 = voteData.q3;
+                }
+                renderVotingForm();
+            };
+
+            actionRow.appendChild(retryBtn);
+            actionRow.appendChild(editBtn);
+            bodyContainer.appendChild(actionRow);
         }
     }
 
     if (storedVote) {
+        const username = (window.gameState && window.gameState.myPlayerName) ? String(window.gameState.myPlayerName).trim() : (localStorage.getItem("spkmod-last-player-name") || "Player");
+        const playerId = (window.gameState && window.gameState.myPlayerId) ? String(window.gameState.myPlayerId) : (localStorage.getItem("spkmod-last-player-id") || "");
         const sUrl = getPollServerUrl().replace(/\/+$/, "");
-        fetch(`${sUrl}/api/poll/results`)
-        .then(res => res.json())
+
+        bodyContainer.innerHTML = `<div style="text-align: center; color: #94a3b8; padding: 24px; font-size: 15px;">⏳ ${getTranslation("pollSubmitting")}</div>`;
+
+        fetch(`${sUrl}/api/poll/status?username=${encodeURIComponent(username)}&playerId=${encodeURIComponent(playerId)}`)
+        .then(res => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+        })
         .then(data => {
-            renderResults(data, true);
+            if (data && data.hasVoted) {
+                renderResults(data.results, true);
+            } else {
+                // Server is UP, but reports this player has NOT voted yet!
+                // Clear the local lock so they can submit to the live server
+                try {
+                    localStorage.removeItem("spkmod-poll-voted-v1");
+                } catch (_) {}
+                if (storedVote.q1) lunPollAnswers.q1 = storedVote.q1;
+                if (storedVote.q2) lunPollAnswers.q2 = storedVote.q2;
+                if (storedVote.q3) lunPollAnswers.q3 = storedVote.q3;
+                renderVotingForm();
+                const statusEl = document.getElementById("spkmod-poll-status");
+                if (statusEl) {
+                    statusEl.innerHTML = `<span style="color: #38bdf8;">💡 ${getTranslation("pollUnsentRecovered")}</span>`;
+                }
+            }
         })
         .catch(_ => {
-            const fakeResults = {
-                totalVotes: 1,
-                q1: { yes: storedVote.q1 === 'yes' ? 1 : 0, no: storedVote.q1 === 'no' ? 1 : 0, yesPct: storedVote.q1 === 'yes' ? 100 : 0, noPct: storedVote.q1 === 'no' ? 100 : 0 },
-                q2: { yes: storedVote.q2 === 'yes' ? 1 : 0, no: storedVote.q2 === 'no' ? 1 : 0, yesPct: storedVote.q2 === 'yes' ? 100 : 0, noPct: storedVote.q2 === 'no' ? 100 : 0 },
-                q3: { yes: storedVote.q3 === 'yes' ? 1 : 0, no: storedVote.q3 === 'no' ? 1 : 0, yesPct: storedVote.q3 === 'yes' ? 100 : 0, noPct: storedVote.q3 === 'no' ? 100 : 0 }
-            };
-            renderResults(fakeResults, true, getTranslation("pollServerOffline"));
+            renderOfflineFallback(storedVote);
         });
     } else {
         renderVotingForm();
