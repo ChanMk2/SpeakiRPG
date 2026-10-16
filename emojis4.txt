@@ -60,7 +60,7 @@ t_159,https://i.imgur.com/S91uySd.png
 t_157,https://i.imgur.com/ue5pmlK.png
 t_93,https://i.imgur.com/jkCF4ub.png
 t_85,https://i.imgur.com/eTdbmB5.png
-SPK_88,https://i.imgur.com/IzBXE2t.png
+SPK_88,https://i.imgur.com/6H1r2Vz.gif
 SPK_90,https://i.imgur.com/FXCSxsa.png
 SPK_89,https://i.imgur.com/QbCMi8Q.png
 t_150,https://i.imgur.com/BxIxfsl.png
