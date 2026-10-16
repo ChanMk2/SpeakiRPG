@@ -3899,7 +3899,25 @@ document.head.appendChild(buildElement(
 			from { opacity: 0.5; box-shadow: inset 0 0 100px rgba(255, 0, 0, 0.5); }
 			to { opacity: 1.0; box-shadow: inset 0 0 200px rgba(255, 0, 0, 0.8); }
 		}
-
+		@keyframes spkmod-rainbow-glow {
+			0% { border-color: #ff3366; box-shadow: 0 0 10px rgba(255, 51, 102, 0.85); }
+			20% { border-color: #ff9933; box-shadow: 0 0 10px rgba(255, 153, 51, 0.85); }
+			40% { border-color: #ffff33; box-shadow: 0 0 10px rgba(255, 255, 51, 0.85); }
+			60% { border-color: #33ff66; box-shadow: 0 0 10px rgba(51, 255, 102, 0.85); }
+			80% { border-color: #3399ff; box-shadow: 0 0 10px rgba(51, 153, 255, 0.85); }
+			100% { border-color: #cc33ff; box-shadow: 0 0 10px rgba(204, 51, 255, 0.85); }
+		}
+		.spkmod-rainbow-btn {
+			animation: spkmod-rainbow-glow 3s infinite linear alternate !important;
+			border: 2px solid #ff3366 !important;
+			background: linear-gradient(135deg, rgba(255, 51, 102, 0.3), rgba(51, 153, 255, 0.3)) !important;
+			position: relative;
+			transition: transform 0.15s ease, filter 0.15s ease;
+		}
+		.spkmod-rainbow-btn:hover {
+			filter: brightness(1.25);
+			transform: scale(1.05);
+		}
 		`
 
 	}
@@ -4813,6 +4831,16 @@ document.body.appendChild(
 						if (window.spkmodToggleInvisibility) window.spkmodToggleInvisibility();
 					}
 				}),
+				lunPanelElements.pollBtn = buildElement("button", {
+					id: "spkmod-poll-btn",
+					className: "spkmod-panel-btn spkmod-rainbow-btn",
+					style: "flex: 1; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 12pt; cursor: pointer;",
+					innerText: "📊",
+					title: t("pollBtnTooltip", "Feedback Poll"),
+					onclick: _ => {
+						if (window.showPollModal) window.showPollModal();
+					}
+				}),
 				lunPanelElements.settingsBtn = buildElement("button", {
 					id: "spkmod-settings-btn",
 					className: "spkmod-panel-btn",
@@ -5212,6 +5240,16 @@ document.body.appendChild(
 					} })
 				]),
 				buildElement("div", { className: "spkmod-panel-cat" }, [
+					lunPanelElements.telemetryToggleLabel = buildElement("span", { style: "color: #fff; font-size: 11px; font-weight: bold; flex: 1;", innerText: t("telemetrySettingLabel") }),
+					lunPanelElements.telemetryToggleInput = buildElement("input", { type: "checkbox", checked: (window.localStorage && localStorage.getItem("spkmod-telemetry-consent") === "granted"), onchange: e => {
+						const granted = e.target.checked;
+						if (window.localStorage) localStorage.setItem("spkmod-telemetry-consent", granted ? "granted" : "denied");
+						if (granted && typeof window.spkmodSendTelemetryPing === "function") {
+							window.spkmodSendTelemetryPing();
+						}
+					} })
+				]),
+				buildElement("div", { className: "spkmod-panel-cat" }, [
 					lunPanelElements.speedometerToggleLabel = buildElement("span", { style: "color: #fff; font-size: 11px; font-weight: bold; flex: 1;", innerText: t("speedometerToggleLabel") }),
 					lunPanelElements.speedometerToggleInput = buildElement("input", { type: "checkbox", checked: lunSpeedometerEnabled, onchange: e => {
 						lunSpeedometerEnabled = e.target.checked;
@@ -5435,102 +5473,13 @@ setTimeout(() => {
 }, 500);
 
 
-// --- EMOJI PICKER ---
-let lunEmojiPickerPanel = null;
-let lunEmojiTab = "standard";
-const LUN_EMOJIS = ["👍","👎","👋","🙏","👏","🙌","🤝","😊","😂","🤣","😍","😎","🤔","😅","😭","🥺","🔥","💯","❤️","✨","🎉","💀","👀","🗣️","💰","💎","🟣","⭐","❌","✅", "💪", "🤷", "🤦", "🎈", "🎂", "🥳", "🙄", "🤐", "🥵", "🥶", "🤯", "😴", "🤮", "🤡", "👻", "👽", "💩", "🤖", "🎃"];
-let lunEmojiFreq = JSON.parse((window.localStorage && localStorage.getItem("spkmod-emoji-freq")) || "{}");
-let lunEmojiFavorites = JSON.parse((window.localStorage && localStorage.getItem("spkmod-emoji-fav")) || "[]");
-
-function toggleFavoriteEmoji(id) {
-    if (lunEmojiFavorites.includes(id)) {
-        lunEmojiFavorites = lunEmojiFavorites.filter(x => x !== id);
-        if (typeof chatLog !== "undefined") chatLog(t("emojiFavRemoved", id));
-    } else {
-        lunEmojiFavorites.push(id);
-        if (typeof chatLog !== "undefined") chatLog(t("emojiFavAdded", id));
-    }
-    if (window.localStorage) localStorage.setItem("spkmod-emoji-fav", JSON.stringify(lunEmojiFavorites));
-    if (typeof lunEmojiTab !== "undefined" && lunEmojiTab === "fav") { if (typeof renderEmojiGrid === "function") renderEmojiGrid(); }
-}
-
-
-// Custom Emojis (Fetched from GitHub)
+// --- EMOJI FEATURE REMOVAL & FALLBACKS ---
+// Emoji feature removed upon developer request.
 var lunCustomEmojis = {};
-fetch("https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/refs/heads/main/emojis.txt").then(res => res.text()).then(txt => {
-    txt.split("\n").forEach(l => {
-        const line = l.trim();
-        if (!line) return;
-        const parts = line.split(",");
-        if (parts.length >= 2) {
-            const name = parts[0].replace(/:/g, "").trim();
-            const url = parts.slice(1).join(",").trim();
-            if (name && url) {
-                lunCustomEmojis[name] = url;
-            }
-        }
-    });
-    spkmodAvatarController.refreshCatalog();
-}).catch(err => {
-    console.warn("[SpeakiMod+] Failed to load custom emojis:", err);
-});
-
 var lunTrickcalEmojis = {};
-fetch("https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/main/emojis2.txt").then(res => res.text()).then(txt => {
-    txt.split("\n").forEach(l => {
-        const line = l.trim();
-        if (!line) return;
-        const parts = line.split(",");
-        if (parts.length >= 2) {
-            const name = parts[0].replace(/:/g, "").trim();
-            const url = parts.slice(1).join(",").trim();
-            if (name && url) {
-                lunTrickcalEmojis[name] = url;
-            }
-        }
-    });
-    spkmodAvatarController.refreshCatalog();
-}).catch(err => {
-    console.warn("[SpeakiMod+] Failed to load trickcal emojis:", err);
-});
-
 var lunTrickcal2Emojis = {};
-fetch("https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/main/emojis3.txt").then(res => res.text()).then(txt => {
-    txt.split("\n").forEach(l => {
-        const line = l.trim();
-        if (!line) return;
-        const parts = line.split(",");
-        if (parts.length >= 2) {
-            const name = parts[0].replace(/:/g, "").trim();
-            const url = parts.slice(1).join(",").trim();
-            if (name && url) {
-                lunTrickcal2Emojis[name] = url;
-            }
-        }
-    });
-    spkmodAvatarController.refreshCatalog();
-}).catch(err => {
-    console.warn("[SpeakiMod+] Failed to load trickcal 2 emojis:", err);
-});
-
 var lunTrickcal3Emojis = {};
-fetch("https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/main/emojis4.txt").then(res => res.text()).then(txt => {
-    txt.split("\n").forEach(l => {
-        const line = l.trim();
-        if (!line) return;
-        const parts = line.split(",");
-        if (parts.length >= 2) {
-            const name = parts[0].replace(/:/g, "").trim();
-            const url = parts.slice(1).join(",").trim();
-            if (name && url) {
-                lunTrickcal3Emojis[name] = url;
-            }
-        }
-    });
-    spkmodAvatarController.refreshCatalog();
-}).catch(err => {
-    console.warn("[SpeakiMod+] Failed to load trickcal 3 emojis:", err);
-});
+
 
 // Local emoji avatars
 // This adapter is deliberately independent of the DOM. A future authenticated
@@ -5792,325 +5741,464 @@ const spkmodAvatarController = createSpeakiAvatarController({
 	translate: key => t(key)
 });
 
-function getSortedEmojis() {
-    return [...LUN_EMOJIS].sort((a,b) => (lunEmojiFreq[b]||0) - (lunEmojiFreq[a]||0));
-}
-
-function toggleEmojiPicker(anchorBtn) {
-    if (lunEmojiPickerPanel) {
-        lunEmojiPickerPanel.remove();
-        lunEmojiPickerPanel = null;
-        return;
-    }
-    
-    lunEmojiPickerPanel = document.createElement("div");
-    lunEmojiPickerPanel.id = "spkmod-emoji-picker-v2";
-    
-    const isMobile = typeof window.speakiMobile !== "undefined" || (typeof navigator !== "undefined" && /mobi|android/i.test(navigator.userAgent));
-    const defaultW = isMobile ? "360px" : "420px";
-    const defaultH = isMobile ? "320px" : "420px";
-    lunEmojiPickerPanel.style.cssText = `position: fixed; width: ${defaultW}; height: ${defaultH}; max-width: 95vw; max-height: 80vh; min-width: 200px; min-height: 150px; resize: both; overflow: hidden; background: rgba(20, 20, 20, 0.95); border: 1px solid #555; border-radius: 6px; padding: 6px; display: flex; flex-direction: column; gap: 4px; z-index: 999999; box-shadow: 0 4px 12px rgba(0,0,0,0.5); pointer-events: auto;`;
-    
-    if (!(window.localStorage && localStorage.getItem("spkmod-pos-spkmod-emoji-picker-v2"))) {
-        if (isMobile) {
-            lunEmojiPickerPanel.style.left = Math.max(10, (window.innerWidth / 2) - 180) + "px";
-            lunEmojiPickerPanel.style.top = Math.max(10, (window.innerHeight / 2) - 160) + "px";
-            lunEmojiPickerPanel.style.bottom = "auto";
-        } else {
-            const btnRect = anchorBtn.getBoundingClientRect();
-            lunEmojiPickerPanel.style.left = (btnRect.right + 10) + "px";
-            lunEmojiPickerPanel.style.bottom = (window.innerHeight - btnRect.bottom) + "px";
-        }
-    }
-    
-    // Prevent clicks inside the panel from stealing chat input focus (which breaks cursor position)
-    // lunEmojiPickerPanel.onmousedown removed to fix click bug
-    
-    // Prevent scrolling inside the panel from zooming the game camera
-      lunEmojiPickerPanel.addEventListener("wheel", (e) => { e.stopPropagation(); }, { passive: true });
-      lunEmojiPickerPanel.addEventListener("touchmove", (e) => { e.stopPropagation(); }, { passive: true });
-      lunEmojiPickerPanel.addEventListener("mousedown", (e) => { e.stopPropagation(); });
-      lunEmojiPickerPanel.addEventListener("touchstart", (e) => { e.stopPropagation(); }, { passive: true });
-
-    renderEmojiGrid();
-    document.body.appendChild(lunEmojiPickerPanel);
-    
-    const closeHandler = (e) => {
-        if (!lunEmojiPickerPanel) return;
-        // if the target is detached from document (e.g. tab button replaced by renderEmojiGrid), do not close
-        if (e.target && !document.contains(e.target)) return;
-        
-        const path = e.composedPath ? e.composedPath() : [];
-        let isInside = false;
-        if (path.length > 0) {
-            isInside = path.includes(lunEmojiPickerPanel) || path.includes(anchorBtn);
-        }
-        
-        if (!isInside) {
-            let el = e.target;
-            while (el) {
-                if (el === lunEmojiPickerPanel || el === anchorBtn) {
-                    isInside = true;
-                    break;
-                }
-                el = el.parentElement;
-            }
-        }
-        
-        if (!isInside) {
-            lunEmojiPickerPanel.remove();
-            lunEmojiPickerPanel = null;
-            document.removeEventListener("mousedown", closeHandler);
-            document.removeEventListener("touchstart", closeHandler);
-        }
-    };
-    setTimeout(() => {
-        document.addEventListener("mousedown", closeHandler);
-        document.addEventListener("touchstart", closeHandler, {passive: true});
-    }, 10);
-}
-
-function renderEmojiGrid() {
-    if (!lunEmojiPickerPanel) return;
-    
-    let headerWrap = lunEmojiPickerPanel.querySelector(".spkmod-emoji-header");
-    let header = lunEmojiPickerPanel.querySelector("#spkmod-emoji-tabs");
-    let grid = lunEmojiPickerPanel.querySelector("#spkmod-emoji-grid");
-    
-    if (!headerWrap) {
-        lunEmojiPickerPanel.innerHTML = "";
-        
-        headerWrap = document.createElement("div");
-        headerWrap.className = "spkmod-emoji-header";
-        headerWrap.style.cssText = "cursor: move; user-select: none; touch-action: none;";
-        
-        const warningBanner = document.createElement("div");
-        warningBanner.id = "spkmod-emoji-warning";
-        warningBanner.style.cssText = "color: #ffaa00; font-size: 11px; text-align: center; margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px dashed #555; font-weight: bold; font-family: sans-serif;";
-        headerWrap.appendChild(warningBanner);
-
-        header = document.createElement("div");
-        header.id = "spkmod-emoji-tabs";
-        header.style.cssText = "display: flex; gap: 4px; margin-bottom: 4px; border-bottom: 1px solid #444; padding-bottom: 4px; flex-wrap: wrap;";
-        headerWrap.appendChild(header);
-        
-        lunEmojiPickerPanel.appendChild(headerWrap);
-
-        grid = document.createElement("div");
-        grid.id = "spkmod-emoji-grid";
-        grid.style.cssText = "display: flex; flex-wrap: wrap; gap: 4px; flex-grow: 1; overflow-y: auto; align-content: flex-start;";
-        lunEmojiPickerPanel.appendChild(grid);
-        
-        const fixEmojiPanelPos = () => {
-            if (lunEmojiPickerPanel.style.bottom !== "auto") {
-                lunEmojiPickerPanel.style.top = lunEmojiPickerPanel.getBoundingClientRect().top + "px";
-                lunEmojiPickerPanel.style.bottom = "auto";
-            }
-        };
-        headerWrap.addEventListener("mousedown", fixEmojiPanelPos);
-        headerWrap.addEventListener("touchstart", fixEmojiPanelPos, { passive: true });
-
-        if (typeof makeDraggable === 'function') {
-            makeDraggable(lunEmojiPickerPanel, [headerWrap]);
-        }
-    }
-    
-    let warningBannerEl = lunEmojiPickerPanel.querySelector("#spkmod-emoji-warning");
-    
-    if (warningBannerEl) {
-    
-        warningBannerEl.innerText = lunEmojiTab === "fav" ? t("emojiWarningFav") : t("emojiWarning");
-    
-    }
-    
-    
-    
-    header.innerHTML = "";
-    
-    const btnStd = document.createElement("button");
-    btnStd.innerText = "😀 " + t("emojiTabStandard", "Standard");
-    btnStd.style.cssText = `flex: 1; padding: 4px; cursor: pointer; border-radius: 4px; background: ${lunEmojiTab === 'standard' ? 'rgba(255,255,255,0.2)' : 'transparent'}; border: none; color: #fff;`;
-    btnStd.onclick = (e) => {  lunEmojiTab = 'standard'; renderEmojiGrid(); };
-    
-    const btnCus = document.createElement("button");
-    btnCus.innerText = "⭐ " + t("emojiTabCustom", "Custom");
-    btnCus.style.cssText = `flex: 1; padding: 4px; cursor: pointer; border-radius: 4px; background: ${lunEmojiTab === 'custom' ? 'rgba(255,255,255,0.2)' : 'transparent'}; border: none; color: #fff;`;
-    btnCus.onclick = (e) => {  lunEmojiTab = 'custom'; renderEmojiGrid(); };
-    
-    const btnTrickcal = document.createElement("button");
-    btnTrickcal.innerText = "🍀 " + t("emojiTabTrickcal", "Trickcal");
-    btnTrickcal.style.cssText = `flex: 1; padding: 4px; cursor: pointer; border-radius: 4px; background: ${lunEmojiTab === 'trickcal' ? 'rgba(255,255,255,0.2)' : 'transparent'}; border: none; color: #fff;`;
-    btnTrickcal.onclick = (e) => {  lunEmojiTab = 'trickcal'; renderEmojiGrid(); };
-
-    const btnTrickcal2 = document.createElement("button");
-    btnTrickcal2.innerText = "🍀 " + t("emojiTabTrickcal2", "Trickcal 2");
-    btnTrickcal2.style.cssText = `flex: 1; padding: 4px; cursor: pointer; border-radius: 4px; background: ${lunEmojiTab === 'trickcal2' ? 'rgba(255,255,255,0.2)' : 'transparent'}; border: none; color: #fff;`;
-    btnTrickcal2.onclick = (e) => {  lunEmojiTab = 'trickcal2'; renderEmojiGrid(); };
-
-    const btnTrickcal3 = document.createElement("button");
-	btnTrickcal3.innerText = "🍀 " + t("emojiTabTrickcal3", "Trick 3");
-    btnTrickcal3.style.cssText = `flex: 1; padding: 4px; cursor: pointer; border-radius: 4px; background: ${lunEmojiTab === 'trickcal3' ? 'rgba(255,255,255,0.2)' : 'transparent'}; border: none; color: #fff;`;
-    btnTrickcal3.onclick = (e) => {  lunEmojiTab = 'trickcal3'; renderEmojiGrid(); };
-    
-    header.appendChild(btnStd);
-    header.appendChild(btnCus);
-    header.appendChild(btnTrickcal);
-    header.appendChild(btnTrickcal2);
-    const btnFav = document.createElement("button");
-    btnFav.innerText = t("emojiTabFav");
-    btnFav.style.cssText = `flex: 1; padding: 4px; cursor: pointer; border-radius: 4px; background: ${lunEmojiTab === 'fav' ? 'rgba(255,255,255,0.2)' : 'transparent'}; border: none; color: #fff;`;
-    btnFav.onclick = (e) => {  lunEmojiTab = 'fav'; renderEmojiGrid(); };
-    header.appendChild(btnTrickcal3);
-    header.appendChild(btnFav);
-
-    grid.innerHTML = "";
-    
-    if (lunEmojiTab === 'fav') {
-        if (lunEmojiFavorites.length === 0) {
-            const noFavs = document.createElement("div");
-            noFavs.innerText = t("emojiNoFavs");
-            noFavs.style.cssText = "color: #aaa; width: 100%; text-align: center; margin-top: 20px; font-size: 13px;";
-            grid.appendChild(noFavs);
-        } else {
-            lunEmojiFavorites.forEach(id => {
-                let isCustom = false;
-                let url = null;
-                let name = id;
-                if (typeof lunTrickcalEmojis !== 'undefined' && lunTrickcalEmojis[id]) { isCustom = true; url = lunTrickcalEmojis[id]; }
-                else if (typeof lunTrickcal2Emojis !== 'undefined' && lunTrickcal2Emojis[id]) { isCustom = true; url = lunTrickcal2Emojis[id]; }
-                else if (typeof lunTrickcal3Emojis !== 'undefined' && lunTrickcal3Emojis[id]) { isCustom = true; url = lunTrickcal3Emojis[id]; }
-                else if (typeof lunCustomEmojis !== 'undefined' && lunCustomEmojis[id]) { isCustom = true; url = lunCustomEmojis[id]; }
-                
-                const btn = document.createElement("button");
-                if (isCustom) {
-                    btn.title = `:${name}:`;
-                    btn.className = "spkmod-custom-emoji";
-                    btn.setAttribute("data-url", url);
-                    btn.style.cssText = "width: 35px; height: 35px; background: rgba(255,255,255,0.1); border: 1px solid transparent; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.1s; padding: 2px;";
-                    btn.onmouseenter = () => btn.style.background = "rgba(255,255,255,0.2)";
-                    btn.onmouseleave = () => btn.style.background = "rgba(255,255,255,0.1)";
-                    const img = document.createElement("img");
-                    img.src = url;
-                    img.style.cssText = "max-width: 100%; max-height: 100%; object-fit: contain;";
-                    btn.appendChild(img);
-                    btn.onclick = (e) => {
-                        insertEmojiIntoChat(`:${name}: `);
-                    };
-                } else {
-                    btn.innerText = id;
-                    btn.style.cssText = "width: 31px; height: 31px; background: rgba(255,255,255,0.1); border: 1px solid transparent; border-radius: 4px; cursor: pointer; font-size: 19px; display: flex; align-items: center; justify-content: center; transition: background 0.1s;";
-                    btn.onmouseenter = () => btn.style.background = "rgba(255,255,255,0.2)";
-                    btn.onmouseleave = () => btn.style.background = "rgba(255,255,255,0.1)";
-                    btn.onclick = (e) => {
-                        lunEmojiFreq[id] = (lunEmojiFreq[id]||0) + 1;
-                        if (window.localStorage) localStorage.setItem("spkmod-emoji-freq", JSON.stringify(lunEmojiFreq));
-                        insertEmojiIntoChat(id);
-                    };
-                }
-                btn.oncontextmenu = (e) => {
-                    e.preventDefault();
-                    if (typeof toggleFavoriteEmoji === 'function') toggleFavoriteEmoji(id);
-                };
-                grid.appendChild(btn);
-            });
-        }
-    } else if (lunEmojiTab === 'standard') {
-        const sorted = getSortedEmojis();
-        sorted.forEach(emoji => {
-            const btn = document.createElement("button");
-            btn.innerText = emoji;
-            btn.style.cssText = "width: 31px; height: 31px; background: rgba(255,255,255,0.1); border: 1px solid transparent; border-radius: 4px; cursor: pointer; font-size: 19px; display: flex; align-items: center; justify-content: center; transition: background 0.1s;";
-            btn.onmouseenter = () => btn.style.background = "rgba(255,255,255,0.2)";
-            btn.onmouseleave = () => btn.style.background = "rgba(255,255,255,0.1)";
-            btn.onclick = (e) => {
-                
-                lunEmojiFreq[emoji] = (lunEmojiFreq[emoji]||0) + 1;
-                if (window.localStorage) localStorage.setItem("spkmod-emoji-freq", JSON.stringify(lunEmojiFreq));
-                renderEmojiGrid();
-                insertEmojiIntoChat(emoji);
-            };
-            btn.oncontextmenu = (e) => {
-                e.preventDefault();
-                if (typeof toggleFavoriteEmoji === 'function') toggleFavoriteEmoji(emoji);
-            };
-            grid.appendChild(btn);
-        });
-    } else {
-        const targetEmojis = lunEmojiTab === 'trickcal' ? lunTrickcalEmojis : (lunEmojiTab === 'trickcal2' ? lunTrickcal2Emojis : (lunEmojiTab === 'trickcal3' ? lunTrickcal3Emojis : lunCustomEmojis));
-        Object.entries(targetEmojis).forEach(([name, url]) => {
-            const btn = document.createElement("button");
-            btn.title = `:${name}:`;
-            btn.className = "spkmod-custom-emoji";
-            btn.setAttribute("data-url", url);
-            btn.style.cssText = "width: 35px; height: 35px; background: rgba(255,255,255,0.1); border: 1px solid transparent; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.1s; padding: 2px;";
-            btn.onmouseenter = () => btn.style.background = "rgba(255,255,255,0.2)";
-            btn.onmouseleave = () => btn.style.background = "rgba(255,255,255,0.1)";
-            
-            const img = document.createElement("img");
-            img.src = url;
-            img.style.cssText = "max-width: 100%; max-height: 100%; object-fit: contain;";
-            btn.appendChild(img);
-            
-            btn.onclick = (e) => {
-                
-                insertEmojiIntoChat(`:${name}: `);
-            };
-            btn.oncontextmenu = (e) => {
-                e.preventDefault();
-                if (typeof toggleFavoriteEmoji === 'function') toggleFavoriteEmoji(name);
-            };
-            grid.appendChild(btn);
-        });
-    }
-    
-    lunEmojiPickerPanel.appendChild(grid);
-}
-
-function insertEmojiIntoChat(emoji) {
-    const chatInput = document.querySelector(".sr-chatbox__input, .sr-chatbox input, input[placeholder*='chat']");
-    if (!chatInput) return;
-    
-    chatInput.focus();
-    // Try the bulletproof document.execCommand which forces React native event handlers to fire
-    if (!document.execCommand('insertText', false, emoji)) {
-        // Fallback to setter if execCommand fails
-        const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
-        if (nativeInputValueSetter) {
-            nativeInputValueSetter.call(chatInput, chatInput.value + emoji);
-            chatInput.dispatchEvent(new Event('input', { bubbles: true }));
-            chatInput.dispatchEvent(new Event('change', { bubbles: true }));
-        } else {
-            chatInput.value += emoji;
-            chatInput.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-    }
-}
+// --- FEEDBACK POLL MODAL & EMOJI BUTTON HOOK ---
+let lunPollAnswers = { q1: null, q2: null, q3: null };
 
 function hookChatEmojiButton() {
     const chatInput = document.querySelector(".sr-chatbox input, input[placeholder*='chat']");
     if (!chatInput) return;
     const container = chatInput.parentElement;
     
-    if (!document.getElementById("spkmod-emoji-btn")) {
-        const btn = document.createElement("button");
+    let btn = document.getElementById("spkmod-emoji-btn");
+    const tooltipText = t("emojiRemovedTooltip", "Removed by developer request, our apologies for the inconvenience, click for the feedback icon");
+    if (!btn) {
+        btn = document.createElement("button");
         btn.id = "spkmod-emoji-btn";
         btn.innerText = "😀";
-        btn.title = "Emojis";
+        btn.title = tooltipText;
         btn.style.cssText = "position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; background: transparent; border: none; cursor: pointer; z-index: 999999; font-size: 16px; display: flex; align-items: center; justify-content: center; filter: grayscale(100%); transition: filter 0.2s; pointer-events: auto; user-select: none;";
-        btn.onmousedown = (e) => { e.preventDefault();  }; // Prevent input from stealing focus
+        btn.onmousedown = (e) => { e.preventDefault(); };
         btn.onmouseenter = () => btn.style.filter = "none";
         btn.onmouseleave = () => btn.style.filter = "grayscale(100%)";
         btn.onclick = (e) => {
             e.preventDefault();
-            
-            toggleEmojiPicker(btn);
+            if (typeof window.showPollModal === "function") {
+                window.showPollModal();
+            }
         };
         container.style.position = "relative";
         container.appendChild(btn);
         
         chatInput.style.paddingRight = "30px";
+    } else {
+        btn.title = tooltipText;
     }
 }
+
+window.showPollModal = function(forceLang) {
+    const existing = document.getElementById("spkmod-poll-modal");
+    if (existing) existing.remove();
+
+    let lang = forceLang;
+    if (!lang) {
+        lang = (typeof spkmodLang !== 'undefined') ? spkmodLang : 'en';
+        if (typeof window.lunCurrentLang !== 'undefined') lang = window.lunCurrentLang;
+    }
+    if (lang === 'zh') lang = 'zh-CN';
+    if (lang === 'es') lang = 'es-419';
+
+    const getTranslation = (k, ...args) => {
+        let str = (typeof spkmodTranslations !== 'undefined' && spkmodTranslations[lang] && spkmodTranslations[lang][k])
+            || (typeof spkmodTranslations !== 'undefined' && spkmodTranslations['en'] && spkmodTranslations['en'][k])
+            || k;
+        args.forEach((a, i) => { str = str.split(`{${i}}`).join(a); });
+        return str;
+    };
+
+    const overlay = document.createElement("div");
+    overlay.id = "spkmod-poll-modal";
+    overlay.style.cssText = "position: fixed; inset: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.93); z-index: 9999999; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; color: white;";
+
+    overlay.addEventListener("wheel", (e) => { e.stopPropagation(); }, { passive: true });
+    overlay.addEventListener("touchmove", (e) => { e.stopPropagation(); }, { passive: true });
+    overlay.addEventListener("mousedown", (e) => { e.stopPropagation(); });
+
+    const content = document.createElement("div");
+    content.style.cssText = "background: #1e293b; border: 2px solid #334155; border-radius: 12px; padding: 24px; max-width: 620px; width: 90%; max-height: 95vh; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.6); box-sizing: border-box;";
+
+    const langRow = document.createElement("div");
+    langRow.style.cssText = "display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 4px;";
+    const langs = [
+        { code: 'en', label: 'English' },
+        { code: 'ja', label: '日本語' },
+        { code: 'ko', label: '한국어' },
+        { code: 'zh-TW', label: '繁體中文' },
+        { code: 'zh-CN', label: '简体中文' },
+        { code: 'es-419', label: 'Español' }
+    ];
+    langs.forEach(l => {
+        const btn = document.createElement("button");
+        btn.innerText = l.label;
+        btn.style.cssText = `padding: 5px 10px; font-size: 13px; font-weight: bold; border-radius: 6px; border: 1px solid #475569; background: ${lang === l.code ? '#3b82f6' : '#0f172a'}; color: white; cursor: pointer; transition: 0.15s;`;
+        btn.onmouseover = () => { if (lang !== l.code) btn.style.background = '#334155'; };
+        btn.onmouseleave = () => { if (lang !== l.code) btn.style.background = '#0f172a'; };
+        btn.onclick = () => window.showPollModal(l.code);
+        langRow.appendChild(btn);
+    });
+    content.appendChild(langRow);
+
+    const title = document.createElement("h2");
+    title.innerText = "📊 " + getTranslation("pollTitle");
+    title.style.cssText = "margin: 0; font-size: 22px; color: #facc15; text-align: center; border-bottom: 1px solid #334155; padding-bottom: 10px;";
+    content.appendChild(title);
+
+    const notice = document.createElement("div");
+    notice.innerText = getTranslation("pollNotice");
+    notice.style.cssText = "margin: 0; font-size: 14px; line-height: 1.5; color: #cbd5e1; background: rgba(15, 23, 42, 0.6); border-left: 4px solid #facc15; padding: 10px 14px; border-radius: 4px; white-space: pre-line;";
+    content.appendChild(notice);
+
+    const bodyContainer = document.createElement("div");
+    bodyContainer.id = "spkmod-poll-body";
+    bodyContainer.style.cssText = "display: flex; flex-direction: column; gap: 14px;";
+    content.appendChild(bodyContainer);
+
+    const getPollServerUrl = () => {
+        return window.spkmodPollServerUrl || (window.localStorage && localStorage.getItem("spkmod-poll-server-url")) || "http://YOUR_RPI_IP_OR_DOMAIN:3000";
+    };
+
+    let storedVote = null;
+    try {
+        storedVote = JSON.parse(localStorage.getItem("spkmod-poll-voted-v1") || "null");
+    } catch (_) {}
+
+    function renderResults(results, isAlreadyVoted, offlineMsg) {
+        bodyContainer.innerHTML = "";
+        
+        const headerNote = document.createElement("div");
+        headerNote.innerText = offlineMsg || (isAlreadyVoted ? getTranslation("pollAlreadyVoted") : getTranslation("pollSubmitted"));
+        headerNote.style.cssText = `font-size: 15px; font-weight: bold; text-align: center; padding: 10px; border-radius: 8px; ${offlineMsg ? 'background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid #ef4444;' : 'background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid #10b981;'}`;
+        bodyContainer.appendChild(headerNote);
+
+        if (results) {
+            const totalText = document.createElement("div");
+            totalText.innerText = getTranslation("pollTotalVotes", results.totalVotes || 0);
+            totalText.style.cssText = "font-size: 14px; color: #94a3b8; text-align: right; margin-top: -4px;";
+            bodyContainer.appendChild(totalText);
+
+            const questions = [
+                { id: "q1", title: getTranslation("pollQ1") },
+                { id: "q2", title: getTranslation("pollQ2") },
+                { id: "q3", title: getTranslation("pollQ3") }
+            ];
+
+            questions.forEach(q => {
+                const qBlock = document.createElement("div");
+                qBlock.style.cssText = "background: #0f172a; padding: 12px 14px; border-radius: 8px; border: 1px solid #334155; display: flex; flex-direction: column; gap: 6px;";
+
+                const qTitle = document.createElement("div");
+                qTitle.innerText = q.title;
+                qTitle.style.cssText = "font-size: 14px; font-weight: bold; color: #e2e8f0;";
+                qBlock.appendChild(qTitle);
+
+                const qStats = results[q.id] || { yes: 0, no: 0, yesPct: 0, noPct: 0 };
+                const yesPct = qStats.yesPct || 0;
+                const noPct = qStats.noPct || 0;
+
+                const bar = document.createElement("div");
+                bar.style.cssText = "position: relative; width: 100%; height: 26px; border-radius: 6px; overflow: hidden; background: #334155; display: flex; margin-top: 4px;";
+
+                const yesPart = document.createElement("div");
+                yesPart.style.cssText = `height: 100%; width: ${yesPct}%; background: #10b981; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; transition: width 0.5s ease;`;
+                if (yesPct >= 15) yesPart.innerText = `${yesPct}%`;
+
+                const noPart = document.createElement("div");
+                noPart.style.cssText = `height: 100%; width: ${noPct}%; background: #ef4444; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; transition: width 0.5s ease;`;
+                if (noPct >= 15) noPart.innerText = `${noPct}%`;
+
+                bar.appendChild(yesPart);
+                bar.appendChild(noPart);
+                qBlock.appendChild(bar);
+
+                const legend = document.createElement("div");
+                legend.style.cssText = "display: flex; justify-content: space-between; font-size: 12px; color: #cbd5e1; margin-top: 2px;";
+                legend.innerHTML = `<span><strong style="color: #34d399;">${getTranslation("pollYes")}:</strong> ${qStats.yes || 0} (${yesPct}%)</span><span><strong style="color: #f87171;">${getTranslation("pollNo")}:</strong> ${qStats.no || 0} (${noPct}%)</span>`;
+                qBlock.appendChild(legend);
+
+                bodyContainer.appendChild(qBlock);
+            });
+        }
+    }
+
+    function renderVotingForm() {
+        bodyContainer.innerHTML = "";
+
+        const questions = [
+            { key: "q1", label: getTranslation("pollQ1") },
+            { key: "q2", label: getTranslation("pollQ2") },
+            { key: "q3", label: getTranslation("pollQ3") }
+        ];
+
+        let isSubmitting = false;
+
+        questions.forEach(q => {
+            const qBox = document.createElement("div");
+            qBox.style.cssText = "background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px;";
+
+            const qLabel = document.createElement("div");
+            qLabel.innerText = q.label;
+            qLabel.style.cssText = "font-size: 14px; font-weight: bold; color: #f1f5f9;";
+            qBox.appendChild(qLabel);
+
+            const btnRow = document.createElement("div");
+            btnRow.style.cssText = "display: flex; gap: 10px;";
+
+            const btnYes = document.createElement("button");
+            const isYes = lunPollAnswers[q.key] === "yes";
+            btnYes.innerText = (isYes ? "✓ " : "") + getTranslation("pollYes");
+            btnYes.style.cssText = `flex: 1; padding: 10px; font-size: 15px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: all 0.2s; ${isYes ? 'background: #10b981; border: 2px solid #34d399; color: white;' : 'background: #1e293b; border: 1px solid #475569; color: #cbd5e1;'}`;
+
+            const btnNo = document.createElement("button");
+            const isNo = lunPollAnswers[q.key] === "no";
+            btnNo.innerText = (isNo ? "✓ " : "") + getTranslation("pollNo");
+            btnNo.style.cssText = `flex: 1; padding: 10px; font-size: 15px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: all 0.2s; ${isNo ? 'background: #ef4444; border: 2px solid #f87171; color: white;' : 'background: #1e293b; border: 1px solid #475569; color: #cbd5e1;'}`;
+
+            btnYes.onclick = () => {
+                if (isSubmitting) return;
+                lunPollAnswers[q.key] = "yes";
+                renderVotingForm();
+                checkAndAutoSubmit();
+            };
+
+            btnNo.onclick = () => {
+                if (isSubmitting) return;
+                lunPollAnswers[q.key] = "no";
+                renderVotingForm();
+                checkAndAutoSubmit();
+            };
+
+            btnRow.appendChild(btnYes);
+            btnRow.appendChild(btnNo);
+            qBox.appendChild(btnRow);
+            bodyContainer.appendChild(qBox);
+        });
+
+        const statusArea = document.createElement("div");
+        statusArea.id = "spkmod-poll-status";
+        statusArea.style.cssText = "font-size: 14px; text-align: center; color: #94a3b8; min-height: 20px;";
+        bodyContainer.appendChild(statusArea);
+
+        function checkAndAutoSubmit() {
+            if (lunPollAnswers.q1 && lunPollAnswers.q2 && lunPollAnswers.q3) {
+                isSubmitting = true;
+                const statusEl = document.getElementById("spkmod-poll-status");
+                if (statusEl) {
+                    statusEl.innerText = getTranslation("pollSubmitting");
+                    statusEl.style.color = "#facc15";
+                }
+
+                setTimeout(() => {
+                    submitPoll();
+                }, 300);
+            }
+        }
+
+        function submitPoll() {
+            const username = (window.gameState && window.gameState.myPlayerName) ? String(window.gameState.myPlayerName).trim() : (localStorage.getItem("spkmod-last-player-name") || "Player");
+            const playerId = (window.gameState && window.gameState.myPlayerId) ? String(window.gameState.myPlayerId) : (localStorage.getItem("spkmod-last-player-id") || "");
+
+            const voteData = {
+                username: username,
+                playerId: playerId,
+                q1: lunPollAnswers.q1,
+                q2: lunPollAnswers.q2,
+                q3: lunPollAnswers.q3,
+                timestamp: Date.now()
+            };
+
+            try {
+                localStorage.setItem("spkmod-poll-voted-v1", JSON.stringify(voteData));
+            } catch (_) {}
+
+            const sUrl = getPollServerUrl().replace(/\/+$/, "");
+            fetch(`${sUrl}/api/poll/vote`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(voteData)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.results) {
+                    renderResults(data.results, data.alreadyVoted);
+                } else {
+                    renderOfflineFallback(voteData);
+                }
+            })
+            .catch(err => {
+                console.warn("[SpeakiMod+] Poll server unreachable:", err);
+                renderOfflineFallback(voteData);
+            });
+        }
+
+        function renderOfflineFallback(voteData) {
+            const fakeResults = {
+                totalVotes: 1,
+                q1: { yes: voteData.q1 === 'yes' ? 1 : 0, no: voteData.q1 === 'no' ? 1 : 0, yesPct: voteData.q1 === 'yes' ? 100 : 0, noPct: voteData.q1 === 'no' ? 100 : 0 },
+                q2: { yes: voteData.q2 === 'yes' ? 1 : 0, no: voteData.q2 === 'no' ? 1 : 0, yesPct: voteData.q2 === 'yes' ? 100 : 0, noPct: voteData.q2 === 'no' ? 100 : 0 },
+                q3: { yes: voteData.q3 === 'yes' ? 1 : 0, no: voteData.q3 === 'no' ? 1 : 0, yesPct: voteData.q3 === 'yes' ? 100 : 0, noPct: voteData.q3 === 'no' ? 100 : 0 }
+            };
+            renderResults(fakeResults, false, getTranslation("pollServerOffline"));
+        }
+    }
+
+    if (storedVote) {
+        const sUrl = getPollServerUrl().replace(/\/+$/, "");
+        fetch(`${sUrl}/api/poll/results`)
+        .then(res => res.json())
+        .then(data => {
+            renderResults(data, true);
+        })
+        .catch(_ => {
+            const fakeResults = {
+                totalVotes: 1,
+                q1: { yes: storedVote.q1 === 'yes' ? 1 : 0, no: storedVote.q1 === 'no' ? 1 : 0, yesPct: storedVote.q1 === 'yes' ? 100 : 0, noPct: storedVote.q1 === 'no' ? 100 : 0 },
+                q2: { yes: storedVote.q2 === 'yes' ? 1 : 0, no: storedVote.q2 === 'no' ? 1 : 0, yesPct: storedVote.q2 === 'yes' ? 100 : 0, noPct: storedVote.q2 === 'no' ? 100 : 0 },
+                q3: { yes: storedVote.q3 === 'yes' ? 1 : 0, no: storedVote.q3 === 'no' ? 1 : 0, yesPct: storedVote.q3 === 'yes' ? 100 : 0, noPct: storedVote.q3 === 'no' ? 100 : 0 }
+            };
+            renderResults(fakeResults, true, getTranslation("pollServerOffline"));
+        });
+    } else {
+        renderVotingForm();
+    }
+
+    const footerRow = document.createElement("div");
+    footerRow.style.cssText = "display: flex; justify-content: center; align-items: center; margin-top: 6px; padding-top: 8px; border-top: 1px solid #334155;";
+
+    const closeBtn = document.createElement("button");
+    closeBtn.innerText = getTranslation("pollClose");
+    closeBtn.style.cssText = "padding: 10px 32px; font-size: 16px; font-weight: bold; color: white; background: #3b82f6; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s;";
+    closeBtn.onmouseover = () => closeBtn.style.background = '#2563eb';
+    closeBtn.onmouseleave = () => closeBtn.style.background = '#3b82f6';
+    closeBtn.onclick = () => overlay.remove();
+    footerRow.appendChild(closeBtn);
+
+    content.appendChild(footerRow);
+    overlay.appendChild(content);
+    document.body.appendChild(overlay);
+};
+
+// --- TELEMETRY CONSENT MODAL ---
+window.showTelemetryConsentModal = function(forceLang) {
+    const existing = document.getElementById("spkmod-telemetry-modal");
+    if (existing) existing.remove();
+
+    let lang = forceLang;
+    if (!lang) {
+        lang = (typeof spkmodLang !== 'undefined') ? spkmodLang : 'en';
+        if (typeof window.lunCurrentLang !== 'undefined') lang = window.lunCurrentLang;
+    }
+    if (lang === 'zh') lang = 'zh-CN';
+    if (lang === 'es') lang = 'es-419';
+
+    const getTranslation = (k, ...args) => {
+        let str = (typeof spkmodTranslations !== 'undefined' && spkmodTranslations[lang] && spkmodTranslations[lang][k])
+            || (typeof spkmodTranslations !== 'undefined' && spkmodTranslations['en'] && spkmodTranslations['en'][k])
+            || k;
+        args.forEach((a, i) => { str = str.split(`{${i}}`).join(a); });
+        return str;
+    };
+
+    const overlay = document.createElement("div");
+    overlay.id = "spkmod-telemetry-modal";
+    overlay.style.cssText = "position: fixed; inset: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.90); z-index: 9999999; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; color: white;";
+
+    overlay.addEventListener("wheel", (e) => { e.stopPropagation(); }, { passive: true });
+    overlay.addEventListener("touchmove", (e) => { e.stopPropagation(); }, { passive: true });
+    overlay.addEventListener("mousedown", (e) => { e.stopPropagation(); });
+
+    const content = document.createElement("div");
+    content.style.cssText = "background: #1e293b; border: 2px solid #334155; border-radius: 12px; padding: 24px; max-width: 540px; width: 90%; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.6); box-sizing: border-box;";
+
+    const langRow = document.createElement("div");
+    langRow.style.cssText = "display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 4px;";
+    const langs = [
+        { code: 'en', label: 'English' },
+        { code: 'ja', label: '日本語' },
+        { code: 'ko', label: '한국어' },
+        { code: 'zh-TW', label: '繁體中文' },
+        { code: 'zh-CN', label: '简体中文' },
+        { code: 'es-419', label: 'Español' }
+    ];
+    langs.forEach(l => {
+        const btn = document.createElement("button");
+        btn.innerText = l.label;
+        btn.style.cssText = `padding: 5px 10px; font-size: 13px; font-weight: bold; border-radius: 6px; border: 1px solid #475569; background: ${lang === l.code ? '#3b82f6' : '#0f172a'}; color: white; cursor: pointer; transition: 0.15s;`;
+        btn.onclick = () => window.showTelemetryConsentModal(l.code);
+        langRow.appendChild(btn);
+    });
+    content.appendChild(langRow);
+
+    const title = document.createElement("h2");
+    title.innerText = "ℹ️ " + getTranslation("telemetryConsentTitle");
+    title.style.cssText = "margin: 0; font-size: 20px; color: #facc15; text-align: center; border-bottom: 1px solid #334155; padding-bottom: 10px;";
+    content.appendChild(title);
+
+    const msg = document.createElement("div");
+    msg.innerText = getTranslation("telemetryConsentMessage");
+    msg.style.cssText = "margin: 0; font-size: 14.5px; line-height: 1.6; color: #cbd5e1; background: rgba(15, 23, 42, 0.6); border-left: 4px solid #3b82f6; padding: 14px 16px; border-radius: 6px; white-space: pre-line;";
+    content.appendChild(msg);
+
+    const btnRow = document.createElement("div");
+    btnRow.style.cssText = "display: flex; gap: 12px; justify-content: flex-end; margin-top: 8px;";
+
+    const btnDecline = document.createElement("button");
+    btnDecline.innerText = "✕ " + getTranslation("telemetryDeclineBtn");
+    btnDecline.style.cssText = "padding: 10px 20px; font-size: 15px; font-weight: bold; color: #94a3b8; background: #0f172a; border: 1px solid #475569; border-radius: 8px; cursor: pointer; transition: all 0.2s;";
+    btnDecline.onmouseover = () => btnDecline.style.background = "#1e293b";
+    btnDecline.onmouseleave = () => btnDecline.style.background = "#0f172a";
+    btnDecline.onclick = () => {
+        try { localStorage.setItem("spkmod-telemetry-consent", "denied"); } catch (_) {}
+        if (typeof lunPanelElements !== 'undefined' && lunPanelElements.telemetryToggleInput) {
+            lunPanelElements.telemetryToggleInput.checked = false;
+        }
+        overlay.remove();
+    };
+
+    const btnAllow = document.createElement("button");
+    btnAllow.innerText = "✓ " + getTranslation("telemetryAllowBtn");
+    btnAllow.style.cssText = "padding: 10px 24px; font-size: 15px; font-weight: bold; color: white; background: #10b981; border: none; border-radius: 8px; cursor: pointer; transition: all 0.2s;";
+    btnAllow.onmouseover = () => btnAllow.style.background = "#059669";
+    btnAllow.onmouseleave = () => btnAllow.style.background = "#10b981";
+    btnAllow.onclick = () => {
+        try { localStorage.setItem("spkmod-telemetry-consent", "granted"); } catch (_) {}
+        if (typeof lunPanelElements !== 'undefined' && lunPanelElements.telemetryToggleInput) {
+            lunPanelElements.telemetryToggleInput.checked = true;
+        }
+        if (typeof window.spkmodSendTelemetryPing === "function") {
+            window.spkmodSendTelemetryPing();
+        }
+        overlay.remove();
+    };
+
+    btnRow.appendChild(btnDecline);
+    btnRow.appendChild(btnAllow);
+    content.appendChild(btnRow);
+
+    overlay.appendChild(content);
+    document.body.appendChild(overlay);
+};
+
+// Check telemetry consent on game startup
+setTimeout(() => {
+    try {
+        if (localStorage.getItem("spkmod-telemetry-consent") === null) {
+            window.showTelemetryConsentModal();
+        }
+    } catch (_) {}
+}, 1000);
+
+// Auto popup poll once in the whole game per device/user
+setTimeout(() => {
+    try {
+        if (!localStorage.getItem("spkmod-poll-popup-seen-v1")) {
+            localStorage.setItem("spkmod-poll-popup-seen-v1", "true");
+            window.showPollModal();
+        }
+    } catch (_) {}
+}, 2500);
+
+if (typeof spkmodI18nRenderers !== 'undefined') {
+    spkmodI18nRenderers.push(() => {
+        if (typeof lunPanelElements !== 'undefined') {
+            if (lunPanelElements.pollBtn) lunPanelElements.pollBtn.title = t("pollBtnTooltip", "Feedback Poll");
+            if (lunPanelElements.telemetryToggleLabel) lunPanelElements.telemetryToggleLabel.innerText = t("telemetrySettingLabel");
+        }
+        const emojiBtn = document.getElementById("spkmod-emoji-btn");
+        if (emojiBtn) {
+            emojiBtn.title = t("emojiRemovedTooltip", "Removed by developer request, our apologies for the inconvenience, click for the feedback icon");
+        }
+    });
+}
+
 
 
 window.applySeparatePanel = function() {
@@ -13888,7 +13976,77 @@ if (!window.__beyBladeLoopRunning) {
 
 	requestAnimationFrame(beyBladeRenderLoop);
 }
+// --- MOD PLAYERS TELEMETRY & HOURLY PING ---
+var lunModPlayersCounts = { count1h: null, count24h: null, count7d: null };
+var lunLastTelemetryPingTime = 0;
+var lunTelemetryPingIntervalMs = 60 * 60 * 1000; // 1 hour
 
+window.spkmodRenderChannelTracker = function() {
+	if (!window.__spkmodLastChannelResp || !lunHudElements.channelTracker) return;
+	const modLine = (lunModPlayersCounts.count1h !== null)
+		? "\n" + t("totalModPlayers", lunModPlayersCounts.count1h, lunModPlayersCounts.count24h, lunModPlayersCounts.count7d)
+		: "\n" + t("totalModPlayers", "--", "--", "--");
+
+	setText(lunHudElements.channelTracker,
+		window.__spkmodLastChannelResp.map(ch => t("channelTracker", ch.channel, ch.population, ch.capacity)).join("\n")
+		+ "\n" + t("totalPlayersOnline", (window.__spkmodLastTotalPop || 0).toLocaleString())
+		+ modLine);
+};
+
+window.spkmodSendTelemetryPing = function() {
+	const sUrl = (window.spkmodPollServerUrl || (window.localStorage && localStorage.getItem("spkmod-poll-server-url")) || "http://YOUR_RPI_IP_OR_DOMAIN:3000").replace(/\/+$/, "");
+	const consent = window.localStorage ? localStorage.getItem("spkmod-telemetry-consent") : null;
+
+	if (consent === "granted") {
+		const username = (window.gameState && window.gameState.myPlayerName) ? String(window.gameState.myPlayerName).trim() : (localStorage.getItem("spkmod-last-player-name") || "Player");
+		const playerId = (window.gameState && window.gameState.myPlayerId) ? String(window.gameState.myPlayerId) : (localStorage.getItem("spkmod-last-player-id") || "");
+
+		fetch(`${sUrl}/api/telemetry/ping`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ username, playerId })
+		})
+		.then(res => res.json())
+		.then(data => {
+			if (data && data.success) {
+				lunModPlayersCounts = { count1h: data.count1h, count24h: data.count24h, count7d: data.count7d };
+				lunLastTelemetryPingTime = Date.now();
+				window.spkmodRenderChannelTracker();
+			}
+		})
+		.catch(_ => {});
+	} else {
+		fetch(`${sUrl}/api/telemetry/stats`)
+		.then(res => res.json())
+		.then(data => {
+			if (data && data.success) {
+				lunModPlayersCounts = { count1h: data.count1h, count24h: data.count24h, count7d: data.count7d };
+				window.spkmodRenderChannelTracker();
+			}
+		})
+		.catch(_ => {});
+	}
+};
+
+window.spkmodCheckTelemetryPing = function() {
+	if (Date.now() - lunLastTelemetryPingTime >= lunTelemetryPingIntervalMs) {
+		window.spkmodSendTelemetryPing();
+	}
+};
+
+setTimeout(() => {
+	if (typeof window.spkmodSendTelemetryPing === "function") {
+		window.spkmodSendTelemetryPing();
+	}
+}, 2500);
+
+if (typeof spkmodI18nRenderers !== 'undefined') {
+	spkmodI18nRenderers.push(() => {
+		if (typeof window.spkmodRenderChannelTracker === "function") {
+			window.spkmodRenderChannelTracker();
+		}
+	});
+}
 
 function tick() {
 	if (lunTickCount % 20 === 0) spkmodAvatarController.sync();
@@ -13914,6 +14072,9 @@ function tick() {
 	}
 	if (lunTickCount % 20 === 0 && typeof hookChatEmojiButton === "function") {
 		hookChatEmojiButton();
+	}
+	if (lunTickCount % 60 === 0 && typeof window.spkmodCheckTelemetryPing === "function") {
+		window.spkmodCheckTelemetryPing();
 	}
 
 	// Local Avatar Special FX Loops
@@ -14211,11 +14372,17 @@ function tick() {
 					setText(lunHudElements.channelTracker, t("channelTrackerError", "Format"));
 					return;
 				}
-
 				var totalPop = resp.reduce((sum, ch) => sum + (ch.population || 0), 0);
+				window.__spkmodLastChannelResp = resp;
+				window.__spkmodLastTotalPop = totalPop;
+				var modLine = (lunModPlayersCounts.count1h !== null)
+					? "\n" + t("totalModPlayers", lunModPlayersCounts.count1h, lunModPlayersCounts.count24h, lunModPlayersCounts.count7d)
+					: "\n" + t("totalModPlayers", "--", "--", "--");
+
 				setText(lunHudElements.channelTracker,
 					resp.map(ch => t("channelTracker", ch.channel, ch.population, ch.capacity)).join("\n")
-					+ "\n" + t("totalPlayersOnline", totalPop.toLocaleString()));
+					+ "\n" + t("totalPlayersOnline", totalPop.toLocaleString())
+					+ modLine);
 			}).catch(err => {
 				console.warn("[SpeakiMod+] Channel tracker fetch failed:", err);
 				setText(lunHudElements.channelTracker, t("channelTrackerError", "Net"));
@@ -15171,19 +15338,6 @@ function hookGameStateOnce() {
 					if (isMention) {
 						rowNode.classList.add("spkmod-mention-line");
 					}
-					const spkmodAllEmojis = {...(typeof lunCustomEmojis !== "undefined" ? lunCustomEmojis : {}), ...(typeof lunTrickcalEmojis !== "undefined" ? lunTrickcalEmojis : {}), ...(typeof lunTrickcal2Emojis !== "undefined" ? lunTrickcal2Emojis : {}), ...(typeof lunTrickcal3Emojis !== "undefined" ? lunTrickcal3Emojis : {})};
-					if (Object.keys(spkmodAllEmojis).length > 0) {
-						let html = bodyText.innerHTML;
-						let changed = false;
-						for (const [ename, eurl] of Object.entries(spkmodAllEmojis)) {
-							const tag = ":" + ename + ":";
-							if (html.includes(tag)) {
-								html = html.split(tag).join(`<span class="spkmod-custom-emoji" data-url="${eurl}" title="${tag}"><img src="${eurl}" style="height: 1.6em; vertical-align: middle; padding: 0 1px; display: inline-block;"></span>`);
-								changed = true;
-							}
-						}
-						if (changed) bodyText.innerHTML = html;
-					}
 
 					if (lunGmChatHighlightEnabled && name && name.trim().toUpperCase() === "GMDT") {
 						bodyText.classList.add("spkmod-gmdt-line");
@@ -15191,18 +15345,8 @@ function hookGameStateOnce() {
 					if (id !== -1337 && id !== -1338) {
 						bodyText.classList.add("spkmod-clickable-line");
 						bodyText.title = t("clickToTranslateTooltip");
-						bodyText.addEventListener("click", (e) => {
-							const emojiEl = e.target.closest('.spkmod-custom-emoji');
-							if (emojiEl) {
-								e.stopPropagation();
-								e.preventDefault();
-								const tag = emojiEl.getAttribute('title');
-								if (tag && typeof insertEmojiIntoChat === 'function') {
-									insertEmojiIntoChat(tag);
-								}
-							} else {
-								forceTranslateMessage(name, filteredMsg);
-							}
+						bodyText.addEventListener("click", () => {
+							forceTranslateMessage(name, filteredMsg);
 						});
 						
 						const senderEl = rowNode.classList?.contains("sr-chatbox__sender") ? rowNode : rowNode.querySelector?.(".sr-chatbox__sender");
@@ -15261,20 +15405,6 @@ function appendColoredChatLine(id, name, text) {
 
 	observeNextChatNode(text, (bodyText) => {
 		bodyText.classList.add("spkmod-translated-line");
-		
-		const spkmodAllEmojis = {...(typeof lunCustomEmojis !== "undefined" ? lunCustomEmojis : {}), ...(typeof lunTrickcalEmojis !== "undefined" ? lunTrickcalEmojis : {}), ...(typeof lunTrickcal2Emojis !== "undefined" ? lunTrickcal2Emojis : {}), ...(typeof lunTrickcal3Emojis !== "undefined" ? lunTrickcal3Emojis : {})};
-		if (Object.keys(spkmodAllEmojis).length > 0) {
-			let html = bodyText.innerHTML;
-			let changed = false;
-			for (const [ename, eurl] of Object.entries(spkmodAllEmojis)) {
-				const tag = ":" + ename + ":";
-				if (html.includes(tag)) {
-					html = html.split(tag).join(`<span class="spkmod-custom-emoji" data-url="${eurl}" title="${tag}"><img src="${eurl}" style="height: 1.6em; vertical-align: middle; padding: 0 1px; display: inline-block;"></span>`);
-					changed = true;
-				}
-			}
-			if (changed) bodyText.innerHTML = html;
-		}
 
 		if (wasAtBottom && !lunChatUserScrolledUp && scrollEl) {
 			scrollEl.scrollTop = scrollEl.scrollHeight;
@@ -15862,171 +15992,7 @@ window.addEventListener("keydown", e => {
 });
 
 
-// Global hover preview for custom emojis (avoids chatbox overflow clipping)
-let lunEmojiPreviewTooltip = null;
-function ensureEmojiTooltip() {
-	if (lunEmojiPreviewTooltip) return;
-	lunEmojiPreviewTooltip = document.createElement("img");
-	lunEmojiPreviewTooltip.id = "spkmod-global-emoji-preview";
-	lunEmojiPreviewTooltip.style.cssText = "display: none; position: fixed; max-height: 250px; max-width: 250px; z-index: 9999999; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.8); pointer-events: none; border: 2px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.8);";
-	document.body.appendChild(lunEmojiPreviewTooltip);
 
-	document.addEventListener("mouseover", (e) => {
-		const target = e.target.closest('.spkmod-custom-emoji');
-		if (target) {
-			const url = target.getAttribute("data-url");
-			if (!url) return;
-			lunEmojiPreviewTooltip.src = url;
-			lunEmojiPreviewTooltip.style.display = "block";
-			
-			const rect = target.getBoundingClientRect();
-			// Position above the emoji
-			lunEmojiPreviewTooltip.style.bottom = (window.innerHeight - rect.top + 10) + "px";
-			lunEmojiPreviewTooltip.style.left = (rect.left + rect.width / 2) + "px";
-			lunEmojiPreviewTooltip.style.transform = "translateX(-50%)";
-		}
-	});
-
-	document.addEventListener("mouseout", (e) => {
-		const target = e.target.closest('.spkmod-custom-emoji');
-		if (target) {
-			lunEmojiPreviewTooltip.style.display = "none";
-		}
-	});
-}
-ensureEmojiTooltip();
-
-// ==========================================
-// EMOJI COOLDOWN SYSTEM
-// ==========================================
-let lunLastEmojiSentTime = 0;
-let lunEmojiCdInterval = null;
-const lunEmojiCooldownMs = 20000;
-
-document.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-        const active = document.activeElement;
-        if (active && (active.classList.contains("sr-chatbox__input") || (active.placeholder && active.placeholder.toLowerCase().includes("chat")))) {
-            let val = active.value;
-            if (!val || typeof lunCustomEmojis === 'undefined') return;
-            
-            const emojiRegex = /:[a-zA-Z0-9_]+:/g;
-            const matches = val.match(emojiRegex);
-            if (!matches) return;
-            
-            let hasCustomEmoji = false;
-            for (const match of matches) {
-                const name = match.slice(1, -1);
-                if (lunCustomEmojis[name] || (typeof lunTrickcalEmojis !== 'undefined' && lunTrickcalEmojis[name]) || (typeof lunTrickcal2Emojis !== 'undefined' && lunTrickcal2Emojis[name]) || (typeof lunTrickcal3Emojis !== 'undefined' && lunTrickcal3Emojis[name])) {
-                    hasCustomEmoji = true;
-                    break;
-                }
-            }
-            
-            if (hasCustomEmoji) {
-                const now = Date.now();
-                const elapsed = now - lunLastEmojiSentTime;
-                
-                if (elapsed < lunEmojiCooldownMs) {
-                    // Cooldown ACTIVE
-                    for (const name of Object.keys(lunCustomEmojis)) {
-                        val = val.split(`:${name}:`).join("");
-                    }
-                    if (typeof lunTrickcalEmojis !== 'undefined') {
-                        for (const name of Object.keys(lunTrickcalEmojis)) {
-                            val = val.split(`:${name}:`).join("");
-                        }
-                    }
-                    if (typeof lunTrickcal2Emojis !== 'undefined') {
-                        for (const name of Object.keys(lunTrickcal2Emojis)) {
-                            val = val.split(`:${name}:`).join("");
-                        }
-                    }
-                    if (typeof lunTrickcal3Emojis !== 'undefined') {
-                        for (const name of Object.keys(lunTrickcal3Emojis)) {
-                            val = val.split(`:${name}:`).join("");
-                        }
-                    }
-                    val = val.replace(/\s+/g, " ").trim();
-                    
-                    if (val === "") {
-                        // Emoji only -> Block entirely
-                        e.stopPropagation();
-                        e.preventDefault();
-                        
-                        const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
-                        if (nativeSetter) {
-                            nativeSetter.call(active, "");
-                            active.dispatchEvent(new Event('input', { bubbles: true }));
-                        } else {
-                            active.value = "";
-                        }
-                        
-                        const remaining = Math.ceil((lunEmojiCooldownMs - elapsed) / 1000);
-                        chatLog(t("emojiCooldownWait", remaining));
-                        return; // Done
-                    } else {
-                        // Text + Emoji -> Strip emojis and send text
-                        const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
-                        if (nativeSetter) {
-                            nativeSetter.call(active, val);
-                            active.dispatchEvent(new Event('input', { bubbles: true }));
-                        } else {
-                            active.value = val;
-                        }
-                        chatLog(t("emojiCooldownStripped"));
-                    }
-                } else {
-                    // Cooldown INACTIVE -> Allow and start cooldown
-                    lunLastEmojiSentTime = now;
-                    startEmojiCooldownUI();
-                }
-            }
-        }
-    }
-}, true); // Use capture phase
-
-function startEmojiCooldownUI() {
-    if (lunEmojiCdInterval) clearInterval(lunEmojiCdInterval);
-    const chatInput = document.querySelector(".sr-chatbox__input, .sr-chatbox input, input[placeholder*='chat']");
-    const originalPlaceholder = chatInput ? chatInput.placeholder.split(" (")[0] : "Press Enter to chat";
-    const emojiBtn = document.getElementById("spkmod-emoji-btn");
-    
-    // Add badge
-    if (emojiBtn) {
-        let badge = document.getElementById("spkmod-emoji-btn-cd");
-        if (!badge) {
-            badge = document.createElement("div");
-            badge.id = "spkmod-emoji-btn-cd";
-            badge.style.cssText = "position: absolute; top: -5px; right: -5px; background: red; color: white; border-radius: 50%; font-size: 10px; width: 14px; height: 14px; display: flex; justify-content: center; align-items: center; font-weight: bold;";
-            emojiBtn.appendChild(badge);
-        }
-    }
-    
-    lunEmojiCdInterval = setInterval(() => {
-        const remaining = Math.ceil((lunEmojiCooldownMs - (Date.now() - lunLastEmojiSentTime)) / 1000);
-        if (remaining <= 0) {
-            clearInterval(lunEmojiCdInterval);
-            lunEmojiCdInterval = null;
-            if (chatInput) chatInput.placeholder = originalPlaceholder;
-            const badge = document.getElementById("spkmod-emoji-btn-cd");
-            if (badge) badge.remove();
-        } else {
-            if (chatInput) chatInput.placeholder = `${originalPlaceholder} (CD: ${remaining}s)`;
-            const badge = document.getElementById("spkmod-emoji-btn-cd");
-            if (badge) badge.innerText = remaining;
-        }
-    }, 500);
-}
-
-// Emoji Picker Language Mutator
-if (typeof spkmodI18nRenderers !== 'undefined') {
-    spkmodI18nRenderers.push(() => {
-        if (typeof lunEmojiPickerPanel !== 'undefined' && lunEmojiPickerPanel && typeof renderEmojiGrid === 'function') {
-            renderEmojiGrid();
-        }
-    });
-}
 
 
 
