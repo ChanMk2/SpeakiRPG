@@ -12548,6 +12548,9 @@ var bbsModalElements = {
 	refreshBtn: null,
 	closeBtn: null,
 	postsContainer: null,
+	replyBar: null,
+	replyBarText: null,
+	replyBarCancel: null,
 	input: null,
 	charCount: null,
 	submitBtn: null,
@@ -12560,6 +12563,7 @@ var lunBbsPollTimer = null;
 var lunBbsSeenTimer = null;
 var lunBbsCooldownUntil = 0;
 var lunBbsTranslations = {};
+var lunBbsReplyTarget = null;
 var lunBbsLastReadId = parseInt((window.localStorage && localStorage.getItem("spkmod-bbs-last-read-id")) || "0", 10);
 
 function escapeBbsHtml(text) {
@@ -12710,17 +12714,68 @@ async function fetchBbsPosts(isBackground) {
 	}
 }
 
+function setBbsReplyTarget(id, username) {
+	if (!id || (lunBbsReplyTarget && lunBbsReplyTarget.id === id)) {
+		lunBbsReplyTarget = null;
+	} else {
+		lunBbsReplyTarget = { id: parseInt(id, 10), username: String(username || "Player") };
+	}
+	updateBbsReplyBar();
+	renderBbsPosts();
+	if (lunBbsReplyTarget && bbsModalElements.input) {
+		bbsModalElements.input.focus({ preventScroll: true });
+	}
+}
+
+function updateBbsReplyBar() {
+	if (!bbsModalElements.replyBar) return;
+	if (lunBbsReplyTarget) {
+		bbsModalElements.replyBar.style.display = "flex";
+		if (bbsModalElements.replyBarText) {
+			bbsModalElements.replyBarText.innerText = "↩ " + t("bbsReplyingTo", lunBbsReplyTarget.id, lunBbsReplyTarget.username);
+		}
+		if (bbsModalElements.replyBarCancel) {
+			bbsModalElements.replyBarCancel.innerText = "✕ " + (t("bbsCancelReply") || "Cancel");
+		}
+	} else {
+		bbsModalElements.replyBar.style.display = "none";
+	}
+}
+
 function insertBbsReply(postId) {
-	if (!bbsModalElements.input) return;
-	const cur = bbsModalElements.input.value;
-	const replyTag = `>>${postId} `;
-	if (!cur.includes(replyTag)) {
-		bbsModalElements.input.value = cur ? `${cur} ${replyTag}` : replyTag;
-	}
-	bbsModalElements.input.focus();
-	if (bbsModalElements.charCount) {
-		bbsModalElements.charCount.innerText = `${bbsModalElements.input.value.length}/500`;
-	}
+	const post = Array.isArray(lunBbsPosts) && lunBbsPosts.find(p => p.id === postId);
+	setBbsReplyTarget(postId, post ? post.username : "Player");
+}
+
+function buildBbsTree(posts) {
+	const postMap = new Map();
+	const roots = [];
+
+	posts.forEach(p => {
+		let parentId = (p.replyTo && parseInt(p.replyTo, 10)) || null;
+		if (!parentId && typeof p.message === "string") {
+			const m = p.message.match(/^>>(\d+)/);
+			if (m) {
+				parentId = parseInt(m[1], 10);
+			}
+		}
+		postMap.set(p.id, {
+			post: p,
+			parentId: parentId,
+			children: []
+		});
+	});
+
+	posts.forEach(p => {
+		const node = postMap.get(p.id);
+		if (node.parentId && postMap.has(node.parentId)) {
+			postMap.get(node.parentId).children.push(node);
+		} else {
+			roots.push(node);
+		}
+	});
+
+	return roots;
 }
 
 function renderBbsPosts() {
@@ -12738,23 +12793,50 @@ function renderBbsPosts() {
 	}
 
 	const wasAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 40;
-
 	container.innerHTML = "";
 	const unreadCutoff = lunBbsLastReadId;
-	lunBbsPosts.forEach(post => {
+
+	const roots = buildBbsTree(lunBbsPosts);
+
+	function renderNode(node, depth) {
+		const post = node.post;
 		const postEl = document.createElement("div");
 		postEl.id = `spkmod-bbs-post-${post.id}`;
-		postEl.style.cssText = "background: rgba(15, 23, 42, 0.45); border-bottom: 1px solid rgba(255,255,255,0.08); padding: 4px 6px; display: flex; flex-direction: column; gap: 2px; box-sizing: border-box; font-size: 11px; line-height: 1.45;";
+		postEl.dataset.depth = String(depth);
+
+		const indentPx = Math.min(depth, 4) * 16;
+		postEl.style.cssText = `background: ${depth > 0 ? 'rgba(15, 23, 42, 0.25)' : 'rgba(15, 23, 42, 0.45)'}; border-bottom: 1px solid rgba(255,255,255,0.06); padding: 3px 6px 3px ${6 + indentPx}px; display: flex; flex-direction: column; gap: 2px; box-sizing: border-box; font-size: 11px; line-height: 1.45; ${depth > 0 ? 'border-left: 2px solid rgba(56, 189, 248, 0.35); margin-left: 2px;' : ''}`;
 
 		const lineEl = document.createElement("div");
 		lineEl.style.cssText = "display: block; word-break: break-word;";
+
+		// Bullet symbol (• for root, ◦ for level 1, ▪ for level 2+)
+		const bulletSpan = document.createElement("span");
+		bulletSpan.innerText = depth === 0 ? "• " : (depth === 1 ? "◦ " : "▪ ");
+		bulletSpan.style.cssText = "color: #94a3b8; font-weight: bold; margin-right: 2px; user-select: none;";
+		lineEl.appendChild(bulletSpan);
+
+		// Reply radio circle (◯ or ●)
+		const isCurrentReplyTarget = lunBbsReplyTarget && lunBbsReplyTarget.id === post.id;
+		const radioSpan = document.createElement("span");
+		radioSpan.innerText = isCurrentReplyTarget ? "● " : "◯ ";
+		radioSpan.title = isCurrentReplyTarget ? "Cancel reply selection" : `Reply to #${post.id}`;
+		radioSpan.style.cssText = `cursor: pointer; user-select: none; margin-right: 4px; font-size: 10px; color: ${isCurrentReplyTarget ? '#38bdf8' : '#64748b'};`;
+		radioSpan.onclick = (e) => {
+			e.stopPropagation();
+			setBbsReplyTarget(post.id, post.username);
+		};
+		lineEl.appendChild(radioSpan);
 
 		// #ID anchor
 		const numSpan = document.createElement("span");
 		numSpan.innerText = `#${post.id} `;
 		numSpan.style.cssText = "color: #38bdf8; font-weight: bold; cursor: pointer; user-select: none; margin-right: 3px;";
-		numSpan.title = "Click to reply >>" + post.id;
-		numSpan.onclick = () => insertBbsReply(post.id);
+		numSpan.title = `Click to reply to #${post.id}`;
+		numSpan.onclick = (e) => {
+			e.stopPropagation();
+			setBbsReplyTarget(post.id, post.username);
+		};
 		lineEl.appendChild(numSpan);
 
 		// Staff badge (shield icon only)
@@ -12778,10 +12860,17 @@ function renderBbsPosts() {
 		lvSpan.style.cssText = "color: #94a3b8; margin-right: 4px;";
 		lineEl.appendChild(lvSpan);
 
-		// Message body
+		// Message body - if replying to parent, strip redundant >>parentId prefix
 		const msgSpan = document.createElement("span");
 		msgSpan.style.cssText = "color: #f1f5f9; font-weight: 400; white-space: pre-wrap;";
-		const escapedMsg = escapeBbsHtml(post.message || "");
+		let rawMsg = post.message || "";
+		if (node.parentId) {
+			const stripped = rawMsg.replace(new RegExp(`^>>${node.parentId}\\s*`), "");
+			if (stripped.trim().length > 0) {
+				rawMsg = stripped;
+			}
+		}
+		const escapedMsg = escapeBbsHtml(rawMsg);
 		const linkedMsg = escapedMsg.replace(/&gt;&gt;(\d+)/g, (match, pNum) => {
 			return `<span class="spkmod-bbs-quote-anchor" data-target="${pNum}" style="color: #38bdf8; text-decoration: underline; cursor: pointer; font-weight: 600;">&gt;&gt;${pNum}</span>`;
 		});
@@ -12794,7 +12883,7 @@ function renderBbsPosts() {
 		timeSpan.style.cssText = "color: #64748b; font-size: 9.5px; margin-left: 6px; white-space: nowrap;";
 		lineEl.appendChild(timeSpan);
 
-		// New! badge (dismissable on click or after viewing)
+		// New! badge
 		if (post.id && post.id > unreadCutoff) {
 			const newBadge = document.createElement("span");
 			newBadge.className = "spkmod-bbs-new-badge";
@@ -12814,7 +12903,7 @@ function renderBbsPosts() {
 			lineEl.appendChild(newBadge);
 		}
 
-		// Action buttons container
+		// Actions
 		const actionsSpan = document.createElement("span");
 		actionsSpan.style.cssText = "display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; vertical-align: middle; white-space: nowrap;";
 
@@ -12825,7 +12914,7 @@ function renderBbsPosts() {
 		replyBtn.style.cssText = "background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #7dd3fc; border-radius: 3px; font-size: 8.5px; padding: 0 4px; height: 16px; cursor: pointer; line-height: 14px;";
 		replyBtn.onclick = (e) => {
 			e.stopPropagation();
-			insertBbsReply(post.id);
+			setBbsReplyTarget(post.id, post.username);
 		};
 		actionsSpan.appendChild(replyBtn);
 
@@ -12845,11 +12934,11 @@ function renderBbsPosts() {
 				try {
 					const targetLang = spkmodLang === "es-419" ? "es" : spkmodLang;
 					const translated = (typeof translateTextToLang === "function")
-						? await translateTextToLang(post.message, targetLang)
-						: post.message;
+						? await translateTextToLang(rawMsg, targetLang)
+						: rawMsg;
 					lunBbsTranslations[post.id] = translated;
 				} catch (_) {
-					lunBbsTranslations[post.id] = post.message;
+					lunBbsTranslations[post.id] = rawMsg;
 				}
 				renderBbsPosts();
 			}
@@ -12877,7 +12966,7 @@ function renderBbsPosts() {
 		lineEl.appendChild(actionsSpan);
 		postEl.appendChild(lineEl);
 
-		// Translation Box (if translated)
+		// Translation Box
 		if (lunBbsTranslations[post.id]) {
 			const transBox = document.createElement("div");
 			transBox.style.cssText = "margin-top: 2px; padding: 2px 6px; background: rgba(30, 58, 138, 0.35); border-left: 2px solid #3b82f6; border-radius: 3px; font-size: 10.5px; color: #bfdbfe; word-break: break-word;";
@@ -12885,24 +12974,37 @@ function renderBbsPosts() {
 			postEl.appendChild(transBox);
 		}
 
-		// Attach quote anchor handler
+		// Quote anchor scroll handler
 		postEl.querySelectorAll(".spkmod-bbs-quote-anchor").forEach(anchor => {
 			anchor.onclick = (e) => {
 				e.stopPropagation();
 				const targetId = anchor.getAttribute("data-target");
 				const targetEl = document.getElementById(`spkmod-bbs-post-${targetId}`);
-				if (targetEl) {
-					targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+				if (targetEl && bbsModalElements.postsContainer) {
+					const cRect = bbsModalElements.postsContainer.getBoundingClientRect();
+					const tRect = targetEl.getBoundingClientRect();
+					bbsModalElements.postsContainer.scrollTop += (tRect.top - cRect.top) - 30;
 					targetEl.style.transition = "background 0.3s";
 					targetEl.style.background = "rgba(59, 130, 246, 0.4)";
 					setTimeout(() => {
-						targetEl.style.background = "rgba(15, 23, 42, 0.45)";
+						targetEl.style.background = targetEl.dataset.depth > 0 ? "rgba(15, 23, 42, 0.25)" : "rgba(15, 23, 42, 0.45)";
 					}, 1200);
 				}
 			};
 		});
 
 		container.appendChild(postEl);
+
+		// Render children directly underneath
+		if (Array.isArray(node.children) && node.children.length > 0) {
+			node.children.forEach(child => {
+				renderNode(child, depth + 1);
+			});
+		}
+	}
+
+	roots.forEach(root => {
+		renderNode(root, 0);
 	});
 
 	if (wasAtBottom) {
@@ -12931,6 +13033,8 @@ async function sendBbsPost() {
 		bbsModalElements.submitBtn.innerText = t("bbsSending") || "Posting...";
 	}
 
+	const replyToId = lunBbsReplyTarget ? lunBbsReplyTarget.id : null;
+
 	try {
 		const sUrl = getBbsServerUrl();
 		const res = await fetch(`${sUrl}/api/bbs/post`, {
@@ -12940,13 +13044,16 @@ async function sendBbsPost() {
 				username: me.username,
 				playerId: me.playerId,
 				level: me.level,
-				message: msg
+				message: msg,
+				replyTo: replyToId
 			})
 		});
 		const data = await res.json();
 		if (data && data.success) {
 			bbsModalElements.input.value = "";
 			if (bbsModalElements.charCount) bbsModalElements.charCount.innerText = "0/500";
+			lunBbsReplyTarget = null;
+			updateBbsReplyBar();
 			lunBbsCooldownUntil = Date.now() + 5000;
 			startBbsCooldownTimer(5);
 			await fetchBbsPosts();
@@ -13074,6 +13181,22 @@ document.body.appendChild(
 					style: "color: #64748b; font-size: 9.5px;"
 				})
 			]),
+			bbsModalElements.replyBar = buildElement("div", {
+				id: "spkmod-bbs-reply-bar",
+				style: "display: none; align-items: center; justify-content: space-between; background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 4px; padding: 2px 6px; font-size: 10px; color: #7dd3fc; margin-bottom: 2px;"
+			}, [
+				bbsModalElements.replyBarText = buildElement("span", {
+					innerText: "↩ Replying to #1"
+				}),
+				bbsModalElements.replyBarCancel = buildElement("span", {
+					innerText: "✕ " + (t("bbsCancelReply") || "Cancel"),
+					style: "cursor: pointer; color: #f87171; font-weight: bold; margin-left: 8px; font-size: 9.5px;",
+					onclick: (e) => {
+						e.stopPropagation();
+						setBbsReplyTarget(null);
+					}
+				})
+			]),
 			bbsModalElements.input = buildElement("textarea", {
 				id: "spkmod-bbs-input",
 				rows: 2,
@@ -13086,10 +13209,17 @@ document.body.appendChild(
 					}
 				},
 				onkeydown: (e) => {
+					e.stopPropagation();
 					if (e.key === "Enter" && !e.shiftKey) {
 						e.preventDefault();
 						sendBbsPost();
 					}
+				},
+				onkeyup: (e) => {
+					e.stopPropagation();
+				},
+				onkeypress: (e) => {
+					e.stopPropagation();
 				}
 			}),
 			bbsModalElements.submitBtn = buildElement("button", {
@@ -13115,6 +13245,7 @@ function updateBbsI18n() {
 	if (typeof lunPanelElements !== "undefined" && lunPanelElements.bbsBtn) {
 		lunPanelElements.bbsBtn.title = t("bbsBtnTooltip") || "SpeakiBBS";
 	}
+	if (typeof updateBbsReplyBar === "function") updateBbsReplyBar();
 	if (typeof renderBbsPosts === "function") renderBbsPosts();
 }
 
@@ -13127,6 +13258,11 @@ if (typeof spkmodI18nRenderers !== "undefined") {
 setTimeout(() => {
 	if (typeof makeDraggable === 'function' && lunHudElements.bbsModal && bbsModalElements.headerTitle) {
 		makeDraggable(lunHudElements.bbsModal, [bbsModalElements.headerTitle]);
+	}
+	if (lunHudElements.bbsModal) {
+		lunHudElements.bbsModal.addEventListener("keydown", e => e.stopPropagation());
+		lunHudElements.bbsModal.addEventListener("keyup", e => e.stopPropagation());
+		lunHudElements.bbsModal.addEventListener("keypress", e => e.stopPropagation());
 	}
 	updateBbsI18n();
 	setTimeout(() => {
