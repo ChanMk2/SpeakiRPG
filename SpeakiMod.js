@@ -1423,6 +1423,8 @@ var lunPanelElements = {
 	minigameTrackerToggleInput: null,
 	hideKnownBotsLabel: null,
 	hideKnownBotsToggleInput: null,
+	disableRightClickPinningLabel: null,
+	disableRightClickPinningToggleInput: null,
 	settingsCatGeneral: null,
 	settingsCatHUD: null,
 	localEffectsBtn: null,
@@ -2116,6 +2118,15 @@ function setHidePlayerLevels(enabled) {
 	}
 }
 
+var lunDisableRightClickPinning = (window.localStorage && localStorage.getItem("spkmod-disable-right-click-pinning")) === "true";
+function setDisableRightClickPinning(disabled) {
+	lunDisableRightClickPinning = !!disabled;
+	if (window.localStorage) localStorage.setItem("spkmod-disable-right-click-pinning", lunDisableRightClickPinning ? "true" : "false");
+	if (lunPanelElements.disableRightClickPinningToggleInput) {
+		lunPanelElements.disableRightClickPinningToggleInput.checked = lunDisableRightClickPinning;
+	}
+}
+
 // Ensure the class is added early on load
 if (typeof document !== "undefined" && lunPanelLeft) {
     document.body.classList.add("spkmod-panel-left-mode");
@@ -2611,6 +2622,9 @@ let lastToggleSettingsTime = 0;
 // Keep export and import on the same explicit allowlist.
 const SPKMOD_SETTINGS_KEYS = new Set([
 	"spkmod-accent-color",
+	"spkmod-bbs-font-size",
+	"spkmod-bbs-icon-actions",
+	"spkmod-bbs-theme",
 	"spkmod-beyblade-speed",
 	"spkmod-bg-opacity",
 	"spkmod-camera-effect",
@@ -2619,6 +2633,7 @@ const SPKMOD_SETTINGS_KEYS = new Set([
 	"spkmod-currency-tracker",
 	"spkmod-custom-hud-bg",
 	"spkmod-custom-hud-unlocked",
+	"spkmod-disable-right-click-pinning",
 	"spkmod-drone-speed",
 	"spkmod-exp-interval-minutes",
 	"spkmod-exp-per-hour",
@@ -5470,6 +5485,19 @@ document.body.appendChild(
 					lunPanelElements.hidePlayerLevelsToggleInput = buildElement("input", { type: "checkbox", checked: lunHidePlayerLevels, onchange: e => setHidePlayerLevels(e.target.checked) })
 				]),
 				buildElement("div", { className: "spkmod-panel-cat" }, [
+					lunPanelElements.disableRightClickPinningLabel = buildElement("span", {
+						style: "color: #fff; font-size: 11px; font-weight: bold; flex: 1;",
+						innerText: t("disableRightClickPinningLabel") || "Disable Right-Click Pinning",
+						title: "Disable right-clicking HUD and modal buttons to pin them floating on screen"
+					}),
+					lunPanelElements.disableRightClickPinningToggleInput = buildElement("input", {
+						type: "checkbox",
+						checked: lunDisableRightClickPinning,
+						title: "Disable right-clicking HUD and modal buttons to pin them floating on screen",
+						onchange: e => setDisableRightClickPinning(e.target.checked)
+					})
+				]),
+				buildElement("div", { className: "spkmod-panel-cat" }, [
 					lunPanelElements.sessionGoldLabel = buildElement("span", { style: "color: #fff; font-size: 11px; font-weight: bold; flex: 1;", innerText: t("sessionGoldToggleLabel") }),
 					lunPanelElements.sessionGoldToggleInput = buildElement("input", { type: "checkbox", checked: lunSessionGoldTrackerEnabled, onchange: e => setSessionGoldTrackerEnabled(e.target.checked) })
 				]),
@@ -7719,6 +7747,11 @@ document.addEventListener("contextmenu", (e) => {
 
     e.preventDefault();
     e.stopPropagation();
+
+    if (typeof lunDisableRightClickPinning !== "undefined" && lunDisableRightClickPinning) {
+        return;
+    }
+
     spkmodSpawnFloatingButton(btn, e.clientX, e.clientY);
 }, true);
 
@@ -12846,6 +12879,20 @@ if (isNaN(lunBbsFontSize) || lunBbsFontSize < 9 || lunBbsFontSize > 18) {
 	lunBbsFontSize = 11;
 }
 
+var savedBbsIconActions = (window.localStorage && localStorage.getItem("spkmod-bbs-icon-actions"));
+var lunBbsIconOnlyActions = (savedBbsIconActions !== null) ? (savedBbsIconActions === "true") : true;
+
+function setBbsIconOnlyActions(enabled) {
+	lunBbsIconOnlyActions = !!enabled;
+	if (window.localStorage) {
+		localStorage.setItem("spkmod-bbs-icon-actions", lunBbsIconOnlyActions ? "true" : "false");
+	}
+	if (bbsModalElements.iconOnlyCheckbox) {
+		bbsModalElements.iconOnlyCheckbox.checked = lunBbsIconOnlyActions;
+	}
+	renderBbsPosts();
+}
+
 const LUN_BBS_THEMES = {
 	"normal": {
 		id: "normal",
@@ -13031,6 +13078,12 @@ function applyBbsThemeVisuals() {
 	if (bbsModalElements.fontSizeBadge) {
 		bbsModalElements.fontSizeBadge.innerText = `${lunBbsFontSize}px`;
 		bbsModalElements.fontSizeBadge.style.fontFamily = t.fontFamily;
+	}
+	if (bbsModalElements.iconOnlyContainer) {
+		bbsModalElements.iconOnlyContainer.style.fontFamily = t.fontFamily;
+	}
+	if (bbsModalElements.iconOnlyCheckbox) {
+		bbsModalElements.iconOnlyCheckbox.checked = lunBbsIconOnlyActions;
 	}
 }
 
@@ -13676,7 +13729,7 @@ function renderBbsPosts() {
 		const actionsSpan = document.createElement("span");
 		actionsSpan.style.cssText = "display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; vertical-align: middle; white-space: nowrap;";
 
-		const iconOnly = Boolean(curTheme.iconOnlyActions || curTheme.id === "simple" || curTheme.id === "briefer");
+		const iconOnly = Boolean(lunBbsIconOnlyActions);
 
 		// Reply button
 		const replyBtn = document.createElement("button");
@@ -14113,6 +14166,28 @@ document.body.appendChild(
 						onclick: (e) => { e.stopPropagation(); changeBbsFontSize(+1); }
 					})
 				]),
+				bbsModalElements.iconOnlyContainer = buildElement("label", {
+					id: "spkmod-bbs-icon-only-container",
+					title: t("bbsIconOnlyTooltip") || "Show only icons for Reply and Translate",
+					style: "display: inline-flex; align-items: center; gap: 3px; font-size: 10px; color: #cbd5e1; cursor: pointer; user-select: none; height: 18px; padding: 0 4px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 4px; line-height: 1;",
+					onpointerdown: (e) => e.stopPropagation(),
+					onmousedown: (e) => e.stopPropagation()
+				}, [
+					bbsModalElements.iconOnlyCheckbox = buildElement("input", {
+						id: "spkmod-bbs-icon-only-checkbox",
+						type: "checkbox",
+						checked: lunBbsIconOnlyActions,
+						style: "cursor: pointer; margin: 0; width: 11px; height: 11px;",
+						onpointerdown: (e) => e.stopPropagation(),
+						onmousedown: (e) => e.stopPropagation(),
+						onclick: (e) => e.stopPropagation(),
+						onchange: (e) => setBbsIconOnlyActions(e.target.checked)
+					}),
+					bbsModalElements.iconOnlyLabel = buildElement("span", {
+						innerText: t("bbsIconOnlyLabel") || "Icons only",
+						style: "user-select: none; font-size: 9px; line-height: 1;"
+					})
+				]),
 				bbsModalElements.refreshBtn = buildElement("span", {
 					id: "spkmod-bbs-refresh",
 					innerText: "🔄",
@@ -14258,6 +14333,12 @@ function updateBbsI18n() {
 	}
 	if (typeof lunPanelElements !== "undefined" && lunPanelElements.bbsBtn) {
 		lunPanelElements.bbsBtn.title = t("bbsBtnTooltip") || "SpeakiBBS";
+	}
+	if (bbsModalElements.iconOnlyLabel) {
+		bbsModalElements.iconOnlyLabel.innerText = t("bbsIconOnlyLabel") || "Icons only";
+	}
+	if (bbsModalElements.iconOnlyContainer) {
+		bbsModalElements.iconOnlyContainer.title = t("bbsIconOnlyTooltip") || "Show only icons for Reply and Translate";
 	}
 	if (typeof updateBbsReplyBar === "function") updateBbsReplyBar();
 	if (typeof renderBbsPosts === "function") renderBbsPosts();
@@ -15696,6 +15777,7 @@ spkmodI18nRenderers.push(() => {
 		renderPatchNotesUI();
 	}
 	if (lunPanelElements.gamepadRumbleLabel) setText(lunPanelElements.gamepadRumbleLabel, t("gamepadRumbleToggleLabel"));
+	if (lunPanelElements.disableRightClickPinningLabel) setText(lunPanelElements.disableRightClickPinningLabel, t("disableRightClickPinningLabel") || "Disable Right-Click Pinning");
 	if (lunPanelElements.uiScaleLabel) setText(lunPanelElements.uiScaleLabel, t("uiScaleLabel"));
 	if (lunPanelElements.gameUiScaleLabel) setText(lunPanelElements.gameUiScaleLabel, t("gameUiScaleLabel") || "Game UI Scale");
 	if (lunPanelElements.droneSpeedLabel) setText(lunPanelElements.droneSpeedLabel, t("droneSpeedLabel") || "Drone Speed");

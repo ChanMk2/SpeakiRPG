@@ -13,7 +13,7 @@
         "avatarEmpty": "No matching emojis. The list may still be loading.",
         "avatarUnavailable": "This image is unavailable. Choose another emoji or use initials.",
         "avatarSaveError": "Could not save your avatar. Please try again.",
-        "header": "SpeakiMod+ v2.04",
+        "header": "SpeakiMod+ v2.05",
         "playersNearby": "Speaki nearby: {0}",
         "zoneId": "Zone ID: {0}",
         "expPerMinute": "{0} EXP/min",
@@ -421,6 +421,7 @@
         "aFaintOff": "Situps: ▶️",
         "separatePanel": "Separate Action Panel (Mobile)",
         "hidePlayerLevelsLabel": "Hide Player Levels",
+        "disableRightClickPinningLabel": "Disable Right-Click Pinning",
         "emojiTabTrickcal2": "2",
         "emojiTabTrickcal3": "3",
         "decalogue": {
@@ -629,7 +630,9 @@
         "bbsReplyingTo": "Replying to #{0} ({1})",
         "bbsCancelReply": "Cancel",
         "bbsEmojiBtnTooltip": "Insert emoji",
-        "bbsLevelRequired": "Your level is not enough to post here (Level 3+ required)"
+        "bbsLevelRequired": "Your level is not enough to post here (Level 3+ required)",
+        "bbsIconOnlyLabel": "Icons only",
+        "bbsIconOnlyTooltip": "Show only icons for Reply and Translate"
     },
     "ja": {
         "langName": "日本語",
@@ -645,7 +648,7 @@
         "avatarEmpty": "一致する絵文字がありません。読み込み中の場合もあります。",
         "avatarUnavailable": "画像を読み込めません。別の絵文字か頭文字を選んでください。",
         "avatarSaveError": "アイコンを保存できませんでした。もう一度お試しください。",
-        "header": "SpeakiMod+ v2.04",
+        "header": "SpeakiMod+ v2.05",
         "credits": "• 原作ゲーム: EPID Games\n• Speaki MMO 開発: GMDT\n• クライアント＆SpeakiMod+コーディング: Glas\n• SpeakiMod原作者: Alluseri\n• 日本語翻訳: JPN_健全なエルフ名15T\n• 品質保証＆調整: Chan.\n\n使用ファンアート：\nUI背景への作品使用を許可してくださったアーティストの皆様に心より感謝申し上げます！\n- 느그 유노(Yuno)",
         "for_memo_jp_1": "🔽window_main🔽",
         "playersNearby": "近くのｽﾋﾟｷ数: {0}",
@@ -1081,6 +1084,7 @@
         "for_memo_jp_29": "⏩コンマ要確認⏩",
         "separatePanel": "アクションパネルを分離 (モバイル)",
         "hidePlayerLevelsLabel": "プレイヤーレベルを非表示",
+        "disableRightClickPinningLabel": "右クリック固定を無効化",
         "emojiTabTrickcal2": "2",
         "emojiTabTrickcal3": "3",
         "decalogue": {
@@ -1290,7 +1294,9 @@
         "bbsReplyingTo": "#{0} ({1}) への返信",
         "bbsCancelReply": "取消",
         "bbsEmojiBtnTooltip": "絵文字を挿入",
-        "bbsLevelRequired": "レベルが足りないため投稿できません（Lv.3以上必要）"
+        "bbsLevelRequired": "レベルが足りないため投稿できません（Lv.3以上必要）",
+        "bbsIconOnlyLabel": "アイコンのみ",
+        "bbsIconOnlyTooltip": "返信と翻訳をアイコンのみで表示"
     },
     "ko": {
         "langName": "한국어",
@@ -1306,7 +1312,7 @@
         "avatarEmpty": "일치하는 이모지가 없습니다. 목록을 불러오는 중일 수 있습니다.",
         "avatarUnavailable": "이미지를 불러올 수 없습니다. 다른 이모지나 이름 첫 글자를 선택하세요.",
         "avatarSaveError": "프로필 이미지를 저장하지 못했습니다. 다시 시도해 주세요.",
-        "header": "SpeakiMod+ v2.04",
+        "header": "SpeakiMod+ v2.05",
         "playersNearby": "근처 스피키: {0}",
         "zoneId": "존 ID: {0}",
         "expPerMinute": "{0} EXP/분",
@@ -1713,6 +1719,7 @@
         "aFaintOff": "윗몸일으키기: ▶️",
         "separatePanel": "액션 패널 분리 (모바일)",
         "hidePlayerLevelsLabel": "플레이어 레벨 숨기기",
+        "disableRightClickPinningLabel": "우클릭 핀 고정 비활성화",
         "emojiTabTrickcal2": "2",
         "emojiTabTrickcal3": "3",
         "decalogue": {
@@ -1921,7 +1928,9 @@
         "bbsReplyingTo": "#{0}번({1})에 답글 작성 중",
         "bbsCancelReply": "취소",
         "bbsEmojiBtnTooltip": "이모지 삽입",
-        "bbsLevelRequired": "레벨이 부족하여 글을 작성할 수 없습니다 (Lv.3 이상 필요)"
+        "bbsLevelRequired": "레벨이 부족하여 글을 작성할 수 없습니다 (Lv.3 이상 필요)",
+        "bbsIconOnlyLabel": "아이콘만",
+        "bbsIconOnlyTooltip": "답글 및 번역을 아이콘으로만 표시"
     },
     "zh-TW": {
         "langName": "繁體中文",
@@ -1937,7 +1946,7 @@
         "avatarEmpty": "沒有符合的表情，或清單仍在載入中。",
         "avatarUnavailable": "無法載入圖片，請選擇其他表情或恢復名字首字。",
         "avatarSaveError": "無法儲存頭貼，請重試。",
-        "header": "SpeakiMod+ v2.04",
+        "header": "SpeakiMod+ v2.05",
         "playersNearby": "附近的斯皮奇: {0}",
         "zoneId": "區域 ID: {0}",
         "expPerMinute": "{0} 經驗值/每分鐘",
@@ -2344,6 +2353,7 @@
         "aFaintOff": "Situps: ▶️",
         "separatePanel": "分離動作面板 (手機)",
         "hidePlayerLevelsLabel": "隱藏玩家等級",
+        "disableRightClickPinningLabel": "停用右鍵固定按鈕",
         "emojiTabTrickcal2": "2",
         "emojiTabTrickcal3": "3",
         "decalogue": {
@@ -2547,7 +2557,9 @@
         "bbsReplyingTo": "正在回覆 #{0}（{1}）",
         "bbsCancelReply": "取消",
         "bbsEmojiBtnTooltip": "插入表情",
-        "bbsLevelRequired": "等級不足，無法在此發帖（需要 Lv.3 以上）"
+        "bbsLevelRequired": "等級不足，無法在此發帖（需要 Lv.3 以上）",
+        "bbsIconOnlyLabel": "僅圖示",
+        "bbsIconOnlyTooltip": "僅顯示回覆與翻譯圖示"
     },
     "zh-CN": {
         "langName": "简体中文",
@@ -2563,7 +2575,7 @@
         "avatarEmpty": "没有匹配的表情，或列表仍在加载中。",
         "avatarUnavailable": "无法加载图片，请选择其他表情或恢复名字首字。",
         "avatarSaveError": "无法保存头像，请重试。",
-        "header": "SpeakiMod+ v2.04",
+        "header": "SpeakiMod+ v2.05",
         "playersNearby": "附近的斯皮奇: {0}",
         "zoneId": "区域 ID: {0}",
         "expPerMinute": "{0} 经验值/每分钟",
@@ -2970,6 +2982,7 @@
         "aFaintOff": "Situps: ▶️",
         "separatePanel": "分离动作面板 (手机)",
         "hidePlayerLevelsLabel": "隐藏玩家等级",
+        "disableRightClickPinningLabel": "禁用右键固定按钮",
         "emojiTabTrickcal2": "2",
         "emojiTabTrickcal3": "3",
         "decalogue": {
@@ -3173,7 +3186,9 @@
         "bbsReplyingTo": "正在回复 #{0}（{1}）",
         "bbsCancelReply": "取消",
         "bbsEmojiBtnTooltip": "插入表情",
-        "bbsLevelRequired": "等级不足，无法在此发帖（需要 Lv.3 以上）"
+        "bbsLevelRequired": "等级不足，无法在此发帖（需要 Lv.3 以上）",
+        "bbsIconOnlyLabel": "仅图标",
+        "bbsIconOnlyTooltip": "仅显示回复与翻译图标"
     },
     "es-419": {
         "langName": "Español",
@@ -3189,7 +3204,7 @@
         "avatarEmpty": "No hay emojis coincidentes. La lista puede estar cargando.",
         "avatarUnavailable": "Imagen no disponible. Elige otro emoji o usa la inicial.",
         "avatarSaveError": "No se pudo guardar el avatar. Inténtalo de nuevo.",
-        "header": "SpeakiMod+ v2.04",
+        "header": "SpeakiMod+ v2.05",
         "playersNearby": "Speaki cercanos: {0}",
         "zoneId": "ID de zona: {0}",
         "expPerMinute": "{0} EXP/min",
@@ -3596,6 +3611,7 @@
         "aFaintOff": "Situps: ▶️",
         "separatePanel": "Separar Panel de Acciones (Móvil)",
         "hidePlayerLevelsLabel": "Ocultar Niveles de Jugadores",
+        "disableRightClickPinningLabel": "Desactivar fijar con clic derecho",
         "emojiTabTrickcal2": "2",
         "emojiTabTrickcal3": "3",
         "decalogue": {
@@ -3799,6 +3815,8 @@
         "bbsReplyingTo": "Respondiendo a #{0} ({1})",
         "bbsCancelReply": "Cancelar",
         "bbsEmojiBtnTooltip": "Insertar emoji",
-        "bbsLevelRequired": "Tu nivel no es suficiente para publicar aquí (se requiere Nivel 3+)"
+        "bbsLevelRequired": "Tu nivel no es suficiente para publicar aquí (se requiere Nivel 3+)",
+        "bbsIconOnlyLabel": "Solo iconos",
+        "bbsIconOnlyTooltip": "Mostrar solo iconos para Responder y Traducir"
     }
 }
