@@ -12873,6 +12873,7 @@ const LUN_BBS_THEMES = {
 		id: "simple",
 		name: "Simple (Briefer)",
 		icon: "⚡",
+		iconOnlyActions: true,
 		modalBg: "rgba(22, 30, 46, 0.98)",
 		modalBorder: "1px solid #3b82f6",
 		postsBg: "transparent",
@@ -13675,11 +13676,13 @@ function renderBbsPosts() {
 		const actionsSpan = document.createElement("span");
 		actionsSpan.style.cssText = "display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; vertical-align: middle; white-space: nowrap;";
 
+		const iconOnly = Boolean(curTheme.iconOnlyActions || curTheme.id === "simple" || curTheme.id === "briefer");
+
 		// Reply button
 		const replyBtn = document.createElement("button");
-		replyBtn.innerText = "↩ " + (t("bbsReply") || "Reply");
+		replyBtn.innerText = iconOnly ? "↩" : ("↩ " + (t("bbsReply") || "Reply"));
 		replyBtn.title = "Reply to #" + post.id;
-		replyBtn.style.cssText = `background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: ${curTheme.anchorColor}; border-radius: 3px; font-size: ${btnFs}px; padding: 0 4px; height: 16px; cursor: pointer; line-height: 14px;`;
+		replyBtn.style.cssText = `background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: ${curTheme.anchorColor}; border-radius: 3px; font-size: ${iconOnly ? Math.max(9, baseFs - 1) : btnFs}px; padding: 0 ${iconOnly ? '3px' : '4px'}; height: 16px; cursor: pointer; line-height: 14px;`;
 		replyBtn.onpointerdown = (e) => { e.stopPropagation(); };
 		replyBtn.onmousedown = (e) => { e.stopPropagation(); };
 		replyBtn.onclick = (e) => {
@@ -13690,9 +13693,16 @@ function renderBbsPosts() {
 
 		// Translate button
 		const transBtn = document.createElement("button");
-		transBtn.innerText = lunBbsTranslations[post.id] ? ("🌐 " + (t("bbsShowOriginal") || "Orig")) : ("🌐 " + (t("bbsTranslateBtn") || "Trans"));
-		transBtn.title = lunBbsTranslations[post.id] ? "Show original" : "Translate message";
-		transBtn.style.cssText = `background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: ${curTheme.anchorColor}; border-radius: 3px; font-size: ${btnFs}px; padding: 0 4px; height: 16px; cursor: pointer; line-height: 14px;`;
+		const isTranslated = Boolean(lunBbsTranslations[post.id]);
+		if (iconOnly) {
+			transBtn.innerText = "🌐";
+			transBtn.title = isTranslated ? (t("bbsShowOriginal") || "Show original") : (t("bbsTranslateBtn") || "Translate message");
+		} else {
+			transBtn.innerText = isTranslated ? ("🌐 " + (t("bbsShowOriginal") || "Orig")) : ("🌐 " + (t("bbsTranslateBtn") || "Trans"));
+			transBtn.title = isTranslated ? "Show original" : "Translate message";
+		}
+		const transBg = (iconOnly && isTranslated) ? "rgba(59, 130, 246, 0.3)" : "rgba(255,255,255,0.08)";
+		transBtn.style.cssText = `background: ${transBg}; border: 1px solid rgba(255,255,255,0.15); color: ${curTheme.anchorColor}; border-radius: 3px; font-size: ${iconOnly ? Math.max(9, baseFs - 1) : btnFs}px; padding: 0 ${iconOnly ? '3px' : '4px'}; height: 16px; cursor: pointer; line-height: 14px;`;
 		transBtn.onclick = async (e) => {
 			e.stopPropagation();
 			if (lunBbsTranslations[post.id]) {
