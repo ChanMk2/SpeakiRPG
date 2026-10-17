@@ -15929,7 +15929,75 @@ function updatePinnedQuestDisplay(quest) {
 	}
 }
 
+function isQuestPanel(panel) {
+	if (!panel) return false;
+
+	// Check header or panel title
+	const headerEl = panel.querySelector(".sr-panel__header, .sr-modal__header, .sr-dialog__header, header") || panel;
+	const headerText = (headerEl.textContent || "").toLowerCase();
+
+	// 1. Definite negative checks - Shop & non-quest panels
+	const nonQuestKeywords = [
+		"shop", "상점", "ショップ", "商店", "tienda", "boutique", "magasin", "laden",
+		"inventory", "인벤토리", "인벤", "inventario", "bag", "가방",
+		"storage", "warehouse", "창고", "depot",
+		"equipment", "장비",
+		"settings", "setting", "설정", "config", "option",
+		"skills", "skill", "스킬",
+		"mail", "우편", "mailbox",
+		"ranking", "rank", "랭킹", "leaderboard",
+		"party", "파티", "friend", "친구",
+		"bbs", "bulletin", "게시판"
+	];
+	for (const kw of nonQuestKeywords) {
+		if (headerText.includes(kw)) return false;
+	}
+
+	// Also check for shop controls or buttons anywhere in the panel
+	const bodyText = (panel.textContent || "").toLowerCase();
+	if (
+		bodyText.includes("leave shop") ||
+		bodyText.includes("buy item") ||
+		bodyText.includes("상점 나가기") ||
+		bodyText.includes("아이템 구매") ||
+		bodyText.includes("balance") ||
+		panel.querySelector(".sr-shop, [class*='shop']")
+	) {
+		return false;
+	}
+
+	// 2. Positive checks - Quest Panel indicators
+	// A: Quest keyword in title
+	const questKeywords = ["quest", "퀘스트", "クエスト", "任務", "misión", "mision", "quête", "aufgabe"];
+	for (const qKw of questKeywords) {
+		if (headerText.includes(qKw)) return true;
+	}
+
+	// B: Quest tabs (Daily / Weekly / Standing / Permanent)
+	const tabBtns = panel.querySelectorAll(".sr-panel__tabs button, .sr-panel__tabs .sr-btn, .sr-tabs button, .sr-tab");
+	if (tabBtns && tabBtns.length > 0) {
+		for (const tb of tabBtns) {
+			const txt = (tb.textContent || "").toLowerCase();
+			if (
+				txt.includes("daily") || txt.includes("일일") || txt.includes("デイリー") || txt.includes("diaria") || txt.includes("每日") ||
+				txt.includes("week") || txt.includes("주간") || txt.includes("ウィークリー") || txt.includes("semanal") || txt.includes("每周") ||
+				txt.includes("stand") || txt.includes("perma") || txt.includes("상시") || txt.includes("常設") || txt.includes("permanente") || txt.includes("永久")
+			) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 function refreshPinButtons() {
+	document.querySelectorAll(".sr-panel, .sr-modal, .sr-dialog, [role='dialog']").forEach(panel => {
+		if (!isQuestPanel(panel)) {
+			panel.querySelectorAll(".spkmod-pq-button").forEach(btn => btn.remove());
+		}
+	});
+
 	document.querySelectorAll(".spkmod-pq-button").forEach(btn => {
 		const isThisPinned = lunPinnedQuestId && String(btn.__questId) === String(lunPinnedQuestId);
 		btn.innerText = isThisPinned ? ("✕ " + (t("unpinQuestBtn") !== "unpinQuestBtn" ? t("unpinQuestBtn") : "Unpin")) : ("📌 " + (t("pinQuestBtn") || "Pin"));
@@ -15984,6 +16052,15 @@ function pinQuest(quest, questElm) {
 		if (saved) {
 			const parsed = JSON.parse(saved);
 			if (parsed && parsed.questId) {
+				if (typeof parsed.questId === "string" && parsed.questId.startsWith("v_")) {
+					const content = parsed.content || "";
+					const shopKeywords = ["scroll", "pouch", "eraser", "crayon", "sack of gold", "potion", "shop", "상점"];
+					const isLikelyShop = shopKeywords.some(kw => content.toLowerCase().includes(kw));
+					if (isLikelyShop || !/\/\s*\d+\s*\/\s*\d+$/.test(content)) {
+						localStorage.removeItem("spkmod-pinned-quest");
+						return;
+					}
+				}
 				lunPinnedQuestPeriod = parsed.period || "daily";
 				lunPinnedQuestId = parsed.questId;
 				lunPinnedQuestNextQueryTick = 0;
@@ -16191,14 +16268,14 @@ function matchQuestFromTitleText(titleText, item) {
 		}
 	}
 
-	// 2. Parse from DOM row text
-	let currentAmount = 0;
-	let targetAmount = 1;
+	// 2. Parse from DOM row text ONLY if it contains an explicit quest progress fraction (/ X / Y)
 	const progressMatch = titleText.match(/\/\s*(\d+)\s*\/\s*(\d+)\s*$/);
-	if (progressMatch) {
-		currentAmount = parseInt(progressMatch[1], 10);
-		targetAmount = parseInt(progressMatch[2], 10);
+	if (!progressMatch) {
+		return null;
 	}
+
+	const currentAmount = parseInt(progressMatch[1], 10);
+	const targetAmount = parseInt(progressMatch[2], 10);
 
 	const cleanTitle = titleText.replace(/\/\s*\d+\s*\/\s*\d+\s*$/, "").trim();
 	let hash = 0;
@@ -16209,11 +16286,11 @@ function matchQuestFromTitleText(titleText, item) {
 	const virtualId = "v_" + Math.abs(hash);
 
 	let period = "daily";
-	const activeTab = document.querySelector(".sr-panel__tabs .sr-btn--secondary");
+	const activeTab = document.querySelector(".sr-panel__tabs .sr-btn--secondary, .sr-panel__tabs .active");
 	if (activeTab) {
 		const tabText = (activeTab.textContent || "").toLowerCase();
-		if (tabText.includes("stand") || tabText.includes("perma")) period = "permanent";
-		else if (tabText.includes("week")) period = "weekly";
+		if (tabText.includes("stand") || tabText.includes("perma") || tabText.includes("상시") || tabText.includes("常設") || tabText.includes("permanente")) period = "permanent";
+		else if (tabText.includes("week") || tabText.includes("주간") || tabText.includes("ウィークリー") || tabText.includes("semanal")) period = "weekly";
 	}
 
 	return {
@@ -16229,14 +16306,33 @@ function matchQuestFromTitleText(titleText, item) {
 }
 
 function injectPinButtonsIntoQuestList() {
+	// 1. Purge any accidental pin buttons from non-quest panels (e.g. shop)
+	document.querySelectorAll(".sr-panel, .sr-modal, .sr-dialog, [role='dialog']").forEach(panel => {
+		if (!isQuestPanel(panel)) {
+			panel.querySelectorAll(".spkmod-pq-button").forEach(btn => btn.remove());
+		}
+	});
+
 	const panelBodies = document.querySelectorAll(".sr-panel__body");
 	if (!panelBodies.length) return;
 
 	panelBodies.forEach(panelBody => {
+		const panel = panelBody.closest(".sr-panel, .sr-modal, .sr-dialog, [role='dialog']") || panelBody.parentElement;
+		if (!isQuestPanel(panel)) {
+			panelBody.querySelectorAll(".spkmod-pq-button").forEach(btn => btn.remove());
+			return;
+		}
+
 		const items = panelBody.querySelectorAll(".sr-list-item");
 		if (!items.length) return;
 
 		items.forEach(item => {
+			// Item-level guard: never attach pin button if item has currency / price indicators or shop actions
+			if (item.querySelector(".sr-currency, .sr-price") || /leave shop|buy item/i.test(item.textContent)) {
+				item.querySelectorAll(".spkmod-pq-button").forEach(btn => btn.remove());
+				return;
+			}
+
 			if (item.querySelector(".spkmod-pq-button")) return;
 
 			const topRow = item.firstElementChild;
@@ -16246,7 +16342,7 @@ function injectPinButtonsIntoQuestList() {
 			if (!titleEl) return;
 
 			const titleText = (titleEl.textContent || "").trim();
-			if (!/\/\s*\d+\s*\/\s*\d+/.test(titleText) && !item.querySelector(".sr-item-icon")) return;
+			if (!titleText) return;
 
 			// If already claimed, no pin button needed
 			if (topRow.querySelector(".sr-badge--success") || topRow.textContent.includes("✓")) {
@@ -16254,14 +16350,16 @@ function injectPinButtonsIntoQuestList() {
 			}
 
 			const quest = matchQuestFromTitleText(titleText, item);
-			const questId = quest?.questId;
+			if (!quest || !quest.questId) return;
+
+			const questId = quest.questId;
 			const isPinned = (lunPinnedQuestId && questId && String(lunPinnedQuestId) === String(questId));
 
 			const pinBtn = document.createElement("button");
 			pinBtn.type = "button";
 			pinBtn.className = "spkmod-pq-button";
 			pinBtn.__quest = quest;
-			if (questId) pinBtn.__questId = questId;
+			pinBtn.__questId = questId;
 			pinBtn.innerText = isPinned ? ("✕ " + (t("unpinQuestBtn") !== "unpinQuestBtn" ? t("unpinQuestBtn") : "Unpin")) : ("📌 " + (t("pinQuestBtn") || "Pin Quest"));
 			pinBtn.style.cssText = `
 				flex-shrink: 0;
