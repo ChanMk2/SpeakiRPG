@@ -13,7 +13,7 @@
         "avatarEmpty": "No matching emojis. The list may still be loading.",
         "avatarUnavailable": "This image is unavailable. Choose another emoji or use initials.",
         "avatarSaveError": "Could not save your avatar. Please try again.",
-        "header": "SpeakiMod+ v2.05",
+        "header": "SpeakiMod+ v2.06",
         "playersNearby": "Speaki nearby: {0}",
         "zoneId": "Zone ID: {0}",
         "expPerMinute": "{0} EXP/min",
@@ -632,7 +632,13 @@
         "bbsEmojiBtnTooltip": "Insert emoji",
         "bbsLevelRequired": "Your level is not enough to post here (Level 3+ required)",
         "bbsIconOnlyLabel": "Icons only",
-        "bbsIconOnlyTooltip": "Show only icons for Reply and Translate"
+        "bbsIconOnlyTooltip": "Show only icons for Reply and Translate",
+        "bbsCollapseRepliesLabel": "Collapse",
+        "bbsCollapseRepliesTooltip": "Collapse post replies into expandable buttons",
+        "bbsReplyWordSingle": "reply",
+        "bbsReplyWordPlural": "replies",
+        "bbsShowReplies": "Show",
+        "bbsCollapseReplies": "Collapse replies"
     },
     "ja": {
         "langName": "日本語",
@@ -648,7 +654,7 @@
         "avatarEmpty": "一致する絵文字がありません。読み込み中の場合もあります。",
         "avatarUnavailable": "画像を読み込めません。別の絵文字か頭文字を選んでください。",
         "avatarSaveError": "アイコンを保存できませんでした。もう一度お試しください。",
-        "header": "SpeakiMod+ v2.05",
+        "header": "SpeakiMod+ v2.06",
         "credits": "• 原作ゲーム: EPID Games\n• Speaki MMO 開発: GMDT\n• クライアント＆SpeakiMod+コーディング: Glas\n• SpeakiMod原作者: Alluseri\n• 日本語翻訳: JPN_健全なエルフ名15T\n• 品質保証＆調整: Chan.\n\n使用ファンアート：\nUI背景への作品使用を許可してくださったアーティストの皆様に心より感謝申し上げます！\n- 느그 유노(Yuno)",
         "for_memo_jp_1": "🔽window_main🔽",
         "playersNearby": "近くのｽﾋﾟｷ数: {0}",
@@ -1296,7 +1302,13 @@
         "bbsEmojiBtnTooltip": "絵文字を挿入",
         "bbsLevelRequired": "レベルが足りないため投稿できません（Lv.3以上必要）",
         "bbsIconOnlyLabel": "アイコンのみ",
-        "bbsIconOnlyTooltip": "返信と翻訳をアイコンのみで表示"
+        "bbsIconOnlyTooltip": "返信と翻訳をアイコンのみで表示",
+        "bbsCollapseRepliesLabel": "折りたたむ",
+        "bbsCollapseRepliesTooltip": "返信を折りたたんでボタン表示にする",
+        "bbsReplyWordSingle": "件の返信",
+        "bbsReplyWordPlural": "件の返信",
+        "bbsShowReplies": "表示",
+        "bbsCollapseReplies": "返信を折りたたむ"
     },
     "ko": {
         "langName": "한국어",
@@ -1312,7 +1324,7 @@
         "avatarEmpty": "일치하는 이모지가 없습니다. 목록을 불러오는 중일 수 있습니다.",
         "avatarUnavailable": "이미지를 불러올 수 없습니다. 다른 이모지나 이름 첫 글자를 선택하세요.",
         "avatarSaveError": "프로필 이미지를 저장하지 못했습니다. 다시 시도해 주세요.",
-        "header": "SpeakiMod+ v2.05",
+        "header": "SpeakiMod+ v2.06",
         "playersNearby": "근처 스피키: {0}",
         "zoneId": "존 ID: {0}",
         "expPerMinute": "{0} EXP/분",
@@ -1930,7 +1942,13 @@
         "bbsEmojiBtnTooltip": "이모지 삽입",
         "bbsLevelRequired": "레벨이 부족하여 글을 작성할 수 없습니다 (Lv.3 이상 필요)",
         "bbsIconOnlyLabel": "아이콘만",
-        "bbsIconOnlyTooltip": "답글 및 번역을 아이콘으로만 표시"
+        "bbsIconOnlyTooltip": "답글 및 번역을 아이콘으로만 표시",
+        "bbsCollapseRepliesLabel": "답글 접기",
+        "bbsCollapseRepliesTooltip": "게시글 답글을 접어 버튼으로 표시합니다",
+        "bbsReplyWordSingle": "개 답글",
+        "bbsReplyWordPlural": "개 답글",
+        "bbsShowReplies": "보기",
+        "bbsCollapseReplies": "답글 접기"
     },
     "zh-TW": {
         "langName": "繁體中文",
@@ -1946,7 +1964,7 @@
         "avatarEmpty": "沒有符合的表情，或清單仍在載入中。",
         "avatarUnavailable": "無法載入圖片，請選擇其他表情或恢復名字首字。",
         "avatarSaveError": "無法儲存頭貼，請重試。",
-        "header": "SpeakiMod+ v2.05",
+        "header": "SpeakiMod+ v2.06",
         "playersNearby": "附近的斯皮奇: {0}",
         "zoneId": "區域 ID: {0}",
         "expPerMinute": "{0} 經驗值/每分鐘",
@@ -2559,7 +2577,13 @@
         "bbsEmojiBtnTooltip": "插入表情",
         "bbsLevelRequired": "等級不足，無法在此發帖（需要 Lv.3 以上）",
         "bbsIconOnlyLabel": "僅圖示",
-        "bbsIconOnlyTooltip": "僅顯示回覆與翻譯圖示"
+        "bbsIconOnlyTooltip": "僅顯示回覆與翻譯圖示",
+        "bbsCollapseRepliesLabel": "摺疊",
+        "bbsCollapseRepliesTooltip": "將貼文回覆摺疊為可展開按鈕",
+        "bbsReplyWordSingle": "則回覆",
+        "bbsReplyWordPlural": "則回覆",
+        "bbsShowReplies": "展開",
+        "bbsCollapseReplies": "摺疊回覆"
     },
     "zh-CN": {
         "langName": "简体中文",
@@ -2575,7 +2599,7 @@
         "avatarEmpty": "没有匹配的表情，或列表仍在加载中。",
         "avatarUnavailable": "无法加载图片，请选择其他表情或恢复名字首字。",
         "avatarSaveError": "无法保存头像，请重试。",
-        "header": "SpeakiMod+ v2.05",
+        "header": "SpeakiMod+ v2.06",
         "playersNearby": "附近的斯皮奇: {0}",
         "zoneId": "区域 ID: {0}",
         "expPerMinute": "{0} 经验值/每分钟",
@@ -3188,7 +3212,13 @@
         "bbsEmojiBtnTooltip": "插入表情",
         "bbsLevelRequired": "等级不足，无法在此发帖（需要 Lv.3 以上）",
         "bbsIconOnlyLabel": "仅图标",
-        "bbsIconOnlyTooltip": "仅显示回复与翻译图标"
+        "bbsIconOnlyTooltip": "仅显示回复与翻译图标",
+        "bbsCollapseRepliesLabel": "折叠",
+        "bbsCollapseRepliesTooltip": "将帖子回复折叠为可展开按钮",
+        "bbsReplyWordSingle": "条回复",
+        "bbsReplyWordPlural": "条回复",
+        "bbsShowReplies": "展开",
+        "bbsCollapseReplies": "折叠回复"
     },
     "es-419": {
         "langName": "Español",
@@ -3204,7 +3234,7 @@
         "avatarEmpty": "No hay emojis coincidentes. La lista puede estar cargando.",
         "avatarUnavailable": "Imagen no disponible. Elige otro emoji o usa la inicial.",
         "avatarSaveError": "No se pudo guardar el avatar. Inténtalo de nuevo.",
-        "header": "SpeakiMod+ v2.05",
+        "header": "SpeakiMod+ v2.06",
         "playersNearby": "Speaki cercanos: {0}",
         "zoneId": "ID de zona: {0}",
         "expPerMinute": "{0} EXP/min",
@@ -3817,6 +3847,12 @@
         "bbsEmojiBtnTooltip": "Insertar emoji",
         "bbsLevelRequired": "Tu nivel no es suficiente para publicar aquí (se requiere Nivel 3+)",
         "bbsIconOnlyLabel": "Solo iconos",
-        "bbsIconOnlyTooltip": "Mostrar solo iconos para Responder y Traducir"
+        "bbsIconOnlyTooltip": "Mostrar solo iconos para Responder y Traducir",
+        "bbsCollapseRepliesLabel": "Plegar",
+        "bbsCollapseRepliesTooltip": "Plegar las respuestas en botones expandibles",
+        "bbsReplyWordSingle": "respuesta",
+        "bbsReplyWordPlural": "respuestas",
+        "bbsShowReplies": "Mostrar",
+        "bbsCollapseReplies": "Plegar respuestas"
     }
 }

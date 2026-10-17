@@ -2622,6 +2622,7 @@ let lastToggleSettingsTime = 0;
 // Keep export and import on the same explicit allowlist.
 const SPKMOD_SETTINGS_KEYS = new Set([
 	"spkmod-accent-color",
+	"spkmod-bbs-collapse-replies",
 	"spkmod-bbs-font-size",
 	"spkmod-bbs-icon-actions",
 	"spkmod-bbs-theme",
@@ -12893,6 +12894,22 @@ function setBbsIconOnlyActions(enabled) {
 	renderBbsPosts();
 }
 
+var savedBbsCollapseReplies = (window.localStorage && localStorage.getItem("spkmod-bbs-collapse-replies"));
+var lunBbsCollapseReplies = (savedBbsCollapseReplies !== null) ? (savedBbsCollapseReplies === "true") : true;
+var lunBbsExpandedThreadIds = new Set();
+
+function setBbsCollapseReplies(enabled) {
+	lunBbsCollapseReplies = !!enabled;
+	if (window.localStorage) {
+		localStorage.setItem("spkmod-bbs-collapse-replies", lunBbsCollapseReplies ? "true" : "false");
+	}
+	if (bbsModalElements.collapseRepliesCheckbox) {
+		bbsModalElements.collapseRepliesCheckbox.checked = lunBbsCollapseReplies;
+	}
+	renderBbsPosts();
+}
+window.setBbsCollapseReplies = setBbsCollapseReplies;
+
 const LUN_BBS_THEMES = {
 	"normal": {
 		id: "normal",
@@ -13383,6 +13400,42 @@ function buildBbsTree(posts) {
 	return roots;
 }
 
+function countBbsDescendants(node) {
+	if (!node || !Array.isArray(node.children)) return 0;
+	let total = node.children.length;
+	for (const child of node.children) {
+		total += countBbsDescendants(child);
+	}
+	return total;
+}
+
+function hasUnreadBbsDescendant(node, unreadCutoff) {
+	if (!node || !Array.isArray(node.children)) return false;
+	for (const child of node.children) {
+		if (child.post && child.post.id && child.post.id > unreadCutoff) return true;
+		if (hasUnreadBbsDescendant(child, unreadCutoff)) return true;
+	}
+	return false;
+}
+
+function findRootForPostId(roots, targetId) {
+	function hasPost(node, id) {
+		if (!node || !node.post) return false;
+		if (node.post.id === id) return true;
+		if (Array.isArray(node.children)) {
+			for (const c of node.children) {
+				if (hasPost(c, id)) return true;
+			}
+		}
+		return false;
+	}
+	if (!Array.isArray(roots)) return null;
+	for (const r of roots) {
+		if (hasPost(r, targetId)) return r;
+	}
+	return null;
+}
+
 function setBbsStatusMessage(msg, isError = true, durationMs = 4000) {
 	if (!bbsModalElements.statusMsg) return;
 	bbsModalElements.statusMsg.innerText = msg;
@@ -13833,8 +13886,16 @@ function renderBbsPosts() {
 		postEl.querySelectorAll(".spkmod-bbs-quote-anchor").forEach(anchor => {
 			anchor.onclick = (e) => {
 				e.stopPropagation();
-				const targetId = anchor.getAttribute("data-target");
-				const targetEl = document.getElementById(`spkmod-bbs-post-${targetId}`);
+				const targetId = parseInt(anchor.getAttribute("data-target"), 10);
+				let targetEl = document.getElementById(`spkmod-bbs-post-${targetId}`);
+				if (!targetEl && lunBbsCollapseReplies && typeof findRootForPostId === "function") {
+					const rootNode = findRootForPostId(roots, targetId);
+					if (rootNode) {
+						lunBbsExpandedThreadIds.add(rootNode.post.id);
+						renderBbsPosts();
+						targetEl = document.getElementById(`spkmod-bbs-post-${targetId}`);
+					}
+				}
 				if (targetEl && bbsModalElements.postsContainer) {
 					const cRect = bbsModalElements.postsContainer.getBoundingClientRect();
 					const tRect = targetEl.getBoundingClientRect();
@@ -13866,11 +13927,95 @@ function renderBbsPosts() {
 
 		container.appendChild(postEl);
 
-		// Render children directly underneath
+		// Render children / replies
 		if (Array.isArray(node.children) && node.children.length > 0) {
-			node.children.forEach(child => {
-				renderNode(child, depth + 1, visited);
-			});
+			if (depth === 0 && lunBbsCollapseReplies) {
+				const replyCount = countBbsDescendants(node);
+				const isExpanded = lunBbsExpandedThreadIds.has(node.post.id);
+
+				if (!isExpanded) {
+					const toggleBtn = document.createElement("button");
+					toggleBtn.type = "button";
+					toggleBtn.className = "spkmod-bbs-replies-toggle";
+					const indentPx = (curTheme.id === "simple" ? 16 : 22);
+					toggleBtn.style.cssText = `
+						display: inline-flex;
+						align-items: center;
+						gap: 5px;
+						margin-left: ${indentPx}px;
+						margin-top: 2px;
+						margin-bottom: 3px;
+						padding: 2px 8px;
+						font-size: ${Math.max(8.5, btnFs)}px;
+						background: rgba(255, 255, 255, 0.05);
+						border: 1px dashed rgba(255, 255, 255, 0.2);
+						border-left: ${curTheme.replyBorderLeft};
+						border-radius: 4px;
+						color: ${curTheme.anchorColor};
+						cursor: pointer;
+						user-select: none;
+						line-height: 1.4;
+						width: fit-content;
+						transition: background 0.15s, border-color 0.15s;
+					`;
+					toggleBtn.onmouseenter = () => { toggleBtn.style.background = "rgba(255, 255, 255, 0.1)"; };
+					toggleBtn.onmouseleave = () => { toggleBtn.style.background = "rgba(255, 255, 255, 0.05)"; };
+
+					const hasNew = hasUnreadBbsDescendant(node, unreadCutoff);
+					const replyWord = replyCount === 1 ? (t("bbsReplyWordSingle") || "reply") : (t("bbsReplyWordPlural") || "replies");
+					toggleBtn.innerHTML = `💬 +${replyCount} ${replyWord}${hasNew ? ' <span style="color: #ef4444; font-weight: bold;">(New!)</span>' : ''} <span style="opacity: 0.8; font-weight: 600;">[▶ ${t("bbsShowReplies") || "Show"}]</span>`;
+
+					toggleBtn.onclick = (e) => {
+						e.stopPropagation();
+						lunBbsExpandedThreadIds.add(node.post.id);
+						renderBbsPosts();
+					};
+					container.appendChild(toggleBtn);
+				} else {
+					node.children.forEach(child => {
+						renderNode(child, depth + 1, visited);
+					});
+
+					const collapseBtn = document.createElement("button");
+					collapseBtn.type = "button";
+					collapseBtn.className = "spkmod-bbs-replies-toggle";
+					const indentPx = (curTheme.id === "simple" ? 16 : 22);
+					collapseBtn.style.cssText = `
+						display: inline-flex;
+						align-items: center;
+						gap: 4px;
+						margin-left: ${indentPx}px;
+						margin-top: 2px;
+						margin-bottom: 4px;
+						padding: 2px 7px;
+						font-size: ${Math.max(8, btnFs - 0.5)}px;
+						background: transparent;
+						border: 1px dashed rgba(255, 255, 255, 0.15);
+						border-radius: 3px;
+						color: ${curTheme.timeColor};
+						cursor: pointer;
+						user-select: none;
+						line-height: 1.3;
+						opacity: 0.8;
+						width: fit-content;
+						transition: opacity 0.15s, color 0.15s;
+					`;
+					collapseBtn.onmouseenter = () => { collapseBtn.style.opacity = "1"; collapseBtn.style.color = curTheme.anchorColor; };
+					collapseBtn.onmouseleave = () => { collapseBtn.style.opacity = "0.8"; collapseBtn.style.color = curTheme.timeColor; };
+					collapseBtn.innerHTML = `▲ ${t("bbsCollapseReplies") || "Collapse replies"} <span style="opacity: 0.7;">(–${replyCount})</span>`;
+
+					collapseBtn.onclick = (e) => {
+						e.stopPropagation();
+						lunBbsExpandedThreadIds.delete(node.post.id);
+						renderBbsPosts();
+					};
+					container.appendChild(collapseBtn);
+				}
+			} else {
+				node.children.forEach(child => {
+					renderNode(child, depth + 1, visited);
+				});
+			}
 		}
 	}
 
@@ -13955,6 +14100,13 @@ async function sendBbsPost() {
 			updateBbsRadioIndicators();
 			lunBbsCooldownUntil = Date.now() + 5000;
 			startBbsCooldownTimer(5);
+			if (replyToId && typeof findRootForPostId === "function") {
+				const currentRoots = buildBbsTree(lunBbsPosts);
+				const rootNode = findRootForPostId(currentRoots, replyToId);
+				if (rootNode) {
+					lunBbsExpandedThreadIds.add(rootNode.post.id);
+				}
+			}
 			await fetchBbsPosts();
 			const newPostId = data.post && data.post.id;
 			if (newPostId && bbsModalElements.postsContainer) {
@@ -14188,6 +14340,28 @@ document.body.appendChild(
 						style: "user-select: none; font-size: 9px; line-height: 1;"
 					})
 				]),
+				bbsModalElements.collapseRepliesContainer = buildElement("label", {
+					id: "spkmod-bbs-collapse-container",
+					title: t("bbsCollapseRepliesTooltip") || "Collapse post replies into expandable buttons",
+					style: "display: inline-flex; align-items: center; gap: 3px; font-size: 10px; color: #cbd5e1; cursor: pointer; user-select: none; height: 18px; padding: 0 4px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 4px; line-height: 1;",
+					onpointerdown: (e) => e.stopPropagation(),
+					onmousedown: (e) => e.stopPropagation()
+				}, [
+					bbsModalElements.collapseRepliesCheckbox = buildElement("input", {
+						id: "spkmod-bbs-collapse-checkbox",
+						type: "checkbox",
+						checked: lunBbsCollapseReplies,
+						style: "cursor: pointer; margin: 0; width: 11px; height: 11px;",
+						onpointerdown: (e) => e.stopPropagation(),
+						onmousedown: (e) => e.stopPropagation(),
+						onclick: (e) => e.stopPropagation(),
+						onchange: (e) => setBbsCollapseReplies(e.target.checked)
+					}),
+					bbsModalElements.collapseRepliesLabel = buildElement("span", {
+						innerText: t("bbsCollapseRepliesLabel") || "Collapse",
+						style: "user-select: none; font-size: 9px; line-height: 1;"
+					})
+				]),
 				bbsModalElements.refreshBtn = buildElement("span", {
 					id: "spkmod-bbs-refresh",
 					innerText: "🔄",
@@ -14339,6 +14513,12 @@ function updateBbsI18n() {
 	}
 	if (bbsModalElements.iconOnlyContainer) {
 		bbsModalElements.iconOnlyContainer.title = t("bbsIconOnlyTooltip") || "Show only icons for Reply and Translate";
+	}
+	if (bbsModalElements.collapseRepliesLabel) {
+		bbsModalElements.collapseRepliesLabel.innerText = t("bbsCollapseRepliesLabel") || "Collapse";
+	}
+	if (bbsModalElements.collapseRepliesContainer) {
+		bbsModalElements.collapseRepliesContainer.title = t("bbsCollapseRepliesTooltip") || "Collapse post replies into expandable buttons";
 	}
 	if (typeof updateBbsReplyBar === "function") updateBbsReplyBar();
 	if (typeof renderBbsPosts === "function") renderBbsPosts();
