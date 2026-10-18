@@ -3,12 +3,8 @@ name: Build Android APK
 on:
   push:
     branches: [ main ]
-    paths:
-      - 'mobile_client/**'
   pull_request:
     branches: [ main ]
-    paths:
-      - 'mobile_client/**'
   workflow_dispatch:
 
 jobs:
