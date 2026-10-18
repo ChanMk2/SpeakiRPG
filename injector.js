@@ -1,3 +1,5 @@
+try { window.spkmodFixRender = localStorage.getItem("spkmod-fix-render") === "true"; } catch (_) { window.spkmodFixRender = false; }
+
 window.injectSpeakiMod = () => {
 	if (window.__speakiModInjected) {
 		if (typeof window.__speakiInitInGame === "function") {
@@ -36,6 +38,12 @@ async function patchScript(og, src) {
 	// Identify minified i18n and questManager functions
 	const m_i18n = (code.match(/function (\w+?)\(e\)\s*\{\s*let \w+\s*=\s*\w+\[\w+\(\)\];\s*return Object\.prototype\.hasOwnProperty.call\(\w+,\s*e\)\s*\?\s*\w+\[e\]\s*:/) || [])[1] || "null";
 	const m_questManager = (code.match(/new\s*(\w+)\({\s*container:\s*e,\s*showToast:\s*e\s*=>\s*\w+\.setStatus\(e\),\s*onClaimSuccess:\s*\(\)\s*=>\s*{\s*\w+\.markStale\(\),\s*\w+\.markStale\(\),\s*\w+\(\)\s*}/) || [])[1] || "null";
+
+	code = code.replace(
+		/if\((\w+)\(\)\)(\w+)=(\w+)\(\)\.resolutionScale;else\{let (\w+)=window\.devicePixelRatio;/,
+		(_m, isMobileLayout, e, getSettings, dpr) =>
+			`if(${isMobileLayout}()&&!window.spkmodFixRender)${e}=${getSettings}().resolutionScale;else{let ${dpr}=window.devicePixelRatio;`
+	);
 
 	// 1. Rewrite relative asset imports to absolute URLs
 	code = code.replaceAll(/from\s*"\.\//g, 'from "https://speakirpg.overture.io.kr/assets/');

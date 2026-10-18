@@ -26,8 +26,23 @@ let statsInterval = null;
 let statsTimeout = null;
 let lastUpdateTime = 0;
 const MIN_UPDATE_INTERVAL_MS = 10000; // minimum 10s between updates
+let discordRpcEnabled = true;
+let rpcReadyRegistered = false;
+
+async function clearDiscordActivity() {
+  try {
+    if (rpc) {
+      await rpc.clearActivity();
+      console.log('Discord RPC activity cleared.');
+    }
+  } catch (err) {
+    console.error('Failed to clear Discord activity:', err);
+  }
+}
 
 async function updateDiscordActivity(level, playerName, exp = null, location = null) {
+  if (!discordRpcEnabled) return;
+
   const setActivity = async () => {
     const detailsText = playerName ? (location ? `${playerName} • ${location}` : playerName) : (location ? `Unknown Player • ${location}` : 'Unknown Player');
     let stateText = level ? `Level ${String(level)}` : 'In-Game';
@@ -59,8 +74,10 @@ async function updateDiscordActivity(level, playerName, exp = null, location = n
     // try to login and set activity if rpc wasn't ready
     try {
       await rpc.login({ clientId });
-      await setActivity();
-      console.log('RPC activity updated after login:', { level, playerName });
+      if (discordRpcEnabled) {
+        await setActivity();
+        console.log('RPC activity updated after login:', { level, playerName });
+      }
     } catch (err2) {
       console.error('Failed to update RPC activity:', err2);
     }
@@ -76,11 +93,18 @@ async function capturePageStats() {
         const levelEl = document.querySelector('.sr-player-card__portrait-wrap .sr-player-card__lv-badge');
         const expEl = document.querySelector('.sr-player-card__exp-track');
         const locationEl = document.querySelector('.sr-minimap-frame__caption');
+        let rpcSetting = true;
+        try {
+          if (window.localStorage && localStorage.getItem('spkmod-discord-rpc') === 'false') {
+            rpcSetting = false;
+          }
+        } catch (_) {}
         return {
           playerName: nameEl ? nameEl.innerText.trim() : null,
           level: levelEl ? levelEl.innerText.trim() : null,
           exp: expEl ? expEl.getAttribute('title') || expEl.innerText.trim() : null,
-          location: locationEl ? locationEl.innerText.trim() : null
+          location: locationEl ? locationEl.innerText.trim() : null,
+          discordRpcEnabled: rpcSetting
         };
       })();
     `, true);
@@ -89,6 +113,61 @@ async function capturePageStats() {
     return { level: null, playerName: null, exp: null, location: null };
   }
 }
+
+async function triggerStatsUpdate(force = false) {
+  try {
+    const stats = await capturePageStats();
+    if (stats.discordRpcEnabled !== undefined && stats.discordRpcEnabled !== discordRpcEnabled) {
+      discordRpcEnabled = stats.discordRpcEnabled;
+      if (!discordRpcEnabled) {
+        await clearDiscordActivity();
+        return;
+      }
+    }
+
+    if (!discordRpcEnabled) return;
+
+    console.log('Auto capture page stats:', stats);
+    if (stats.playerName || stats.level || stats.exp || stats.location) {
+      const now = Date.now();
+      if (force || now - lastUpdateTime > MIN_UPDATE_INTERVAL_MS) {
+        lastUpdateTime = now;
+        await updateDiscordActivity(stats.level, stats.playerName, stats.exp, stats.location);
+      } else {
+        console.log('Update throttled; skipping');
+      }
+      return;
+    }
+
+    console.log('No player stats were found in the DOM.');
+    if (force) {
+      try {
+        await rpc.setActivity({
+          details: activity,
+          state: 'Main Menu',
+          startTimestamp: rpcTimestamp,
+          largeImageKey: 'logo',
+          largeImageText: 'Auuu',
+          smallImageKey: 'logo',
+          smallImageText: 'Auuuuuuuuuuuuuuuuuuuuuuu',
+          instance: false,
+        });
+      } catch (_) {}
+    }
+  } catch (err) {
+    console.error('Error in triggerStatsUpdate:', err);
+  }
+}
+
+ipcMain.on('set-discord-rpc', async (event, enabled) => {
+  discordRpcEnabled = !!enabled;
+  console.log('Discord RPC toggled via IPC:', discordRpcEnabled);
+  if (!discordRpcEnabled) {
+    await clearDiscordActivity();
+  } else {
+    await triggerStatsUpdate(true);
+  }
+});
 
 async function createWindow() {
   const faviconBase64 = await fetchFavicon(faviconUrl);
@@ -134,6 +213,10 @@ async function createWindow() {
     });
     globalShortcut.register('CommandOrControl+Shift+D', async () => {
       try {
+        if (!discordRpcEnabled) {
+          console.log('Discord RPC is disabled, skipping manual refresh.');
+          return;
+        }
         const stats = await capturePageStats();
         console.log('Captured page stats shortcut:', stats);
         if (stats.playerName || stats.level || stats.exp || stats.location) {
@@ -185,20 +268,25 @@ activity = activities[Math.floor(Math.random() * activities.length)];
 ipcMain.on('load-site', async (event, url) => {
   mainWindow.loadURL(url);
 
-  rpc.on('ready', () => {
-    rpc.setActivity({
-      details: activity,
-      state: 'Main Menu',
-      startTimestamp: Date.now(),
-      largeImageKey: 'logo',
-      largeImageText: 'Auuu',
-      smallImageKey: 'logo',
-      smallImageText: 'Auuuuuuuuuuuuuuuuuuuuuuu',
-      instance: false,
+  if (!rpcReadyRegistered) {
+    rpcReadyRegistered = true;
+    rpc.on('ready', () => {
+      if (discordRpcEnabled) {
+        rpc.setActivity({
+          details: activity,
+          state: 'Main Menu',
+          startTimestamp: Date.now(),
+          largeImageKey: 'logo',
+          largeImageText: 'Auuu',
+          smallImageKey: 'logo',
+          smallImageText: 'Auuuuuuuuuuuuuuuuuuuuuuu',
+          instance: false,
+        }).catch(() => {});
+      }
     });
-  });
 
-  rpc.login({ clientId }).catch(console.error);
+    rpc.login({ clientId }).catch(console.error);
+  }
 
   // clear previous timers if any (on re-load)
   if (statsInterval) {
@@ -209,28 +297,6 @@ ipcMain.on('load-site', async (event, url) => {
     clearTimeout(statsTimeout);
     statsTimeout = null;
   }
-
-  // helper to update RPC from the current page DOM
-  const triggerStatsUpdate = async () => {
-    try {
-      const stats = await capturePageStats();
-      console.log('Auto capture page stats:', stats);
-      if (stats.playerName || stats.level || stats.exp || stats.location) {
-        const now = Date.now();
-        if (now - lastUpdateTime > MIN_UPDATE_INTERVAL_MS) {
-          lastUpdateTime = now;
-          await updateDiscordActivity(stats.level, stats.playerName, stats.exp, stats.location);
-        } else {
-          console.log('Update throttled; skipping');
-        }
-        return;
-      }
-
-      console.log('No player stats were found in the DOM.');
-    } catch (err) {
-      console.error('Error in triggerStatsUpdate:', err);
-    }
-  };
 
   // schedule: once 30s after load, then every 5 minutes
   statsTimeout = setTimeout(() => {
