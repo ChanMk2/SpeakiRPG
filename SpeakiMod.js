@@ -2618,7 +2618,8 @@ function makeDraggable(element, handles) {
 					const leftNum = parseFloat(parsedPos.left);
 					if (!isNaN(topNum) && !isNaN(leftNum)) {
 						const minTop = (element.id === "spkmod-hud") ? 0 : 35;
-						const clampedTop = Math.max(minTop, Math.min(topNum, window.innerHeight - 45));
+						const maxTop = Math.max(minTop, window.innerHeight - (element.id === "spkmod-hud" ? 45 : 120));
+						const clampedTop = Math.max(minTop, Math.min(topNum, maxTop));
 						const clampedLeft = Math.max(0, Math.min(leftNum, window.innerWidth - 60));
 						element.style.top = clampedTop + "px";
 						element.style.left = clampedLeft + "px";
@@ -2898,7 +2899,11 @@ function positionModalNicely(modal) {
 	const hasSavedPos = !!(posKey && window.localStorage && localStorage.getItem(posKey));
 	const hasBeenDragged = modal.dataset.userDragged === "true";
 
-	if (hasSavedPos || (hasBeenDragged && modal.style.left && modal.style.top)) {
+	const curTop = parseFloat(modal.style.top);
+	const curLeft = parseFloat(modal.style.left);
+	const isOffscreen = isNaN(curTop) || isNaN(curLeft) || curTop > (window.innerHeight - 80) || curLeft > (window.innerWidth - 80) || curTop < 0;
+
+	if (!isOffscreen && (hasSavedPos || hasBeenDragged) && modal.style.left && modal.style.top) {
 		return;
 	}
 
@@ -4401,6 +4406,7 @@ document.head.appendChild(buildElement(
 			max-width: 95vw;
 		}
 		#spkmod-bbs-modal {
+			position: fixed !important;
 			width: 520px;
 			min-width: 360px;
 			min-height: 280px;
@@ -13709,46 +13715,50 @@ function updateBbsComposerState() {
 
 window.toggleBbsModal = function() {
 	if (!lunHudElements.bbsModal) return;
-	const isClosed = lunHudElements.bbsModal.classList.contains("hidden");
-	if (isClosed) {
-		if (typeof positionModalNicely === "function") positionModalNicely(lunHudElements.bbsModal);
-		lunHudElements.bbsModal.classList.remove("hidden");
-		updateBbsComposerState();
-		if (typeof applyBbsThemeVisuals === "function") applyBbsThemeVisuals();
-		if (bbsModalElements.postsContainer) {
-			bbsModalElements.postsContainer.scrollTop = 0;
-		}
-		const badge = document.getElementById("spkmod-bbs-btn-badge");
-		if (badge) badge.remove();
-		fetchBbsPosts();
-		if (!lunBbsPollTimer) {
-			lunBbsPollTimer = setInterval(() => {
-				if (lunHudElements.bbsModal && !lunHudElements.bbsModal.classList.contains("hidden")) {
-					fetchBbsPosts(true);
-				}
-			}, 15000);
-		}
-	} else {
-		lunHudElements.bbsModal.classList.add("hidden");
-		if (typeof lunEmojiPreviewTooltip !== "undefined" && lunEmojiPreviewTooltip) {
-			lunEmojiPreviewTooltip.style.display = "none";
-		}
-		if (window.lunEmojiTargetInput === bbsModalElements.input) {
-			if (typeof lunEmojiPickerPanel !== "undefined" && lunEmojiPickerPanel) {
-				lunEmojiPickerPanel.remove();
-				lunEmojiPickerPanel = null;
+	try {
+		const isClosed = lunHudElements.bbsModal.classList.contains("hidden");
+		if (isClosed) {
+			if (typeof positionModalNicely === "function") positionModalNicely(lunHudElements.bbsModal);
+			lunHudElements.bbsModal.classList.remove("hidden");
+			updateBbsComposerState();
+			if (typeof applyBbsThemeVisuals === "function") applyBbsThemeVisuals();
+			if (bbsModalElements.postsContainer) {
+				bbsModalElements.postsContainer.scrollTop = 0;
 			}
-			window.lunEmojiTargetInput = null;
+			const badge = document.getElementById("spkmod-bbs-btn-badge");
+			if (badge) badge.remove();
+			fetchBbsPosts();
+			if (!lunBbsPollTimer) {
+				lunBbsPollTimer = setInterval(() => {
+					if (lunHudElements.bbsModal && !lunHudElements.bbsModal.classList.contains("hidden")) {
+						fetchBbsPosts(true);
+					}
+				}, 15000);
+			}
+		} else {
+			lunHudElements.bbsModal.classList.add("hidden");
+			if (typeof lunEmojiPreviewTooltip !== "undefined" && lunEmojiPreviewTooltip) {
+				lunEmojiPreviewTooltip.style.display = "none";
+			}
+			if (window.lunEmojiTargetInput === bbsModalElements.input) {
+				if (typeof lunEmojiPickerPanel !== "undefined" && lunEmojiPickerPanel) {
+					lunEmojiPickerPanel.remove();
+					lunEmojiPickerPanel = null;
+				}
+				window.lunEmojiTargetInput = null;
+			}
+			markBbsPostsAsRead();
+			if (lunBbsPollTimer) {
+				clearInterval(lunBbsPollTimer);
+				lunBbsPollTimer = null;
+			}
+			if (lunBbsSeenTimer) {
+				clearTimeout(lunBbsSeenTimer);
+				lunBbsSeenTimer = null;
+			}
 		}
-		markBbsPostsAsRead();
-		if (lunBbsPollTimer) {
-			clearInterval(lunBbsPollTimer);
-			lunBbsPollTimer = null;
-		}
-		if (lunBbsSeenTimer) {
-			clearTimeout(lunBbsSeenTimer);
-			lunBbsSeenTimer = null;
-		}
+	} catch (err) {
+		console.error("[SpeakiMod+] Error in toggleBbsModal:", err);
 	}
 };
 
@@ -14810,7 +14820,7 @@ document.body.appendChild(
 	lunHudElements.bbsModal = buildElement("div", {
 		id: "spkmod-bbs-modal",
 		className: "hidden",
-		style: "display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; box-sizing: border-box; min-width: 360px; min-height: 280px; max-height: 94vh; position: relative;"
+		style: "display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; box-sizing: border-box; min-width: 360px; min-height: 280px; max-height: 94vh;"
 	}, [
 		// Header row
 		bbsModalElements.headerRow = buildElement("div", {
