@@ -2775,6 +2775,121 @@ function makeDraggable(element, handles) {
 	});
 }
 
+function makeResizable(element, handle, options = {}) {
+	if (!element || !handle) return;
+	if (element.__spkmodResizable) return;
+	element.__spkmodResizable = true;
+
+	const minW = options.minWidth || 340;
+	const minH = options.minHeight || 260;
+	const sizeKey = options.storageKey || (element.id ? ("spkmod-size-" + element.id) : null);
+
+	// Restore saved size if available
+	if (sizeKey && window.localStorage) {
+		try {
+			const saved = localStorage.getItem(sizeKey);
+			if (saved) {
+				const parsed = JSON.parse(saved);
+				if (parsed && parsed.width && parsed.height) {
+					const curMaxW = Math.round(window.innerWidth * 0.98);
+					const curMaxH = Math.round(window.innerHeight * 0.95);
+					const w = Math.max(minW, Math.min(curMaxW, parseInt(parsed.width, 10)));
+					const h = Math.max(minH, Math.min(curMaxH, parseInt(parsed.height, 10)));
+					element.style.width = w + "px";
+					element.style.height = h + "px";
+				}
+			}
+		} catch (_) {}
+	}
+
+	let isResizing = false;
+	let startPointerX = 0, startPointerY = 0;
+	let startWidth = 0, startHeight = 0;
+	let currentScale = 1;
+
+	function onPointerDown(e) {
+		if (e.button !== undefined && e.button !== 0) return;
+		e.stopPropagation();
+		e.preventDefault();
+
+		const scaleVar = getComputedStyle(element).getPropertyValue("--spkmod-scale");
+		currentScale = parseFloat(scaleVar) || 1;
+
+		const rect = element.getBoundingClientRect();
+		startWidth = rect.width / currentScale;
+		startHeight = rect.height / currentScale;
+		startPointerX = e.clientX;
+		startPointerY = e.clientY;
+		isResizing = true;
+
+		if (handle.setPointerCapture && e.pointerId) {
+			try { handle.setPointerCapture(e.pointerId); } catch (_) {}
+		}
+
+		document.body.style.userSelect = "none";
+		document.body.style.cursor = "nwse-resize";
+
+		window.addEventListener("pointermove", onPointerMove, true);
+		window.addEventListener("pointerup", onPointerUp, true);
+		window.addEventListener("pointercancel", onPointerUp, true);
+		window.addEventListener("mousemove", onPointerMove, true);
+		window.addEventListener("mouseup", onPointerUp, true);
+	}
+
+	function onPointerMove(e) {
+		if (!isResizing) return;
+		e.stopPropagation();
+		e.preventDefault();
+
+		const deltaX = (e.clientX - startPointerX) / currentScale;
+		const deltaY = (e.clientY - startPointerY) / currentScale;
+
+		const curMaxW = Math.round(window.innerWidth * 0.98);
+		const curMaxH = Math.round(window.innerHeight * 0.95);
+
+		const newWidth = Math.round(Math.max(minW, Math.min(curMaxW, startWidth + deltaX)));
+		const newHeight = Math.round(Math.max(minH, Math.min(curMaxH, startHeight + deltaY)));
+
+		element.style.width = newWidth + "px";
+		element.style.height = newHeight + "px";
+
+		if (typeof options.onResize === "function") {
+			options.onResize(newWidth, newHeight);
+		}
+	}
+
+	function onPointerUp(e) {
+		if (!isResizing) return;
+		isResizing = false;
+		e.stopPropagation();
+		e.preventDefault();
+
+		document.body.style.userSelect = "";
+		document.body.style.cursor = "";
+
+		window.removeEventListener("pointermove", onPointerMove, true);
+		window.removeEventListener("pointerup", onPointerUp, true);
+		window.removeEventListener("pointercancel", onPointerUp, true);
+		window.removeEventListener("mousemove", onPointerMove, true);
+		window.removeEventListener("mouseup", onPointerUp, true);
+
+		if (e && e.pointerId && handle.releasePointerCapture) {
+			try { handle.releasePointerCapture(e.pointerId); } catch (_) {}
+		}
+
+		if (sizeKey && window.localStorage) {
+			const rect = element.getBoundingClientRect();
+			const finalW = Math.round(rect.width / currentScale);
+			const finalH = Math.round(rect.height / currentScale);
+			localStorage.setItem(sizeKey, JSON.stringify({ width: finalW, height: finalH }));
+		}
+	}
+
+	handle.addEventListener("pointerdown", onPointerDown);
+	handle.addEventListener("mousedown", onPointerDown);
+}
+window.makeResizable = makeResizable;
+
 function positionModalNicely(modal) {
 	if (!modal) return;
 	bringToFront(modal);
@@ -2845,7 +2960,7 @@ function resetWindowPositions() {
 			const keysToRemove = [];
 			for (let i = 0; i < localStorage.length; i++) {
 				const k = localStorage.key(i);
-				if (k && (k.startsWith("spkmod-pos-") || k === "spkmod-window-pos")) {
+				if (k && (k.startsWith("spkmod-pos-") || k.startsWith("spkmod-size-") || k === "spkmod-window-pos")) {
 					keysToRemove.push(k);
 				}
 			}
@@ -2882,6 +2997,11 @@ function resetWindowPositions() {
 			m.style.top = "";
 		}
 	});
+
+	if (lunHudElements.bbsModal) {
+		lunHudElements.bbsModal.style.width = "520px";
+		lunHudElements.bbsModal.style.height = "480px";
+	}
 
 	if (lunHudElements.bbsModal && !lunHudElements.bbsModal.classList.contains("hidden")) {
 		const modalWidth = lunHudElements.bbsModal.offsetWidth || 520;
@@ -4282,7 +4402,11 @@ document.head.appendChild(buildElement(
 		}
 		#spkmod-bbs-modal {
 			width: 520px;
-			max-width: 96vw;
+			min-width: 360px;
+			min-height: 280px;
+			max-width: 98vw;
+			max-height: 94vh;
+			overflow: hidden !important;
 		}
 		#spkmod-effects-modal {
 			width: 960px;
@@ -13227,6 +13351,14 @@ var lunBbsCooldownUntil = 0;
 var lunBbsTranslations = {};
 var lunBbsReplyTarget = null;
 var lunBbsLastReadId = parseInt((window.localStorage && localStorage.getItem("spkmod-bbs-last-read-id")) || "0", 10);
+var lunBbsHeartedPostIds = new Set();
+try {
+	const rawHearted = localStorage.getItem("spkmod-bbs-hearted-ids");
+	if (rawHearted) {
+		const parsed = JSON.parse(rawHearted);
+		if (Array.isArray(parsed)) lunBbsHeartedPostIds = new Set(parsed);
+	}
+} catch (_) {}
 
 function escapeBbsHtml(text) {
 	if (!text) return '';
@@ -14030,6 +14162,7 @@ function renderBbsPosts() {
 	}
 
 	const wasAtTop = container.scrollTop <= 40;
+	const prevScrollTop = container.scrollTop;
 	container.innerHTML = "";
 	const unreadCutoff = lunBbsLastReadId;
 
@@ -14162,6 +14295,38 @@ function renderBbsPosts() {
 			setBbsReplyTarget(post.id, post.username);
 		};
 		actionsSpan.appendChild(replyBtn);
+
+		// Heart / Like button with counter
+		const heartBtn = document.createElement("button");
+		heartBtn.className = "spkmod-bbs-heart-btn";
+		const heartCount = (typeof post.hearts === "number") ? post.hearts : 0;
+		const isHearted = lunBbsHeartedPostIds.has(post.id);
+		const heartIcon = isHearted ? "❤️" : "🤍";
+
+		heartBtn.title = isHearted ? (t("bbsUnheart") || "Remove heart") : (t("bbsHeart") || "Heart this reply");
+		heartBtn.innerHTML = `<span style="font-size: ${Math.max(8.5, baseFs - 1.5)}px; line-height: 1;">${heartIcon}</span><span style="font-size: ${btnFs}px; font-weight: 600; line-height: 1; margin-left: 2px;">${heartCount}</span>`;
+
+		const heartBg = isHearted ? "rgba(239, 68, 68, 0.22)" : "rgba(255, 255, 255, 0.08)";
+		const heartBorder = isHearted ? "rgba(239, 68, 68, 0.45)" : "rgba(255, 255, 255, 0.15)";
+		const heartColor = isHearted ? "#fca5a5" : curTheme.anchorColor;
+
+		heartBtn.style.cssText = `background: ${heartBg}; border: 1px solid ${heartBorder}; color: ${heartColor}; border-radius: 3px; font-size: ${btnFs}px; padding: 0 4px; height: 16px; cursor: pointer; line-height: 14px; display: inline-flex; align-items: center; user-select: none; transition: transform 0.12s ease, background 0.15s ease;`;
+
+		heartBtn.onpointerdown = (e) => { e.stopPropagation(); };
+		heartBtn.onmousedown = (e) => { e.stopPropagation(); };
+		heartBtn.onmouseenter = () => {
+			heartBtn.style.transform = "scale(1.08)";
+			if (!isHearted) heartBtn.style.background = "rgba(255, 255, 255, 0.14)";
+		};
+		heartBtn.onmouseleave = () => {
+			heartBtn.style.transform = "scale(1)";
+			heartBtn.style.background = heartBg;
+		};
+		heartBtn.onclick = (e) => {
+			e.stopPropagation();
+			toggleBbsHeart(post.id, heartBtn);
+		};
+		actionsSpan.appendChild(heartBtn);
 
 		// Translate button
 		const transBtn = document.createElement("button");
@@ -14391,6 +14556,8 @@ function renderBbsPosts() {
 
 	if (wasAtTop) {
 		container.scrollTop = 0;
+	} else {
+		container.scrollTop = prevScrollTop;
 	}
 }
 
@@ -14581,17 +14748,75 @@ async function deleteBbsPost(postId) {
 	}
 }
 
+async function toggleBbsHeart(postId, btnEl) {
+	const post = Array.isArray(lunBbsPosts) && lunBbsPosts.find(p => p.id === postId);
+	if (!post) return;
+
+	const me = getMyBbsInfo();
+	const wasHearted = lunBbsHeartedPostIds.has(postId);
+	const nextHearted = !wasHearted;
+
+	// 1. Optimistic local UI update
+	if (nextHearted) {
+		lunBbsHeartedPostIds.add(postId);
+		post.hearts = (typeof post.hearts === "number" ? post.hearts : 0) + 1;
+	} else {
+		lunBbsHeartedPostIds.delete(postId);
+		post.hearts = Math.max(0, (typeof post.hearts === "number" ? post.hearts : 1) - 1);
+	}
+	if (window.localStorage) {
+		localStorage.setItem("spkmod-bbs-hearted-ids", JSON.stringify(Array.from(lunBbsHeartedPostIds)));
+	}
+
+	if (btnEl) {
+		btnEl.style.transform = "scale(1.25)";
+		setTimeout(() => { if (btnEl) btnEl.style.transform = "scale(1)"; }, 120);
+	}
+	renderBbsPosts();
+
+	// 2. Synchronize with BBS server
+	try {
+		const sUrl = getBbsServerUrl();
+		const res = await fetch(`${sUrl}/api/bbs/heart`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				postId: postId,
+				username: me.username,
+				playerId: me.playerId
+			})
+		});
+		if (res.ok) {
+			const data = await res.json();
+			if (data && data.success && typeof data.hearts === "number") {
+				post.hearts = data.hearts;
+				if (data.userHearted) {
+					lunBbsHeartedPostIds.add(postId);
+				} else {
+					lunBbsHeartedPostIds.delete(postId);
+				}
+				if (window.localStorage) {
+					localStorage.setItem("spkmod-bbs-hearted-ids", JSON.stringify(Array.from(lunBbsHeartedPostIds)));
+				}
+				renderBbsPosts();
+			}
+		}
+	} catch (err) {
+		console.warn("[SpeakiMod+] Failed to sync BBS heart reaction:", err);
+	}
+}
+
 document.body.appendChild(
 	lunHudElements.bbsModal = buildElement("div", {
 		id: "spkmod-bbs-modal",
 		className: "hidden",
-		style: "max-height: 80vh; display: flex; flex-direction: column; gap: 6px; padding: 8px 10px;"
+		style: "display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; box-sizing: border-box; min-width: 360px; min-height: 280px; max-height: 94vh; position: relative;"
 	}, [
 		// Header row
 		bbsModalElements.headerRow = buildElement("div", {
 			id: "spkmod-bbs-header-row",
 			className: "spkmod-panel-cat",
-			style: "justify-content: space-between; align-items: center; margin-bottom: 2px; cursor: move; user-select: none;"
+			style: "justify-content: space-between; align-items: center; margin-bottom: 2px; cursor: move; user-select: none; flex-shrink: 0;"
 		}, [
 			buildElement("div", { style: "display: flex; align-items: center; gap: 6px; cursor: move; user-select: none;" }, [
 				bbsModalElements.headerTitle = buildElement("span", {
@@ -14746,15 +14971,15 @@ document.body.appendChild(
 		// Posts container
 		bbsModalElements.postsContainer = buildElement("div", {
 			id: "spkmod-bbs-posts",
-			style: "display: flex; flex-direction: column; gap: 6px; max-height: 52vh; min-height: 220px; overflow-y: auto; padding-right: 3px; scrollbar-width: thin;"
+			style: "display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto; min-height: 120px; max-height: none; overflow-y: auto; padding-right: 3px; scrollbar-width: thin;"
 		}),
 		// Status feedback
 		bbsModalElements.statusMsg = buildElement("div", {
-			style: "color: #f87171; font-size: 10px; text-align: center; display: none; padding: 2px 0;"
+			style: "color: #f87171; font-size: 10px; text-align: center; display: none; padding: 2px 0; flex-shrink: 0;"
 		}),
 		// Composer bottom
 		buildElement("div", {
-			style: "display: flex; flex-direction: column; gap: 4px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.1);"
+			style: "display: flex; flex-direction: column; gap: 4px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.1); flex-shrink: 0;"
 		}, [
 			buildElement("div", { style: "display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;" }, [
 				bbsModalElements.emojiBtn = buildElement("button", {
@@ -14855,9 +15080,30 @@ document.body.appendChild(
 				style: "width: 100%; height: 26px; padding: 0; background: #2563eb; color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 5px; font-weight: bold; font-size: 11px; cursor: pointer;",
 				onclick: () => sendBbsPost()
 			})
+		]),
+		// Corner resize handle
+		bbsModalElements.resizeHandle = buildElement("div", {
+			id: "spkmod-bbs-resize-handle",
+			title: t("bbsResizeTooltip") || "Drag to resize window",
+			style: "position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; user-select: none; z-index: 100; display: flex; align-items: flex-end; justify-content: flex-end; padding: 0 2px 2px 0; touch-action: none;"
+		}, [
+			buildElement("span", {
+				innerHTML: `<svg viewBox="0 0 10 10" width="10" height="10" style="opacity: 0.55; display: block; pointer-events: none;"><path d="M9 1 L1 9 M9 5 L5 9 M9 9 L9 9" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+				style: "pointer-events: none; display: flex;"
+			})
 		])
 	])
 );
+if (bbsModalElements.resizeHandle) {
+	bbsModalElements.resizeHandle.onmouseenter = () => {
+		const p = bbsModalElements.resizeHandle.querySelector("path");
+		if (p) p.setAttribute("stroke", "#38bdf8");
+	};
+	bbsModalElements.resizeHandle.onmouseleave = () => {
+		const p = bbsModalElements.resizeHandle.querySelector("path");
+		if (p) p.setAttribute("stroke", "#94a3b8");
+	};
+}
 updateBbsComposerState();
 applyBbsThemeVisuals();
 function updateBbsI18n() {
@@ -14899,6 +15145,16 @@ if (typeof spkmodI18nRenderers !== "undefined") {
 setTimeout(() => {
 	if (typeof makeDraggable === 'function' && lunHudElements.bbsModal && (bbsModalElements.headerRow || bbsModalElements.headerTitle)) {
 		makeDraggable(lunHudElements.bbsModal, [bbsModalElements.headerRow, bbsModalElements.headerTitle].filter(Boolean));
+	}
+	if (typeof makeResizable === 'function' && lunHudElements.bbsModal && bbsModalElements.resizeHandle) {
+		makeResizable(lunHudElements.bbsModal, bbsModalElements.resizeHandle, {
+			minWidth: 360,
+			minHeight: 280
+		});
+	}
+	if (lunHudElements.bbsModal && !(window.localStorage && localStorage.getItem("spkmod-size-spkmod-bbs-modal"))) {
+		lunHudElements.bbsModal.style.width = "520px";
+		lunHudElements.bbsModal.style.height = "480px";
 	}
 	if (lunHudElements.bbsModal) {
 		// Prevent scrolling inside the BBS modal from zooming the game camera
