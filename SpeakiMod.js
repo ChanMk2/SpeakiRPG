@@ -1573,6 +1573,7 @@ function setMentionPingEnabled(enabled) {
 }
 
 function playPingSound() {
+    if (typeof isGameMuted === "function" && isGameMuted()) return;
     // Use the native game audio URL for the mention ping
     try {
         const pingAudio = new window.Audio("https://speakirpg.overture.io.kr/audio/voice/speaki/No.mp3");
@@ -2165,6 +2166,130 @@ if (typeof window !== "undefined" && window.electronAPI && typeof window.electro
 	window.electronAPI.setDiscordRpc(lunDiscordRpcEnabled);
 }
 
+var lunIsMuted = (window.localStorage && localStorage.getItem("spkmod-muted")) === "true";
+var lunMuteMinimizedEnabled = (window.localStorage && localStorage.getItem("spkmod-mute-minimized")) === "true";
+var isMutedByMinimize = false;
+
+function isGameMuted() {
+	return lunIsMuted || isMutedByMinimize;
+}
+
+function updateMuteButtonUI() {
+	const muted = isGameMuted();
+	const icon = muted ? "🔇" : "🔊";
+	const tip = muted ? (t("unmuteBtnTooltip") || "Unmute Game") : (t("muteBtnTooltip") || "Mute Game");
+	if (typeof lunPanelElements !== "undefined" && lunPanelElements.muteBtn) {
+		lunPanelElements.muteBtn.innerText = icon;
+		lunPanelElements.muteBtn.title = tip;
+	}
+	const mobileBtn = document.getElementById("spkmod-mobile-mute-toggle");
+	if (mobileBtn) {
+		mobileBtn.innerText = icon;
+	}
+}
+
+function applyGameMuteState(muted) {
+	if (typeof window.updateGameSettings === "function") {
+		try { window.updateGameSettings({ muteAll: !!muted }); } catch (_) {}
+	}
+	try {
+		document.querySelectorAll("audio, video").forEach(el => {
+			el.muted = !!muted;
+		});
+	} catch (_) {}
+	updateMuteButtonUI();
+}
+
+function setGameMuted(muted, save = true) {
+	lunIsMuted = !!muted;
+	if (save && window.localStorage) {
+		localStorage.setItem("spkmod-muted", lunIsMuted ? "true" : "false");
+	}
+	// Manual user action clears any minimize-override
+	isMutedByMinimize = false;
+	applyGameMuteState(lunIsMuted);
+}
+
+function toggleGameMute() {
+	setGameMuted(!lunIsMuted);
+}
+
+function setMuteMinimized(enabled) {
+	lunMuteMinimizedEnabled = !!enabled;
+	if (window.localStorage) {
+		localStorage.setItem("spkmod-mute-minimized", lunMuteMinimizedEnabled ? "true" : "false");
+	}
+	if (typeof lunPanelElements !== "undefined" && lunPanelElements.muteMinimizedToggleInput) {
+		lunPanelElements.muteMinimizedToggleInput.checked = lunMuteMinimizedEnabled;
+	}
+	if (!lunMuteMinimizedEnabled && isMutedByMinimize) {
+		isMutedByMinimize = false;
+		applyGameMuteState(lunIsMuted);
+	}
+}
+
+function handleMinimizeState(isMinimized) {
+	if (!lunMuteMinimizedEnabled) return;
+
+	if (isMinimized) {
+		if (!lunIsMuted && !isMutedByMinimize) {
+			isMutedByMinimize = true;
+			applyGameMuteState(true);
+		}
+	} else {
+		if (isMutedByMinimize) {
+			isMutedByMinimize = false;
+			applyGameMuteState(lunIsMuted);
+		}
+	}
+}
+
+// Hook visibilitychange for web browser and mobile
+if (typeof document !== "undefined") {
+	document.addEventListener("visibilitychange", () => {
+		handleMinimizeState(document.hidden);
+	});
+}
+
+// Hook Electron IPC for window minimize/restore
+if (typeof window !== "undefined" && window.electronAPI && typeof window.electronAPI.onWindowMinimized === "function") {
+	try {
+		window.electronAPI.onWindowMinimized((isMin) => {
+			handleMinimizeState(isMin);
+		});
+	} catch (_) {}
+}
+
+// Hook game's internal settings updater to keep mod UI synchronized with in-game sound settings
+function hookGameSettings() {
+	if (typeof window.updateGameSettings === "function" && !window.updateGameSettings.__spkmodHooked) {
+		const origUpdate = window.updateGameSettings;
+		window.updateGameSettings = function(newSettings) {
+			const res = origUpdate.apply(this, arguments);
+			if (newSettings && typeof newSettings.muteAll === "boolean" && !isMutedByMinimize) {
+				if (lunIsMuted !== newSettings.muteAll) {
+					lunIsMuted = newSettings.muteAll;
+					if (window.localStorage) localStorage.setItem("spkmod-muted", lunIsMuted ? "true" : "false");
+					updateMuteButtonUI();
+				}
+			}
+			return res;
+		};
+		window.updateGameSettings.__spkmodHooked = true;
+	}
+}
+
+// Ensure saved mute preference is applied as soon as game settings become available
+setInterval(() => {
+	hookGameSettings();
+	if (typeof window.getGameSettings === "function" && !window.__spkmodAudioInitialized) {
+		window.__spkmodAudioInitialized = true;
+		if (lunIsMuted) {
+			applyGameMuteState(true);
+		}
+	}
+}, 500);
+
 // Ensure the class is added early on load
 if (typeof document !== "undefined" && lunPanelLeft) {
     document.body.classList.add("spkmod-panel-left-mode");
@@ -2695,6 +2820,8 @@ const SPKMOD_SETTINGS_KEYS = new Set([
 	"spkmod-low-hp-warning",
 	"spkmod-mention-enabled",
 	"spkmod-mention-ping",
+	"spkmod-mute-minimized",
+	"spkmod-muted",
 	"spkmod-name-presets",
 	"spkmod-outgoing-source-lang",
 	"spkmod-panel-left",
@@ -4187,7 +4314,13 @@ document.body.appendChild(lunHudElements.lowHpOverlay);
 			}
 		});
 
+		const muteBtn = createToggleBtn("spkmod-mobile-mute-toggle", (typeof isGameMuted === "function" && isGameMuted()) ? "🔇" : "🔊", (e) => {
+			e.preventDefault();
+			if (typeof toggleGameMute === "function") toggleGameMute();
+		});
+
 		mobileBtnContainer.appendChild(eyeBtn);
+		mobileBtnContainer.appendChild(muteBtn);
 		mobileBtnContainer.appendChild(settingsBtn);
 		mobileBtnContainer.appendChild(panelBtn);
 		document.body.appendChild(mobileBtnContainer);
@@ -5092,6 +5225,16 @@ document.body.appendChild(
 			buildElement("div", {
 				className: "spkmod-panel-cat"
 			}, [
+				lunPanelElements.muteBtn = buildElement("button", {
+					id: "spkmod-mute-btn",
+					className: "spkmod-panel-btn",
+					style: "flex: 1; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 12pt; cursor: pointer;",
+					innerText: (typeof isGameMuted === "function" && isGameMuted()) ? "🔇" : "🔊",
+					title: (typeof isGameMuted === "function" && isGameMuted()) ? (t("unmuteBtnTooltip") || "Unmute Game") : (t("muteBtnTooltip") || "Mute Game"),
+					onclick: _ => {
+						if (typeof toggleGameMute === "function") toggleGameMute();
+					}
+				}),
 				lunPanelElements.invisibleBtn = buildElement("button", {
 					id: "spkmod-invisible-ghost-btn",
 					className: "spkmod-panel-btn",
@@ -5526,6 +5669,19 @@ document.body.appendChild(
 						checked: lunDiscordRpcEnabled,
 						title: "Share your game status and level on Discord (Desktop Client)",
 						onchange: e => setDiscordRpcEnabled(e.target.checked)
+					})
+				]),
+				buildElement("div", { className: "spkmod-panel-cat" }, [
+					lunPanelElements.muteMinimizedLabel = buildElement("span", {
+						style: "color: #fff; font-size: 11px; font-weight: bold; flex: 1;",
+						innerText: t("muteMinimizedToggleLabel") || "Mute Game when Minimized",
+						title: "Automatically mute game audio when the window is minimized or hidden"
+					}),
+					lunPanelElements.muteMinimizedToggleInput = buildElement("input", {
+						type: "checkbox",
+						checked: lunMuteMinimizedEnabled,
+						title: "Automatically mute game audio when the window is minimized or hidden",
+						onchange: e => setMuteMinimized(e.target.checked)
 					})
 				])
 			]),
@@ -7060,7 +7216,9 @@ if (typeof spkmodI18nRenderers !== 'undefined') {
     spkmodI18nRenderers.push(() => {
         if (typeof lunPanelElements !== 'undefined') {
             if (lunPanelElements.telemetryToggleLabel) lunPanelElements.telemetryToggleLabel.innerText = t("telemetrySettingLabel");
+            if (lunPanelElements.muteMinimizedLabel) lunPanelElements.muteMinimizedLabel.innerText = t("muteMinimizedToggleLabel") || "Mute Game when Minimized";
         }
+        if (typeof updateMuteButtonUI === "function") updateMuteButtonUI();
         const emojiBtn = document.getElementById("spkmod-emoji-btn");
         if (emojiBtn) {
             emojiBtn.title = t("emojiRemovedTooltip", "Removed by developer request, our apologies for the inconvenience, click for the feedback icon");

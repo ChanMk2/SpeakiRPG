@@ -238,6 +238,38 @@ async function createWindow() {
     globalShortcut.unregisterAll();
   });
 
+  mainWindow.on('minimize', () => {
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('window-minimized', true);
+      }
+    } catch (_) {}
+  });
+
+  mainWindow.on('restore', () => {
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('window-minimized', false);
+      }
+    } catch (_) {}
+  });
+
+  mainWindow.on('hide', () => {
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('window-minimized', true);
+      }
+    } catch (_) {}
+  });
+
+  mainWindow.on('show', () => {
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('window-minimized', false);
+      }
+    } catch (_) {}
+  });
+
   mainWindow.on('closed', () => {
     globalShortcut.unregisterAll();
     mainWindow = null;

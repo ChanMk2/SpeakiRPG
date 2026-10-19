@@ -38,6 +38,9 @@ async function patchScript(og, src) {
 	// Identify minified i18n and questManager functions
 	const m_i18n = (code.match(/function (\w+?)\(e\)\s*\{\s*let \w+\s*=\s*\w+\[\w+\(\)\];\s*return Object\.prototype\.hasOwnProperty.call\(\w+,\s*e\)\s*\?\s*\w+\[e\]\s*:/) || [])[1] || "null";
 	const m_questManager = (code.match(/new\s*(\w+)\({\s*container:\s*e,\s*showToast:\s*e\s*=>\s*\w+\.setStatus\(e\),\s*onClaimSuccess:\s*\(\)\s*=>\s*{\s*\w+\.markStale\(\),\s*\w+\.markStale\(\),\s*\w+\(\)\s*}/) || [])[1] || "null";
+	const m_settingsMatch = code.match(/case[\x60'"]muteAll[\x60'"]\s*:\s*(\w+)\(\{muteAll:!(\w+)\(\)\.muteAll\}\)/) || [];
+	const m_updateSettings = m_settingsMatch[1] || "null";
+	const m_getSettings = m_settingsMatch[2] || "null";
 
 	code = code.replace(
 		/if\((\w+)\(\)\)(\w+)=(\w+)\(\)\.resolutionScale;else\{let (\w+)=window\.devicePixelRatio;/,
@@ -52,20 +55,22 @@ async function patchScript(og, src) {
 	// Layer A: Internal GameState method hook on connect(e)
 	const reqChannelPattern = /connect\(([^)]*)\)\s*\{\s*this\.requestedChannel\s*=/;
 	if (reqChannelPattern.test(code)) {
-		code = code.replace(reqChannelPattern, `connect($1){window.speakiInjectorVer = 2; window.gameState = this; window.i18n = ${m_i18n}; window.questManager = ${m_questManager}; this.requestedChannel=`);
+		code = code.replace(reqChannelPattern, `connect($1){window.speakiInjectorVer = 2; window.gameState = this; window.i18n = ${m_i18n}; window.questManager = ${m_questManager}; window.getGameSettings = ${m_getSettings}; window.updateGameSettings = ${m_updateSettings}; this.requestedChannel=`);
 	}
 
 	// Layer B: Internal GameState method hook on handleLogin(e)
 	const handleLoginPattern = /handleLogin\(([^)]*)\)\s*\{/;
 	if (handleLoginPattern.test(code)) {
-		code = code.replace(handleLoginPattern, `handleLogin($1){window.gameState = this; if (typeof window.injectSpeakiMod === "function") window.injectSpeakiMod();`);
+		code = code.replace(handleLoginPattern, `handleLogin($1){window.gameState = this; window.getGameSettings = ${m_getSettings}; window.updateGameSettings = ${m_updateSettings}; if (typeof window.injectSpeakiMod === "function") window.injectSpeakiMod();`);
 	}
 
 	// Layer C: External connect invocation hook (supports ;, :, ,, or ) before .connect)
 	const callerPattern = /([;:,]|\)\s*)\s*((\w+)\.connect\(\w+\)),/;
 	if (callerPattern.test(code)) {
-		code = code.replace(callerPattern, `$1((window.speakiInjectorVer = 2), (window.gameState = $3), (window.i18n = ${m_i18n}), (window.questManager = ${m_questManager}), $2),`);
+		code = code.replace(callerPattern, `$1((window.speakiInjectorVer = 2), (window.gameState = $3), (window.i18n = ${m_i18n}), (window.questManager = ${m_questManager}), (window.getGameSettings = ${m_getSettings}), (window.updateGameSettings = ${m_updateSettings}), $2),`);
 	}
+
+	code += `\ntry { window.getGameSettings = ${m_getSettings}; window.updateGameSettings = ${m_updateSettings}; } catch (_) {}\n`;
 
 	const blob = URL.createObjectURL(
 		new Blob([code], { type: "text/javascript" })

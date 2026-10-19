@@ -5,7 +5,12 @@ const path = require('path');
 // Maintain your existing IPC bridge
 contextBridge.exposeInMainWorld('electronAPI', {
     loadSite: (url) => ipcRenderer.send('load-site', url),
-    setDiscordRpc: (enabled) => ipcRenderer.send('set-discord-rpc', enabled)
+    setDiscordRpc: (enabled) => ipcRenderer.send('set-discord-rpc', enabled),
+    onWindowMinimized: (callback) => {
+        ipcRenderer.on('window-minimized', (event, isMin) => {
+            if (typeof callback === 'function') callback(isMin);
+        });
+    }
 });
 
 // Expose client build version from package.json
