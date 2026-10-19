@@ -1425,7 +1425,7 @@ var lunPanelElements = {
 	hideKnownBotsToggleInput: null,
 	disableRightClickPinningLabel: null,
 	disableRightClickPinningToggleInput: null,
-	fixRenderLabel: null,
+	fixRenderToggleLabel: null,
 	fixRenderToggleInput: null,
 	discordRpcLabel: null,
 	discordRpcToggleInput: null,
@@ -2132,13 +2132,21 @@ function setDisableRightClickPinning(disabled) {
 }
 
 var lunFixRender = (window.localStorage && localStorage.getItem("spkmod-fix-render")) === "true";
+window.spkmodFixRender = lunFixRender;
+
+function lunFixRenderLabel() {
+	const v = t("fixRenderingToggleLabel") || t("fixRenderToggleLabel");
+	return (!v || v === "fixRenderingToggleLabel" || v === "fixRenderToggleLabel") ? "Fix Rendering Issues" : v;
+}
+
 function setFixRender(enabled) {
 	lunFixRender = !!enabled;
-	if (window.localStorage) localStorage.setItem("spkmod-fix-render", lunFixRender ? "true" : "false");
 	window.spkmodFixRender = lunFixRender;
+	if (window.localStorage) localStorage.setItem("spkmod-fix-render", String(lunFixRender));
 	if (lunPanelElements.fixRenderToggleInput) {
 		lunPanelElements.fixRenderToggleInput.checked = lunFixRender;
 	}
+	try { window.dispatchEvent(new Event("resize")); } catch (_) {}
 }
 
 var lunDiscordRpcEnabled = (window.localStorage && localStorage.getItem("spkmod-discord-rpc")) !== "false";
@@ -5332,6 +5340,19 @@ document.body.appendChild(
 					})
 				]),
 				buildElement("div", { className: "spkmod-panel-cat" }, [
+					lunPanelElements.fixRenderToggleLabel = buildElement("span", {
+						style: "color: #fff; font-size: 11px; font-weight: bold; user-select: none; flex: 1;",
+						innerText: lunFixRenderLabel()
+					}),
+					lunPanelElements.fixRenderToggleInput = buildElement("input", {
+						type: "checkbox",
+						checked: lunFixRender,
+						onchange: e => {
+							setFixRender(e.target.checked);
+						}
+					})
+				]),
+				buildElement("div", { className: "spkmod-panel-cat" }, [
 					lunPanelElements.gmChatToggleLabel = buildElement("span", {
 						style: "color: #fff; font-size: 11px; font-weight: bold; user-select: none; flex: 1;",
 						innerText: t("gmChatToggleLabel")
@@ -5541,19 +5562,6 @@ document.body.appendChild(
 						checked: lunDisableRightClickPinning,
 						title: "Disable right-clicking HUD and modal buttons to pin them floating on screen",
 						onchange: e => setDisableRightClickPinning(e.target.checked)
-					})
-				]),
-				buildElement("div", { className: "spkmod-panel-cat" }, [
-					lunPanelElements.fixRenderLabel = buildElement("span", {
-						style: "color: #fff; font-size: 11px; font-weight: bold; flex: 1;",
-						innerText: t("fixRenderToggleLabel") || "Fix Mobile Render Quality (High DPI)",
-						title: "Renders canvas at native devicePixelRatio on mobile devices"
-					}),
-					lunPanelElements.fixRenderToggleInput = buildElement("input", {
-						type: "checkbox",
-						checked: lunFixRender,
-						title: "Renders canvas at native devicePixelRatio on mobile devices",
-						onchange: e => setFixRender(e.target.checked)
 					})
 				]),
 				buildElement("div", { className: "spkmod-panel-cat" }, [
@@ -15967,6 +15975,7 @@ spkmodI18nRenderers.push(() => {
 	setText(lunPanelElements.settingsHeader, t("settingsHeader"));
 	if (lunPanelElements.filterToggleLabel) setText(lunPanelElements.filterToggleLabel, t("filterToggleLabel"));
 	if (lunPanelElements.verboseChatToggleLabel) setText(lunPanelElements.verboseChatToggleLabel, t("hideVerboseChatToggleLabel") || "Hide Mod Chat Messages");
+	if (lunPanelElements.fixRenderToggleLabel) setText(lunPanelElements.fixRenderToggleLabel, lunFixRenderLabel());
 	if (lunPanelElements.gmChatToggleLabel) setText(lunPanelElements.gmChatToggleLabel, t("gmChatToggleLabel"));
 	if (lunPanelElements.friendChatToggleLabel) setText(lunPanelElements.friendChatToggleLabel, t("friendChatToggleLabel"));
 	if (lunPanelElements.mentionAlertToggleLabel) setText(lunPanelElements.mentionAlertToggleLabel, t("mentionAlertToggleLabel"));
@@ -16016,7 +16025,6 @@ spkmodI18nRenderers.push(() => {
 	}
 	if (lunPanelElements.gamepadRumbleLabel) setText(lunPanelElements.gamepadRumbleLabel, t("gamepadRumbleToggleLabel"));
 	if (lunPanelElements.disableRightClickPinningLabel) setText(lunPanelElements.disableRightClickPinningLabel, t("disableRightClickPinningLabel") || "Disable Right-Click Pinning");
-	if (lunPanelElements.fixRenderLabel) setText(lunPanelElements.fixRenderLabel, t("fixRenderToggleLabel") || "Fix Mobile Render Quality (High DPI)");
 	if (lunPanelElements.discordRpcLabel) setText(lunPanelElements.discordRpcLabel, t("discordRpcToggleLabel") || "Discord Activity (RPC)");
 	if (lunPanelElements.uiScaleLabel) setText(lunPanelElements.uiScaleLabel, t("uiScaleLabel"));
 	if (lunPanelElements.gameUiScaleLabel) setText(lunPanelElements.gameUiScaleLabel, t("gameUiScaleLabel") || "Game UI Scale");
