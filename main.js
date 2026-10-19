@@ -4,6 +4,13 @@ const path = require('path');
 const RPC = require('discord-rpc');
 const clientId = '861430403955949569';
 
+// Maximize GPU performance and uncap VSync / frame presentation
+app.commandLine.appendSwitch('disable-gpu-vsync');
+app.commandLine.appendSwitch('disable-frame-rate-limit');
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-zero-copy');
+app.commandLine.appendSwitch('ignore-gpu-blocklist');
+
 const rpc = new RPC.Client({ transport: 'ipc' });
 const rpcTimestamp = Date.now()
 
