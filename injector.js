@@ -1,4 +1,12 @@
-try { window.spkmodFixRender = localStorage.getItem("spkmod-fix-render") === "true"; } catch (_) { window.spkmodFixRender = false; }
+try {
+	const isMobile = typeof window.speakiMobile !== "undefined" ||
+		(typeof navigator !== "undefined" && /mobi|android|iphone|ipad|ipod/i.test(navigator.userAgent || "")) ||
+		(typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches && navigator.maxTouchPoints > 0);
+	const savedFixRender = localStorage.getItem("spkmod-fix-render");
+	window.spkmodFixRender = savedFixRender === null ? isMobile : savedFixRender === "true";
+} catch (_) {
+	window.spkmodFixRender = false;
+}
 
 window.injectSpeakiMod = () => {
 	if (window.__speakiModInjected) {

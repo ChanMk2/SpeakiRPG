@@ -30,6 +30,16 @@ if (window.speakiMod)
 
 const isElectronEnv = typeof window.electronAPI !== "undefined" || (typeof navigator !== "undefined" && /electron/i.test(navigator.userAgent || ""));
 const isSpeakiMobile = typeof window.speakiMobile !== "undefined";
+
+function spkmodIsMobile() {
+	if (typeof window.speakiMobile !== "undefined") return true;
+	if (typeof navigator !== "undefined" && /mobi|android|iphone|ipad|ipod/i.test(navigator.userAgent || "")) return true;
+	if (typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches && navigator.maxTouchPoints > 0) return true;
+	if (typeof document !== "undefined" && document.body && document.body.classList.contains("sr-mobile-layout")) return true;
+	return false;
+}
+window.spkmodIsMobile = spkmodIsMobile;
+
 if (!isElectronEnv && !isSpeakiMobile) {
 	if (document.body) {
 		const acTranslations = {
@@ -1425,6 +1435,7 @@ var lunPanelElements = {
 	hideKnownBotsToggleInput: null,
 	disableRightClickPinningLabel: null,
 	disableRightClickPinningToggleInput: null,
+	fixRenderRow: null,
 	fixRenderToggleLabel: null,
 	fixRenderToggleInput: null,
 	discordRpcLabel: null,
@@ -2132,7 +2143,8 @@ function setDisableRightClickPinning(disabled) {
 	}
 }
 
-var lunFixRender = (window.localStorage && localStorage.getItem("spkmod-fix-render")) === "true";
+var savedFixRender = (window.localStorage && localStorage.getItem("spkmod-fix-render"));
+var lunFixRender = savedFixRender === null ? (typeof spkmodIsMobile === "function" ? spkmodIsMobile() : false) : savedFixRender === "true";
 window.spkmodFixRender = lunFixRender;
 
 function lunFixRenderLabel() {
@@ -2188,15 +2200,86 @@ function updateMuteButtonUI() {
 	}
 }
 
+function findGameMuteCheckbox() {
+	const rows = document.querySelectorAll(".sr-panel__row");
+	for (const row of rows) {
+		const checkbox = row.querySelector("input[type='checkbox']");
+		const span = row.querySelector("span");
+		if (checkbox && span) {
+			const txt = (span.textContent || "").trim().toLowerCase();
+			if (
+				txt === "mute all" ||
+				txt.includes("mute") ||
+				txt.includes("음소거") ||
+				txt.includes("ミュート") ||
+				txt.includes("靜音") ||
+				txt.includes("静音") ||
+				txt.includes("silenciar")
+			) {
+				return checkbox;
+			}
+		}
+	}
+	return null;
+}
+
+function hookNativeMuteCheckbox() {
+	const cb = findGameMuteCheckbox();
+	if (cb && !cb.__spkmodMuteHooked) {
+		cb.__spkmodMuteHooked = true;
+		cb.addEventListener("change", () => {
+			if (!isMutedByMinimize) {
+				lunIsMuted = cb.checked;
+				if (window.localStorage) {
+					localStorage.setItem("spkmod-muted", lunIsMuted ? "true" : "false");
+				}
+				updateMuteButtonUI();
+			}
+		});
+		// Sync on startup if preference is stored
+		if (lunIsMuted && !cb.checked) {
+			cb.click();
+		} else if (!lunIsMuted && cb.checked) {
+			lunIsMuted = true;
+			if (window.localStorage) localStorage.setItem("spkmod-muted", "true");
+			updateMuteButtonUI();
+		}
+	}
+}
+
 function applyGameMuteState(muted) {
+	// 1. Native game settings DOM checkbox:
+	const cb = findGameMuteCheckbox();
+	if (cb) {
+		if (cb.checked !== !!muted) {
+			cb.click();
+		}
+		if (cb.checked !== !!muted) {
+			cb.checked = !!muted;
+			cb.dispatchEvent(new Event("change", { bubbles: true }));
+		}
+	}
+
+	// 2. Direct GameState settings updater if exposed:
 	if (typeof window.updateGameSettings === "function") {
 		try { window.updateGameSettings({ muteAll: !!muted }); } catch (_) {}
 	}
+
+	// 3. Fallbacks: HTML5 media elements & Howler (from California Girls audio controller)
 	try {
 		document.querySelectorAll("audio, video").forEach(el => {
 			el.muted = !!muted;
 		});
+		if (typeof window.Howler !== "undefined") {
+			if (muted) {
+				if (window.__speakiOrigHowlerVol === undefined) window.__speakiOrigHowlerVol = Howler.volume();
+				Howler.volume(0);
+			} else {
+				Howler.volume(window.__speakiOrigHowlerVol !== undefined ? window.__speakiOrigHowlerVol : 1.0);
+			}
+		}
 	} catch (_) {}
+
 	updateMuteButtonUI();
 }
 
@@ -2282,6 +2365,7 @@ function hookGameSettings() {
 // Ensure saved mute preference is applied as soon as game settings become available
 setInterval(() => {
 	hookGameSettings();
+	hookNativeMuteCheckbox();
 	if (typeof window.getGameSettings === "function" && !window.__spkmodAudioInitialized) {
 		window.__spkmodAudioInitialized = true;
 		if (lunIsMuted) {
@@ -2289,6 +2373,36 @@ setInterval(() => {
 		}
 	}
 }, 500);
+
+// Global Console Commands for easy testing
+window.spkmodMute = function(muted) {
+	if (typeof muted === "undefined") muted = !isGameMuted();
+	setGameMuted(muted);
+	console.log(`[SpeakiMod+] Game audio ${muted ? "MUTED 🔇" : "UNMUTED 🔊"}`);
+	return muted;
+};
+window.toggleGameMute = toggleGameMute;
+window.setGameMuted = setGameMuted;
+window.isGameMuted = isGameMuted;
+window.testMute = function() {
+	const cb = findGameMuteCheckbox();
+	const report = {
+		checkboxFound: !!cb,
+		checkboxChecked: cb ? cb.checked : null,
+		lunIsMuted: lunIsMuted,
+		isMutedByMinimize: isMutedByMinimize,
+		updateGameSettingsAvailable: typeof window.updateGameSettings === "function",
+		getGameSettingsAvailable: typeof window.getGameSettings === "function"
+	};
+	if (console.table) {
+		console.table(report);
+	} else {
+		console.log("[SpeakiMod+] testMute report:", report);
+	}
+	const targetState = !isGameMuted();
+	window.spkmodMute(targetState);
+	return `Result: Toggled audio to ${targetState ? "MUTED" : "UNMUTED"}`;
+};
 
 // Ensure the class is added early on load
 if (typeof document !== "undefined" && lunPanelLeft) {
@@ -5482,7 +5596,10 @@ document.body.appendChild(
 						}
 					})
 				]),
-				buildElement("div", { className: "spkmod-panel-cat" }, [
+				lunPanelElements.fixRenderRow = buildElement("div", {
+					className: "spkmod-panel-cat",
+					style: (typeof spkmodIsMobile === "function" && spkmodIsMobile()) ? "" : "display: none !important;"
+				}, [
 					lunPanelElements.fixRenderToggleLabel = buildElement("span", {
 						style: "color: #fff; font-size: 11px; font-weight: bold; user-select: none; flex: 1;",
 						innerText: lunFixRenderLabel()
@@ -7217,6 +7334,8 @@ if (typeof spkmodI18nRenderers !== 'undefined') {
         if (typeof lunPanelElements !== 'undefined') {
             if (lunPanelElements.telemetryToggleLabel) lunPanelElements.telemetryToggleLabel.innerText = t("telemetrySettingLabel");
             if (lunPanelElements.muteMinimizedLabel) lunPanelElements.muteMinimizedLabel.innerText = t("muteMinimizedToggleLabel") || "Mute Game when Minimized";
+            if (lunPanelElements.fixRenderToggleLabel && typeof lunFixRenderLabel === "function") lunPanelElements.fixRenderToggleLabel.innerText = lunFixRenderLabel();
+            if (lunPanelElements.fixRenderRow) lunPanelElements.fixRenderRow.style.display = (typeof spkmodIsMobile === "function" && spkmodIsMobile()) ? "" : "none";
         }
         if (typeof updateMuteButtonUI === "function") updateMuteButtonUI();
         const emojiBtn = document.getElementById("spkmod-emoji-btn");
