@@ -1038,8 +1038,14 @@ function buildElement(tag, characteristics, inner, callback) {
 
 function findNametagSprite(container) {
 	if (!container) return null;
+	if (container.__spkmodNametagSprite && container.__spkmodNametagSprite.isSprite) {
+		return container.__spkmodNametagSprite;
+	}
 	const direct = container.children?.[0]?.children?.[0]?.children?.[1];
-	if (direct && direct.isSprite) return direct;
+	if (direct && direct.isSprite) {
+		container.__spkmodNametagSprite = direct;
+		return direct;
+	}
 
 	let sprite = null;
 	if (typeof container.traverse === "function") {
@@ -1049,6 +1055,7 @@ function findNametagSprite(container) {
 			}
 		});
 	}
+	if (sprite) container.__spkmodNametagSprite = sprite;
 	return sprite;
 }
 
@@ -17074,6 +17081,7 @@ if (typeof spkmodI18nRenderers !== 'undefined') {
 }
 
 function tick() {
+	if (window.__spkmodPauseTick) return;
 	if (lunTickCount % 20 === 0) spkmodAvatarController.sync();
 	if (!window.__gameStateHooked && typeof gameState !== "undefined" && gameState) {
 		if (typeof hookGameStateOnce === "function") {
