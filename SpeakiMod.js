@@ -1539,14 +1539,14 @@ function fetchFriendsList(force = false) {
 		mode: "cors"
 	}).then(async res => {
 		if (!res.ok) {
-			return fetch("/api/friend/list", { method: "GET", headers: headers, mode: "cors" })
+			return fetch(targetUrl, { method: "GET", headers: headers, mode: "cors" })
 				.then(r => r.ok ? r.json() : null)
 				.then(d => d && applyFriendData(d));
 		}
 		const data = await res.json();
 		applyFriendData(data);
 	}).catch(() => {
-		fetch("/api/friend/list", { method: "GET", headers: headers, mode: "cors" })
+		fetch(targetUrl, { method: "GET", headers: headers, mode: "cors" })
 			.then(r => r.ok ? r.json() : null)
 			.then(d => d && applyFriendData(d))
 			.catch(err => {
@@ -2143,8 +2143,12 @@ function setDisableRightClickPinning(disabled) {
 	}
 }
 
+var isMobClient = typeof spkmodIsMobile === "function" ? spkmodIsMobile() : false;
 var savedFixRender = (window.localStorage && localStorage.getItem("spkmod-fix-render"));
-var lunFixRender = savedFixRender === null ? (typeof spkmodIsMobile === "function" ? spkmodIsMobile() : false) : savedFixRender === "true";
+var lunFixRender = isMobClient && savedFixRender === "true"; // Off by default on mobile, strictly off on desktop/electron
+if (!isMobClient && window.localStorage) {
+	try { localStorage.removeItem("spkmod-fix-render"); } catch (_) {}
+}
 window.spkmodFixRender = lunFixRender;
 
 function lunFixRenderLabel() {
@@ -2153,6 +2157,15 @@ function lunFixRenderLabel() {
 }
 
 function setFixRender(enabled) {
+	const isMob = typeof spkmodIsMobile === "function" ? spkmodIsMobile() : false;
+	if (!isMob) {
+		lunFixRender = false;
+		window.spkmodFixRender = false;
+		if (window.localStorage) {
+			try { localStorage.removeItem("spkmod-fix-render"); } catch (_) {}
+		}
+		return;
+	}
 	lunFixRender = !!enabled;
 	window.spkmodFixRender = lunFixRender;
 	if (window.localStorage) localStorage.setItem("spkmod-fix-render", String(lunFixRender));
@@ -7335,7 +7348,10 @@ if (typeof spkmodI18nRenderers !== 'undefined') {
             if (lunPanelElements.telemetryToggleLabel) lunPanelElements.telemetryToggleLabel.innerText = t("telemetrySettingLabel");
             if (lunPanelElements.muteMinimizedLabel) lunPanelElements.muteMinimizedLabel.innerText = t("muteMinimizedToggleLabel") || "Mute Game when Minimized";
             if (lunPanelElements.fixRenderToggleLabel && typeof lunFixRenderLabel === "function") lunPanelElements.fixRenderToggleLabel.innerText = lunFixRenderLabel();
-            if (lunPanelElements.fixRenderRow) lunPanelElements.fixRenderRow.style.display = (typeof spkmodIsMobile === "function" && spkmodIsMobile()) ? "" : "none";
+            if (lunPanelElements.fixRenderRow) {
+                const isMob = typeof spkmodIsMobile === "function" && spkmodIsMobile();
+                lunPanelElements.fixRenderRow.style.setProperty("display", isMob ? "" : "none", isMob ? "" : "important");
+            }
         }
         if (typeof updateMuteButtonUI === "function") updateMuteButtonUI();
         const emojiBtn = document.getElementById("spkmod-emoji-btn");
@@ -16742,10 +16758,13 @@ async function fetchAllQuests() {
 		const headers = { "Content-Type": "application/json" };
 		if (token) headers["authorization"] = `Bearer ${token}`;
 
+		const endpoint = window.lunActiveApiEndpoint ||
+		                 (window.speakiServerEndpoint ? window.speakiServerEndpoint : "") ||
+		                 "https://relay.overture.io.kr";
 		const periods = ["daily", "weekly", "permanent"];
 		for (const p of periods) {
 			try {
-				const res = await fetch(`/api/quests?period=${p}`, {
+				const res = await fetch(`${endpoint}/api/quests?period=${p}`, {
 					method: "GET",
 					headers: headers,
 					credentials: "include"
@@ -17458,7 +17477,10 @@ function tick() {
 		const headers = { "Content-Type": "application/json" };
 		if (token) headers["authorization"] = `Bearer ${token}`;
 
-		fetch(`/api/quests?period=${period}`, {
+		const endpoint = window.lunActiveApiEndpoint ||
+		                 (window.speakiServerEndpoint ? window.speakiServerEndpoint : "") ||
+		                 "https://relay.overture.io.kr";
+		fetch(`${endpoint}/api/quests?period=${period}`, {
 			method: "GET",
 			headers: headers,
 			credentials: "include"
