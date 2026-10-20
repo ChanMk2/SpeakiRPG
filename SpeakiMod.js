@@ -1442,9 +1442,9 @@ var lunPanelElements = {
 	hideKnownBotsToggleInput: null,
 	disableRightClickPinningLabel: null,
 	disableRightClickPinningToggleInput: null,
-	fixRenderRow: null,
-	fixRenderToggleLabel: null,
-	fixRenderToggleInput: null,
+	resolutionOverrideRow: null,
+	resolutionOverrideLabel: null,
+	resolutionOverrideInput: null,
 	discordRpcLabel: null,
 	discordRpcToggleInput: null,
 	settingsCatGeneral: null,
@@ -2151,33 +2151,41 @@ function setDisableRightClickPinning(disabled) {
 }
 
 var isMobClient = typeof spkmodIsMobile === "function" ? spkmodIsMobile() : false;
-var savedFixRender = (window.localStorage && localStorage.getItem("spkmod-fix-render"));
-var lunFixRender = isMobClient && savedFixRender === "true"; // Off by default on mobile, strictly off on desktop/electron
-if (!isMobClient && window.localStorage) {
-	try { localStorage.removeItem("spkmod-fix-render"); } catch (_) {}
+var lunResolutionOverride = 1; // 1.0 = Off (use the game's own resolution option)
+if (isMobClient && window.localStorage) {
+	const v = parseFloat(localStorage.getItem("spkmod-resolution-override"));
+	if (v >= 1 && v <= 3) lunResolutionOverride = v;
+} else if (window.localStorage) {
+	try { localStorage.removeItem("spkmod-resolution-override"); } catch (_) {}
 }
-window.spkmodFixRender = lunFixRender;
+window.spkmodResolutionOverride = lunResolutionOverride;
 
-function lunFixRenderLabel() {
-	const v = t("fixRenderingToggleLabel") || t("fixRenderToggleLabel");
-	return (!v || v === "fixRenderingToggleLabel" || v === "fixRenderToggleLabel") ? "Fix Rendering Issues" : v;
+function lunResolutionOverrideLabel() {
+	const v = t("resolutionOverrideLabel");
+	const base = (!v || v === "resolutionOverrideLabel") ? "Resolution Override" : v;
+	const offText = t("resolutionOverrideOff") || "Off";
+	return base + ": " + (lunResolutionOverride <= 1 ? offText : "x" + lunResolutionOverride.toFixed(2));
 }
 
-function setFixRender(enabled) {
+function setResolutionOverride(value) {
 	const isMob = typeof spkmodIsMobile === "function" ? spkmodIsMobile() : false;
 	if (!isMob) {
-		lunFixRender = false;
-		window.spkmodFixRender = false;
+		lunResolutionOverride = 1;
+		window.spkmodResolutionOverride = 1;
 		if (window.localStorage) {
-			try { localStorage.removeItem("spkmod-fix-render"); } catch (_) {}
+			try { localStorage.removeItem("spkmod-resolution-override"); } catch (_) {}
 		}
 		return;
 	}
-	lunFixRender = !!enabled;
-	window.spkmodFixRender = lunFixRender;
-	if (window.localStorage) localStorage.setItem("spkmod-fix-render", String(lunFixRender));
-	if (lunPanelElements.fixRenderToggleInput) {
-		lunPanelElements.fixRenderToggleInput.checked = lunFixRender;
+	const v = parseFloat(value);
+	lunResolutionOverride = (v >= 1 && v <= 3) ? v : 1;
+	window.spkmodResolutionOverride = lunResolutionOverride;
+	if (window.localStorage) localStorage.setItem("spkmod-resolution-override", String(lunResolutionOverride));
+	if (lunPanelElements.resolutionOverrideInput) {
+		lunPanelElements.resolutionOverrideInput.value = lunResolutionOverride;
+	}
+	if (lunPanelElements.resolutionOverrideLabel) {
+		lunPanelElements.resolutionOverrideLabel.innerText = lunResolutionOverrideLabel();
 	}
 	try { window.dispatchEvent(new Event("resize")); } catch (_) {}
 }
@@ -3062,7 +3070,7 @@ const SPKMOD_SETTINGS_KEYS = new Set([
 	"spkmod-exp-interval-minutes",
 	"spkmod-exp-per-hour",
 	"spkmod-filter-enabled",
-	"spkmod-fix-render",
+	"spkmod-resolution-override",
 	"spkmod-fp-pitch",
 	"spkmod-fps-ping",
 	"spkmod-friend-highlight-enabled",
@@ -5746,19 +5754,29 @@ document.body.appendChild(
 						}
 					})
 				]),
-				lunPanelElements.fixRenderRow = buildElement("div", {
+				lunPanelElements.resolutionOverrideRow = buildElement("div", {
 					className: "spkmod-panel-cat",
 					style: (typeof spkmodIsMobile === "function" && spkmodIsMobile()) ? "" : "display: none !important;"
 				}, [
-					lunPanelElements.fixRenderToggleLabel = buildElement("span", {
+					lunPanelElements.resolutionOverrideLabel = buildElement("span", {
 						style: "color: #fff; font-size: 11px; font-weight: bold; user-select: none; flex: 1;",
-						innerText: lunFixRenderLabel()
+						innerText: lunResolutionOverrideLabel()
 					}),
-					lunPanelElements.fixRenderToggleInput = buildElement("input", {
-						type: "checkbox",
-						checked: lunFixRender,
+					lunPanelElements.resolutionOverrideInput = buildElement("input", {
+						type: "range",
+						min: "1",
+						max: "3",
+						step: "0.05",
+						value: lunResolutionOverride,
+						style: "width: 75px; accent-color: #38bdf8; cursor: pointer;",
+						oninput: e => {
+							lunResolutionOverride = parseFloat(e.target.value);
+							if (lunPanelElements.resolutionOverrideLabel) {
+								lunPanelElements.resolutionOverrideLabel.innerText = lunResolutionOverrideLabel();
+							}
+						},
 						onchange: e => {
-							setFixRender(e.target.checked);
+							setResolutionOverride(e.target.value);
 						}
 					})
 				]),
@@ -7484,10 +7502,10 @@ if (typeof spkmodI18nRenderers !== 'undefined') {
         if (typeof lunPanelElements !== 'undefined') {
             if (lunPanelElements.telemetryToggleLabel) lunPanelElements.telemetryToggleLabel.innerText = t("telemetrySettingLabel");
             if (lunPanelElements.muteMinimizedLabel) lunPanelElements.muteMinimizedLabel.innerText = t("muteMinimizedToggleLabel") || "Mute Game when Minimized";
-            if (lunPanelElements.fixRenderToggleLabel && typeof lunFixRenderLabel === "function") lunPanelElements.fixRenderToggleLabel.innerText = lunFixRenderLabel();
-            if (lunPanelElements.fixRenderRow) {
+            if (lunPanelElements.resolutionOverrideLabel && typeof lunResolutionOverrideLabel === "function") lunPanelElements.resolutionOverrideLabel.innerText = lunResolutionOverrideLabel();
+            if (lunPanelElements.resolutionOverrideRow) {
                 const isMob = typeof spkmodIsMobile === "function" && spkmodIsMobile();
-                lunPanelElements.fixRenderRow.style.setProperty("display", isMob ? "" : "none", isMob ? "" : "important");
+                lunPanelElements.resolutionOverrideRow.style.setProperty("display", isMob ? "" : "none", isMob ? "" : "important");
             }
         }
         if (typeof updateMuteButtonUI === "function") updateMuteButtonUI();
@@ -16553,7 +16571,7 @@ spkmodI18nRenderers.push(() => {
 	setText(lunPanelElements.settingsHeader, t("settingsHeader"));
 	if (lunPanelElements.filterToggleLabel) setText(lunPanelElements.filterToggleLabel, t("filterToggleLabel"));
 	if (lunPanelElements.verboseChatToggleLabel) setText(lunPanelElements.verboseChatToggleLabel, t("hideVerboseChatToggleLabel") || "Hide Mod Chat Messages");
-	if (lunPanelElements.fixRenderToggleLabel) setText(lunPanelElements.fixRenderToggleLabel, lunFixRenderLabel());
+	if (lunPanelElements.resolutionOverrideLabel && typeof lunResolutionOverrideLabel === "function") setText(lunPanelElements.resolutionOverrideLabel, lunResolutionOverrideLabel());
 	if (lunPanelElements.gmChatToggleLabel) setText(lunPanelElements.gmChatToggleLabel, t("gmChatToggleLabel"));
 	if (lunPanelElements.friendChatToggleLabel) setText(lunPanelElements.friendChatToggleLabel, t("friendChatToggleLabel"));
 	if (lunPanelElements.mentionAlertToggleLabel) setText(lunPanelElements.mentionAlertToggleLabel, t("mentionAlertToggleLabel"));

@@ -3,13 +3,14 @@ try {
 		(typeof navigator !== "undefined" && /mobi|android|iphone|ipad|ipod/i.test(navigator.userAgent || "")) ||
 		(typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches && navigator.maxTouchPoints > 0);
 	if (!isMobile) {
-		window.spkmodFixRender = false;
-		try { localStorage.removeItem("spkmod-fix-render"); } catch (_) {}
+		window.spkmodResolutionOverride = 1;
+		try { localStorage.removeItem("spkmod-resolution-override"); } catch (_) {}
 	} else {
-		window.spkmodFixRender = localStorage.getItem("spkmod-fix-render") === "true";
+		const v = parseFloat(localStorage.getItem("spkmod-resolution-override"));
+		window.spkmodResolutionOverride = (v >= 1 && v <= 3) ? v : 1;
 	}
 } catch (_) {
-	window.spkmodFixRender = false;
+	window.spkmodResolutionOverride = 1;
 }
 
 window.injectSpeakiMod = () => {
@@ -55,9 +56,9 @@ async function patchScript(og, src) {
 	const m_getSettings = m_settingsMatch[2] || "null";
 
 	code = code.replace(
-		/if\((\w+)\(\)\)(\w+)=(\w+)\(\)\.resolutionScale;else\{let (\w+)=window\.devicePixelRatio;/,
-		(_m, isMobileLayout, e, getSettings, dpr) =>
-			`if(${isMobileLayout}()&&!window.spkmodFixRender)${e}=${getSettings}().resolutionScale;else{let ${dpr}=(${isMobileLayout}()?Math.min(window.devicePixelRatio,1.35):window.devicePixelRatio);`
+		/function (\w+)\(\)\{let (\w+);if\((\w+)\(\)\)(\w+)=(\w+)\(\)\.resolutionScale;else\{let (\w+)=window\.devicePixelRatio;/,
+		(_m, fn, e, isMobileLayout, e2, getSettings, dpr) =>
+			`function ${fn}(){if(window.spkmodResolutionOverride>1&&${isMobileLayout}())return Math.min(window.spkmodResolutionOverride,4);let ${e};if(${isMobileLayout}())${e2}=${getSettings}().resolutionScale;else{let ${dpr}=window.devicePixelRatio;`
 	);
 
 	// 1. Rewrite relative asset imports to absolute URLs
