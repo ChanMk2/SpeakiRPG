@@ -17111,9 +17111,10 @@ async function fetchAllQuests() {
 	if (_fetchingQuests) return;
 	_fetchingQuests = true;
 	try {
-		const token = typeof getAuthToken === "function" ? getAuthToken() : "";
-		const headers = { "Content-Type": "application/json" };
-		if (token) headers["authorization"] = `Bearer ${token}`;
+		const token = (typeof window.getNativeAuthToken === "function" ? window.getNativeAuthToken() : "") ||
+		              (typeof getAuthToken === "function" ? getAuthToken() : "");
+		const headers = {};
+		if (token) headers["authorization"] = `Bearer ${token.replace(/^Bearer /i, "")}`;
 
 		const endpoint = window.lunActiveApiEndpoint ||
 		                 (window.speakiServerEndpoint ? window.speakiServerEndpoint : "") ||
@@ -17124,7 +17125,7 @@ async function fetchAllQuests() {
 				const res = await fetch(`${endpoint}/api/quests?period=${p}`, {
 					method: "GET",
 					headers: headers,
-					credentials: "include"
+					mode: "cors"
 				});
 				if (res.ok) {
 					const data = await res.json();
@@ -17831,9 +17832,10 @@ function tick() {
 	if (lunPinnedQuestId && lunTickCount >= lunPinnedQuestNextQueryTick) {
 		lunPinnedQuestNextQueryTick = lunTickCount + lunPinnedQuestInterval;
 		const period = lunPinnedQuestPeriod || "daily";
-		const token = typeof getAuthToken === "function" ? getAuthToken() : "";
-		const headers = { "Content-Type": "application/json" };
-		if (token) headers["authorization"] = `Bearer ${token}`;
+		const token = (typeof window.getNativeAuthToken === "function" ? window.getNativeAuthToken() : "") ||
+		              (typeof getAuthToken === "function" ? getAuthToken() : "");
+		const headers = {};
+		if (token) headers["authorization"] = `Bearer ${token.replace(/^Bearer /i, "")}`;
 
 		const endpoint = window.lunActiveApiEndpoint ||
 		                 (window.speakiServerEndpoint ? window.speakiServerEndpoint : "") ||
@@ -17841,7 +17843,7 @@ function tick() {
 		fetch(`${endpoint}/api/quests?period=${period}`, {
 			method: "GET",
 			headers: headers,
-			credentials: "include"
+			mode: "cors"
 		}).then(async x => {
 			if (!x.ok) {
 				if (x.status === 404) {

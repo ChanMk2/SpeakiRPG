@@ -297,6 +297,14 @@ async function createWindow() {
         modified = true;
       }
     }
+    // Ensure CORS headers allow requests to /api/ without credentials blocking
+    if (details.url && details.url.includes('/api/')) {
+      responseHeaders['access-control-allow-origin'] = ['https://speakirpg.overture.io.kr'];
+      responseHeaders['access-control-allow-credentials'] = ['true'];
+      responseHeaders['access-control-allow-headers'] = ['authorization, content-type, *'];
+      responseHeaders['access-control-allow-methods'] = ['GET, POST, PUT, DELETE, OPTIONS, HEAD'];
+      modified = true;
+    }
     callback({ cancel: false, responseHeaders: modified ? responseHeaders : details.responseHeaders });
   };
   session.defaultSession.webRequest.onHeadersReceived(filter, removeCspReportOnly);
