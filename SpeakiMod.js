@@ -1,3 +1,17 @@
+// Suppress report-only CSP warnings in console for custom emoji assets
+try {
+	const _spkOrigWarn = console.warn;
+	console.warn = function(...args) {
+		if (typeof args[0] === 'string' && (args[0].includes('violates the following Content Security Policy directive') || args[0].includes('Content Security Policy'))) return;
+		return _spkOrigWarn.apply(this, args);
+	};
+	const _spkOrigError = console.error;
+	console.error = function(...args) {
+		if (typeof args[0] === 'string' && (args[0].includes('violates the following Content Security Policy directive') || args[0].includes('Content Security Policy'))) return;
+		return _spkOrigError.apply(this, args);
+	};
+} catch (_) {}
+
 /*
  * SpeakiMod (speakimod.js)
  * Copyright (c) Alluseri (https://github.com/Alluseri/SpeakiMod)
@@ -182,6 +196,15 @@ if (!window.i18n) {
 }
 
 function getAuthToken() {
+	if (typeof window.getNativeAuthToken === "function") {
+		try {
+			const nativeToken = window.getNativeAuthToken();
+			if (nativeToken) {
+				window.speakiAuthToken = nativeToken;
+				return nativeToken;
+			}
+		} catch (_) {}
+	}
 	if (window.speakiAuthToken) return window.speakiAuthToken;
 
 	const socketUrl = (typeof gameState !== 'undefined' && (gameState?.socket?.socket?.url || gameState?.socket?.url)) || "";
@@ -208,6 +231,11 @@ function getAuthToken() {
 				return jwtMatch[0];
 			}
 		}
+	}
+	if (typeof lunSpkAuthToken === "string" && lunSpkAuthToken) {
+		let t = lunSpkAuthToken;
+		if (t.toLowerCase().startsWith("bearer ")) t = t.substring(7).trim();
+		if (t) return t;
 	}
 	return "";
 }
@@ -1510,7 +1538,9 @@ function fetchFriendsList(force = false) {
 	const now = Date.now();
 	if (!force && now - lunLastFriendFetchTime < 60000) return;
 	if (lunFriendFetchInProgress) return;
-	let token = (typeof getAuthToken === "function" ? getAuthToken() : "") || (typeof lunSpkAuthToken === "string" ? lunSpkAuthToken : "");
+	let token = (typeof window.getNativeAuthToken === "function" ? window.getNativeAuthToken() : "") ||
+	            (typeof getAuthToken === "function" ? getAuthToken() : "") || 
+	            (typeof lunSpkAuthToken === "string" ? lunSpkAuthToken : "");
 	if (token.toLowerCase().startsWith("bearer ")) {
 		token = token.substring(7).trim();
 	}
@@ -1531,7 +1561,6 @@ function fetchFriendsList(force = false) {
 					if (nick) lunFriendNicknames.add(nick);
 				}
 			});
-			lunLastFriendFetchTime = Date.now();
 			if (window.localStorage) {
 				try {
 					localStorage.setItem("spkmod-friend-cache", JSON.stringify([...lunFriendNicknames]));
@@ -1540,28 +1569,53 @@ function fetchFriendsList(force = false) {
 		}
 	};
 
-	fetch(targetUrl, {
-		method: "GET",
-		headers: headers,
-		mode: "cors"
-	}).then(async res => {
-		if (!res.ok) {
-			return fetch(targetUrl, { method: "GET", headers: headers, mode: "cors" })
-				.then(r => r.ok ? r.json() : null)
-				.then(d => d && applyFriendData(d));
-		}
-		const data = await res.json();
-		applyFriendData(data);
-	}).catch(() => {
-		fetch(targetUrl, { method: "GET", headers: headers, mode: "cors" })
-			.then(r => r.ok ? r.json() : null)
-			.then(d => d && applyFriendData(d))
-			.catch(err => {
-				console.warn("[SpeakiMod+] Failed to fetch friend list:", err);
+	(async () => {
+		try {
+			let res = await fetch(targetUrl, {
+				method: "GET",
+				headers: headers,
+				mode: "cors"
 			});
-	}).finally(() => {
-		lunFriendFetchInProgress = false;
-	});
+
+			if (res && res.status === 401) {
+				// Token expired. Invalidate cached token
+				window.speakiAuthToken = "";
+				lunSpkAuthToken = "";
+				if (typeof window.refreshAuthToken === "function") {
+					try {
+						const refreshed = await window.refreshAuthToken();
+						if (refreshed) {
+							let newToken = (typeof window.getNativeAuthToken === "function" ? window.getNativeAuthToken() : "") ||
+							               (typeof getAuthToken === "function" ? getAuthToken() : "") || 
+							               (typeof lunSpkAuthToken === "string" ? lunSpkAuthToken : "");
+							if (newToken.toLowerCase().startsWith("bearer ")) {
+								newToken = newToken.substring(7).trim();
+							}
+							if (newToken) {
+								headers["authorization"] = `Bearer ${newToken}`;
+								res = await fetch(targetUrl, {
+									method: "GET",
+									headers: headers,
+									mode: "cors"
+								});
+							}
+						}
+					} catch (_) {}
+				}
+			}
+
+			if (res && res.ok) {
+				const data = await res.json();
+				applyFriendData(data);
+			}
+		} catch (err) {
+			console.warn("[SpeakiMod+] Failed to fetch friend list:", err);
+		} finally {
+			// Ensure cooldown is ALWAYS recorded to prevent per-frame request flood
+			lunLastFriendFetchTime = Date.now();
+			lunFriendFetchInProgress = false;
+		}
+	})();
 }
 
 const lunKnownBotNames = ["GniloeAlo3", "Gniloe41o3", "Gniloe41oe", "GniloeA1oe", "GniloeA1o3", "GniloeA103", "toufufuton", "uhu", "clay79", "key7catace", "6air9dog5", "53lake", "1sealace", "2wave0bay1", "19owlfern", "red17wave", "nekomaru2", "king9SPK5", "ash6mist7", "takutaku8", "스핔이3984", "SPKtree21", "SPKleaf37", "3clayowl5", "3bayhero9", "99duckdog", "cow6SPK2", "fire8SPK7", "Takutaku3", "Takutaku4", "kutakuta", "0birdice2", "wind2SPK8", "SPKbay23", "3sky8king", "star2bat04", "map3kite4", "FrznTeardrop", "sun9SPK0", "5SPKsnow2", "SPKclay15", "frogfox40", "5air7moon", "SPKair00", "SPKblue88", "moss4ant36", "9gem4wind", "SPKjade05", "SPKfin06", "SPKdeer69", "OO0OOOOO72", "llIlIIll62", "lIllIIIl39", "IIlIIIlI45", "00OO0OO099", "sorakara", "karakaze", "rainant78", "SPKlake78", "takutaku7", "rnmrrnvrm2", "SPKfern89", "llIIllll38", "SPKtree03", "OO0O00OO30", "SPKecho92", "OOOOO0O081", "takutaku6", "kutakuta2", "GOODSPIKI", "BADSPIKI", "NEXThobagi", "QAZWSXEDC", "kqland", "SPKsun83", "CHOWAYOHOBAG", "AdmiralSPK", "xHunterSPKx", "HOBAGIRENGOU", "TOKAlhobagi", "chowayooo5", "NELSPK", "TOKAIhobagi", "hobagihouse", "NORDSPEAKI", "LOGIN", "FunnySPK", "JpTHEspeaki", "MEXICOSPK", "JAXNOTD", "DDDDDDAA", "NOMUT", "alexasojk", "gotobasupk", "Nyandal", "amejiso", "SPKcalm33", "SPKtree51", "snowfin05", "fernhat76", "SPKhero04", "jadenet92", "000OO00O82", "00O000O081", "frogbee79", "00O000O081", "OOOOOO0030", "OOOOOO0081", "IIIIIII06", "lllllll06", "IIIIIII47", "lllllll47", "SPKecho92", "SPKtree03", "SPKstar65", "blueash78", "SPKfrog11", "OOOOOOO030", "OOOOOOO081", "IIIIIIII06", "IIIIIIII47", "IIlIIIll47", "OO0O00OO30", "IIlIIIll47", "OO0O00OO30", "llIIlIll06", "IIlIIIll47", "OOOOO0O081", "llIIlIll06", "OO0O00OO30", "SPKfern89", "SPKtree03", "rnmrrnvrm2", "SPKblue93", "SPKrain63", "SPKecho98", "OOOOO0O081", "duckjay85", "SPKstar65", "echosun86", "llIIllll38", "takutaku6", "kutakuta2", "takutaku7", "GniloeAlo3", "Gniloe4103", "Gniloe41o3", "GniloeAl03", "Gniloe41oe", "GniloeA1o3", "Gniloe41o3", "GniloeAlo3", "GniloeAl03", "Gniloe41oe"];

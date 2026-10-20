@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, nativeImage, globalShortcut } = require('electron');
+const { app, BrowserWindow, ipcMain, nativeImage, globalShortcut, session } = require('electron');
 const axios = require('axios');
 const path = require('path');
 const RPC = require('discord-rpc');
@@ -276,6 +276,31 @@ async function createWindow() {
   });
 
   registerShortcuts();
+    // Intercept and strip Content-Security-Policy-Report-Only headers to permanently eliminate
+  // report-only console spam for custom emojis (Imgur, GitHub, etc.)
+  const filter = { urls: ['*://*/*'] };
+  const removeCspReportOnly = (details, callback) => {
+    const responseHeaders = { ...details.responseHeaders };
+    let modified = false;
+    for (const key of Object.keys(responseHeaders)) {
+      const lower = key.toLowerCase();
+      if (lower === 'content-security-policy-report-only') {
+        delete responseHeaders[key];
+        modified = true;
+      } else if (lower === 'content-security-policy') {
+        responseHeaders[key] = responseHeaders[key].map(csp => {
+          if (csp.includes('img-src') && !csp.includes('i.imgur.com')) {
+            return csp.replace(/img-src\s+([^;]+)/, "img-src $1 https: blob: data:");
+          }
+          return csp;
+        });
+        modified = true;
+      }
+    }
+    callback({ cancel: false, responseHeaders: modified ? responseHeaders : details.responseHeaders });
+  };
+  session.defaultSession.webRequest.onHeadersReceived(filter, removeCspReportOnly);
+
   mainWindow.loadFile('index.html');
 }
 
