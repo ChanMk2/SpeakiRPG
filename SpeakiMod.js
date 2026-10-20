@@ -16108,7 +16108,10 @@ async function translateChatText(text, source, target) {
 			let useFallback = false;
 
 			// Primary API: MyMemory
-			if (typeof lunMyMemoryQuotaHit !== "undefined" && lunMyMemoryQuotaHit) {
+			const isMyMemoryQuotaHit = (typeof lunMyMemoryQuotaHit !== "undefined" && lunMyMemoryQuotaHit) ||
+				(window.localStorage && localStorage.getItem("spkmod-mymemory-quota") === new Date().toDateString());
+
+			if (isMyMemoryQuotaHit) {
 				useFallback = true;
 			} else {
 				try {
@@ -16119,14 +16122,20 @@ async function translateChatText(text, source, target) {
 					const res = await fetch(`https://api.mymemory.translated.net/get?${params}`);
 					if (!res.ok) {
 						useFallback = true;
-						apiStatus = res.status;
+						if (res.status === 429 || res.status === 403) {
+							lunMyMemoryQuotaHit = true;
+							if (typeof window !== "undefined") window.lunMyMemoryQuotaHit = true;
+							if (window.localStorage) localStorage.setItem("spkmod-mymemory-quota", new Date().toDateString());
+							console.log("[SpeakiMod+] MyMemory daily quota reached (HTTP " + res.status + "); seamlessly falling back to Google Translate.");
+						}
 					} else {
 						const data = await res.json();
-						if (res.status === 429 || data?.responseStatus === 429 || data?.responseStatus === 403) {
+						if (data?.responseStatus === 429 || data?.responseStatus === 403) {
 							useFallback = true;
-							apiStatus = 429;
 							lunMyMemoryQuotaHit = true;
+							if (typeof window !== "undefined") window.lunMyMemoryQuotaHit = true;
 							if (window.localStorage) localStorage.setItem("spkmod-mymemory-quota", new Date().toDateString());
+							console.log("[SpeakiMod+] MyMemory daily quota reached; seamlessly falling back to Google Translate.");
 						} else {
 							translated = cleanTranslatedText(data?.responseData?.translatedText);
 							if (!translated || data.responseStatus !== 200) useFallback = true;
@@ -16140,19 +16149,22 @@ async function translateChatText(text, source, target) {
 			// Fallback API: Google Translate
 			if (useFallback) {
 				try {
-					const gtUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${source}&tl=${target}&dt=t&q=${encodeURIComponent(safeText)}`;
+					const gtTarget = (target === "es-419") ? "es" : target;
+					const gtUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(gtTarget)}&dt=t&q=${encodeURIComponent(safeText)}`;
 					const gtRes = await fetch(gtUrl);
 					if (gtRes.ok) {
 						const gtData = await gtRes.json();
 						if (gtData && gtData[0]) {
 							translated = "";
 							for (let i = 0; i < gtData[0].length; i++) {
-								if (gtData[0][i][0]) translated += gtData[0][i][0];
+								if (gtData[0][i] && gtData[0][i][0]) translated += gtData[0][i][0];
 							}
 							translated = cleanTranslatedText(translated);
 						}
 					} else {
-						apiStatus = gtRes.status;
+						if (gtRes.status === 429) {
+							apiStatus = 429;
+						}
 					}
 				} catch (err) {
 					console.warn("[SpeakiMod+] Google Translate fallback error:", err);
