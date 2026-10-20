@@ -232,10 +232,22 @@ async function createWindow() {
 
   mainWindow.on('focus', () => {
     registerShortcuts();
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('window-minimized', false);
+      }
+    } catch (_) {}
   });
 
   mainWindow.on('blur', () => {
     globalShortcut.unregisterAll();
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        if (!mainWindow.webContents.isDevToolsFocused()) {
+          mainWindow.webContents.send('window-minimized', true);
+        }
+      }
+    } catch (_) {}
   });
 
   mainWindow.on('minimize', () => {

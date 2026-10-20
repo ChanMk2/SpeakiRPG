@@ -1644,13 +1644,14 @@ function setMentionPingEnabled(enabled) {
 	if (window.localStorage) localStorage.setItem("spkmod-mention-ping", lunMentionPingEnabled ? "true" : "false");
 }
 
+let _activePingAudio = null;
 function playPingSound() {
-    if (typeof isGameMuted === "function" && isGameMuted()) return;
-    // Use the native game audio URL for the mention ping
+    // If Mention Ping Sound is enabled, always sound regardless of Mute when Minimized / alt-tab
+    if (typeof lunMentionPingEnabled !== "undefined" && !lunMentionPingEnabled) return;
     try {
-        const pingAudio = new window.Audio("https://speakirpg.overture.io.kr/audio/voice/speaki/No.mp3");
-        pingAudio.volume = 0.6;
-        pingAudio.play().catch(e => {
+        _activePingAudio = new window.Audio("https://speakirpg.overture.io.kr/audio/voice/speaki/No.mp3");
+        _activePingAudio.volume = 0.6;
+        _activePingAudio.play().catch(e => {
             console.warn("[SpeakiMod+] Failed to play ping sound", e);
         });
     } catch (e) {}
@@ -2413,6 +2414,17 @@ function handleMinimizeState(isMinimized) {
 if (typeof document !== "undefined") {
 	document.addEventListener("visibilitychange", () => {
 		handleMinimizeState(document.hidden);
+	});
+}
+
+// Hook window blur and focus for Alt-Tab / background switching
+if (typeof window !== "undefined") {
+	window.addEventListener("blur", () => {
+		if (document.activeElement && document.activeElement.tagName === "IFRAME") return;
+		handleMinimizeState(true);
+	});
+	window.addEventListener("focus", () => {
+		handleMinimizeState(false);
 	});
 }
 
