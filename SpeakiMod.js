@@ -2424,6 +2424,46 @@ function hookNativeMuteCheckbox() {
 	}
 }
 
+function findGameAudioListener() {
+	try {
+		if (typeof window.getAudioListener === "function") {
+			const l = window.getAudioListener();
+			if (l && (l.isAudioListener || l.context || l.gain)) return l;
+		}
+	} catch (_) {}
+	try {
+		if (window.gameState) {
+			if (window.gameState.camera) {
+				if (Array.isArray(window.gameState.camera.children)) {
+					const l = window.gameState.camera.children.find(c => c && (c.isAudioListener || c.context || c.gain));
+					if (l) return l;
+				}
+				if (typeof window.gameState.camera.traverse === "function") {
+					let found = null;
+					window.gameState.camera.traverse(c => {
+						if (!found && c && (c.isAudioListener || c.context || c.gain)) found = c;
+					});
+					if (found) return found;
+				}
+			}
+			if (window.gameState.scene) {
+				if (Array.isArray(window.gameState.scene.children)) {
+					const l = window.gameState.scene.children.find(c => c && (c.isAudioListener || c.context || c.gain));
+					if (l) return l;
+				}
+				if (typeof window.gameState.scene.traverse === "function") {
+					let found = null;
+					window.gameState.scene.traverse(c => {
+						if (!found && c && (c.isAudioListener || c.context || c.gain)) found = c;
+					});
+					if (found) return found;
+				}
+			}
+		}
+	} catch (_) {}
+	return null;
+}
+
 function applyGameMuteState(muted, isTemporary = false) {
 	// 1. Only sync native game settings/checkbox on explicit user toggles, NEVER during temporary minimize/blur!
 	if (!isTemporary) {
@@ -2439,19 +2479,16 @@ function applyGameMuteState(muted, isTemporary = false) {
 
 	// 2. Direct Three.js & HTML5 audio output muting:
 	try {
-		// Mute/unmute Three.js AudioListener in current scene
-		if (window.gameState && window.gameState.scene && Array.isArray(window.gameState.scene.children)) {
-			const listener = window.gameState.scene.children.find(c => c && (c.isAudioListener || c.context || c.gain));
-			if (listener) {
-				if (listener.gain && listener.gain.gain) {
-					listener.gain.gain.value = muted ? 0 : 1;
-				}
-				if (listener.context) {
-					if (muted && listener.context.state === "running") {
-						try { listener.context.suspend(); } catch (_) {}
-					} else if (!muted && listener.context.state === "suspended") {
-						try { listener.context.resume(); } catch (_) {}
-					}
+		const listener = findGameAudioListener();
+		if (listener) {
+			if (listener.gain && listener.gain.gain) {
+				listener.gain.gain.value = muted ? 0 : 1;
+			}
+			if (listener.context) {
+				if (muted && listener.context.state === "running") {
+					try { listener.context.suspend(); } catch (_) {}
+				} else if (!muted && listener.context.state === "suspended") {
+					try { listener.context.resume(); } catch (_) {}
 				}
 			}
 		}
@@ -2501,7 +2538,7 @@ function setMuteMinimized(enabled) {
 function handleMinimizeState(isMinimized) {
 	if (!lunMuteMinimizedEnabled) return;
 	// Prevent startup window creation or initial blur from accidentally muting on launch
-	if (isMinimized && Date.now() - spkmodStartupTime < 5000) return;
+	if (isMinimized && Date.now() - spkmodStartupTime < 3000) return;
 
 	if (isMinimized) {
 		if (!lunIsMuted && !isMutedByMinimize) {
@@ -2523,8 +2560,12 @@ if (typeof document !== "undefined") {
 	});
 }
 
-// Hook window focus for background switching and audio restoration
+// Hook window blur and focus for Alt-Tab / background switching
 if (typeof window !== "undefined") {
+	window.addEventListener("blur", () => {
+		if (document.activeElement && document.activeElement.tagName === "IFRAME") return;
+		handleMinimizeState(true);
+	});
 	window.addEventListener("focus", () => {
 		handleMinimizeState(false);
 	});
@@ -2588,13 +2629,19 @@ window.setGameMuted = setGameMuted;
 window.isGameMuted = isGameMuted;
 window.testMute = function() {
 	const cb = findGameMuteCheckbox();
+	const listener = findGameAudioListener();
 	const report = {
 		checkboxFound: !!cb,
 		checkboxChecked: cb ? cb.checked : null,
+		audioListenerFound: !!listener,
+		audioContextState: listener && listener.context ? listener.context.state : null,
+		audioGainValue: listener && listener.gain && listener.gain.gain ? listener.gain.gain.value : null,
 		lunIsMuted: lunIsMuted,
 		isMutedByMinimize: isMutedByMinimize,
+		lunMuteMinimizedEnabled: lunMuteMinimizedEnabled,
 		updateGameSettingsAvailable: typeof window.updateGameSettings === "function",
-		getGameSettingsAvailable: typeof window.getGameSettings === "function"
+		getGameSettingsAvailable: typeof window.getGameSettings === "function",
+		getAudioListenerAvailable: typeof window.getAudioListener === "function"
 	};
 	if (console.table) {
 		console.table(report);
