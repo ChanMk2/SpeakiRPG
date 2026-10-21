@@ -2349,7 +2349,19 @@ var lunIsMuted = false;
 var lunMuteMinimizedEnabled = (window.localStorage && localStorage.getItem("spkmod-mute-minimized")) === "true";
 var isMutedByMinimize = false;
 var spkmodStartupTime = Date.now();
-try { if (window.localStorage) localStorage.removeItem("spkmod-muted"); } catch (_) {}
+try {
+	if (window.localStorage) {
+		localStorage.removeItem("spkmod-muted");
+		const s = localStorage.getItem("sr1_settings");
+		if (s) {
+			const parsed = JSON.parse(s);
+			if (parsed && parsed.muteAll) {
+				parsed.muteAll = false;
+				localStorage.setItem("sr1_settings", JSON.stringify(parsed));
+			}
+		}
+	}
+} catch (_) {}
 
 function isGameMuted() {
 	return lunIsMuted || isMutedByMinimize;
@@ -2405,26 +2417,39 @@ function hookNativeMuteCheckbox() {
 	}
 }
 
-function applyGameMuteState(muted) {
-	// 1. Native game settings DOM checkbox:
-	const cb = findGameMuteCheckbox();
-	if (cb) {
-		if (cb.checked !== !!muted) {
-			cb.click();
-		}
-		if (cb.checked !== !!muted) {
+function applyGameMuteState(muted, isTemporary = false) {
+	// 1. Only sync native game settings/checkbox on explicit user toggles, NEVER during temporary minimize/blur!
+	if (!isTemporary) {
+		const cb = findGameMuteCheckbox();
+		if (cb && cb.checked !== !!muted) {
 			cb.checked = !!muted;
 			cb.dispatchEvent(new Event("change", { bubbles: true }));
 		}
+		if (typeof window.updateGameSettings === "function") {
+			try { window.updateGameSettings({ muteAll: !!muted }); } catch (_) {}
+		}
 	}
 
-	// 2. Direct GameState settings updater if exposed:
-	if (typeof window.updateGameSettings === "function") {
-		try { window.updateGameSettings({ muteAll: !!muted }); } catch (_) {}
-	}
-
-	// 3. Fallbacks: HTML5 media elements & Howler (from California Girls audio controller)
+	// 2. Direct Three.js & HTML5 audio output muting:
 	try {
+		// Mute/unmute Three.js AudioListener in current scene
+		if (window.gameState && window.gameState.scene && Array.isArray(window.gameState.scene.children)) {
+			const listener = window.gameState.scene.children.find(c => c && (c.isAudioListener || c.context || c.gain));
+			if (listener) {
+				if (listener.gain && listener.gain.gain) {
+					listener.gain.gain.value = muted ? 0 : 1;
+				}
+				if (listener.context) {
+					if (muted && listener.context.state === "running") {
+						try { listener.context.suspend(); } catch (_) {}
+					} else if (!muted && listener.context.state === "suspended") {
+						try { listener.context.resume(); } catch (_) {}
+					}
+				}
+			}
+		}
+
+		// Fallbacks: HTML5 media elements & Howler
 		document.querySelectorAll("audio, video").forEach(el => {
 			el.muted = !!muted;
 		});
@@ -2445,7 +2470,7 @@ function setGameMuted(muted) {
 	lunIsMuted = !!muted;
 	// Manual user action clears any minimize-override
 	isMutedByMinimize = false;
-	applyGameMuteState(lunIsMuted);
+	applyGameMuteState(lunIsMuted, false);
 }
 
 function toggleGameMute() {
@@ -2474,12 +2499,12 @@ function handleMinimizeState(isMinimized) {
 	if (isMinimized) {
 		if (!lunIsMuted && !isMutedByMinimize) {
 			isMutedByMinimize = true;
-			applyGameMuteState(true);
+			applyGameMuteState(true, true);
 		}
 	} else {
 		if (isMutedByMinimize) {
 			isMutedByMinimize = false;
-			applyGameMuteState(lunIsMuted);
+			applyGameMuteState(lunIsMuted, true);
 		}
 	}
 }
@@ -2535,8 +2560,17 @@ setInterval(() => {
 	hookNativeMuteCheckbox();
 	if (typeof window.getGameSettings === "function" && !window.__spkmodAudioInitialized) {
 		window.__spkmodAudioInitialized = true;
-		if (lunIsMuted) {
-			applyGameMuteState(true);
+		// Option A: Actively ensure native game settings start unmuted on boot
+		const current = window.getGameSettings();
+		if (current && current.muteAll) {
+			if (typeof window.updateGameSettings === "function") {
+				try { window.updateGameSettings({ muteAll: false }); } catch (_) {}
+			}
+			const cb = findGameMuteCheckbox();
+			if (cb && cb.checked) {
+				cb.checked = false;
+				cb.dispatchEvent(new Event("change", { bubbles: true }));
+			}
 		}
 	}
 }, 500);
