@@ -11567,7 +11567,7 @@ const mapModalElements = {};
 let mapUpdateFrame = null;
 
 // ---- World map viewport (pan / pinch-zoom) ----
-// The map is laid out in a fixed 1000x400 logical space. On small screens we keep
+// The map is laid out in a fixed logical space (the canvas size, currently 1000x520). On small screens we keep
 // that space at a readable scale and show it through a small, pannable window.
 let MAP_LW = 1000, MAP_LH = 520; // re-synced from the canvas size right after the map modal is built
 // Tune these to change how tall the map window is on small screens.
@@ -11596,7 +11596,7 @@ function zoomMapAt(px, py, factor) {
 function layoutMapModal() {
 	const m = mapModalElements.modalWindow, c = mapModalElements.canvas;
 	if (!m || !c) return;
-	// Mobile only. On desktop nothing below runs, so the original 1000x400 window is left untouched.
+	// Mobile only. On desktop nothing below runs, so the original desktop layout is left untouched.
 	const small = typeof spkmodIsMobile === "function" && spkmodIsMobile();
 	mapView.small = small;
 	if (!small) {
