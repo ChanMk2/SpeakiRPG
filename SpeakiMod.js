@@ -5907,7 +5907,18 @@ document.body.appendChild(
 	lunHudElements.pinnedQuest.panel = buildElement("div", {
 		id: "spkmod-pq",
 		className: "hidden",
-		title: t("pinnedQuestTooltip") || "Double-click to unpin",
+		title: t("pinnedQuestTooltip") || "Click to expand/collapse. Double-click to unpin",
+		onclick: (e) => {
+			if (e.target.closest("button")) return;
+			if (typeof lunPinnedQuestExpanded !== "undefined") {
+				lunPinnedQuestExpanded = !lunPinnedQuestExpanded;
+				if (window.__spkmodCachedQuests && typeof lunPinnedQuestId !== "undefined" && lunPinnedQuestId && window.__spkmodCachedQuests[lunPinnedQuestId]) {
+					if (typeof updatePinnedQuestDisplay === "function") {
+						updatePinnedQuestDisplay(window.__spkmodCachedQuests[lunPinnedQuestId]);
+					}
+				}
+			}
+		},
 		ondblclick: (e) => {
 			e.preventDefault();
 			e.stopPropagation();
@@ -16369,7 +16380,8 @@ var questsModalElements = window.questsModalElements = window.questsModalElement
 	countBadge: null,
 	showHiddenBtn: null,
 	listContainer: null,
-	showHidden: false
+	showHidden: false,
+	expandedQuestIds: new Set()
 };
 
 function sec(t) {
@@ -17270,11 +17282,31 @@ function getQuestTitle(quest) {
 	return title || quest.code || "Quest";
 }
 
+function getQuestDescription(quest) {
+	if (!quest) return "";
+	let desc = quest.description || "";
+	if (quest.code && typeof window.i18n === "function") {
+		try {
+			const dKey = `content.quest.${quest.code}.description`;
+			const dVal = window.i18n(dKey);
+			if (dVal && dVal !== dKey) desc = dVal;
+		} catch (_) {}
+	}
+	return desc;
+}
+
+var lunPinnedQuestExpanded = false;
+
 function updatePinnedQuestDisplay(quest) {
 	if (!quest) return;
-	const text = getQuestDisplayText(quest);
+	const title = getQuestTitle(quest);
+	const desc = getQuestDescription(quest);
 	const cur = quest.currentAmount ?? 0;
 	const tgt = quest.targetAmount ?? 1;
+
+	const fullText = desc ? `${title ? title + " — " : ""}${desc}` : title;
+	const text = lunPinnedQuestExpanded ? fullText : title;
+
 	lunPinnedQuestContent = `${text} / ${cur}/${tgt}`;
 	if (lunHudElements && lunHudElements.pinnedQuest && lunHudElements.pinnedQuest.content) {
 		setText(lunHudElements.pinnedQuest.content, lunPinnedQuestContent);
@@ -17289,7 +17321,8 @@ function updatePinnedQuestDisplay(quest) {
 				period: lunPinnedQuestPeriod,
 				questId: lunPinnedQuestId,
 				content: lunPinnedQuestContent,
-				pbar: `${pct.toFixed(0)}%`
+				pbar: `${pct.toFixed(0)}%`,
+				expanded: lunPinnedQuestExpanded
 			}));
 		} catch (_) {}
 	}
@@ -17448,6 +17481,7 @@ function pinQuest(quest, questElm) {
 				lunPinnedQuestPeriod = parsed.period || "daily";
 				lunPinnedQuestId = parsed.questId;
 				lunPinnedQuestNextQueryTick = 0;
+				if (parsed.expanded !== undefined) lunPinnedQuestExpanded = !!parsed.expanded;
 				if (parsed.content) {
 					lunPinnedQuestContent = parsed.content;
 					if (lunHudElements && lunHudElements.pinnedQuest && lunHudElements.pinnedQuest.content) {
@@ -17786,14 +17820,15 @@ async function claimQuest(questId) {
 	return false;
 }
 
-var questsModalElements = window.questsModalElements = {
+var questsModalElements = window.questsModalElements = window.questsModalElements || {
 	modal: null,
 	headerRow: null,
 	headerTitle: null,
 	countBadge: null,
 	showHiddenBtn: null,
 	listContainer: null,
-	showHidden: false
+	showHidden: false,
+	expandedQuestIds: new Set()
 };
 
 function buildQuestsModal() {
@@ -17966,6 +18001,8 @@ function renderQuestChecklist() {
 		const isClaimed = !!q.isClaimed;
 		const isStarred = (lunPinnedQuestId && String(lunPinnedQuestId) === String(q.questId));
 		const period = (q.period || "daily").toLowerCase();
+		const descText = getQuestDescription(q);
+		const isExpanded = !!(questsModalElements.expandedQuestIds && questsModalElements.expandedQuestIds.has(String(q.questId)));
 
 		let periodBadgeText = `(${t("periodDaily") || "Daily"})`;
 		let periodColor = "#38bdf8";
@@ -17983,96 +18020,123 @@ function renderQuestChecklist() {
 		try {
 			const row = buildElement("div", {
 				className: "spkmod-quest-row",
-				style: `display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 8px; border-radius: 5px; font-size: 11.5px; border: 1px solid ${isClaimable ? "rgba(74, 222, 128, 0.45)" : "rgba(255,255,255,0.1)"}; background: ${isDismissed ? "rgba(255,255,255,0.02)" : (isClaimable ? "rgba(34, 197, 94, 0.12)" : "rgba(255,255,255,0.04)")}; opacity: ${isDismissed ? "0.45" : "1"};`
+				style: `display: flex; flex-direction: column; gap: 4px; padding: 5px 8px; border-radius: 5px; font-size: 11.5px; border: 1px solid ${isClaimable ? "rgba(74, 222, 128, 0.45)" : "rgba(255,255,255,0.1)"}; background: ${isDismissed ? "rgba(255,255,255,0.02)" : (isClaimable ? "rgba(34, 197, 94, 0.12)" : "rgba(255,255,255,0.04)")}; opacity: ${isDismissed ? "0.45" : "1"}; cursor: pointer; user-select: none;`
 			}, [
-				// Left side: Period Tag & Quest Title ONLY
+				// Main 1-line Header Row
 				buildElement("div", {
-					style: "display: flex; align-items: center; gap: 6px; overflow: hidden; min-width: 0; flex: 1;",
-					title: getQuestDisplayText(q)
+					style: "display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; cursor: pointer;"
 				}, [
-					buildElement("span", {
-						innerText: periodBadgeText,
-						style: `font-size: 10px; font-weight: bold; color: ${periodColor}; background: ${periodBg}; padding: 1px 5px; border-radius: 4px; flex-shrink: 0;`
-					}),
-					buildElement("span", {
-						className: "spkmod-quest-row-title",
-						innerText: getQuestTitle(q),
-						style: "font-weight: 500; color: #f1f5f9; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"
-					})
+					// Left side: Period Tag & Quest Title
+					buildElement("div", {
+						style: "display: flex; align-items: center; gap: 6px; overflow: hidden; min-width: 0; flex: 1; cursor: pointer;",
+						title: isExpanded ? "Click to collapse" : (descText ? "Click to view description" : "")
+					}, [
+						buildElement("span", {
+							innerText: periodBadgeText,
+							style: `font-size: 10px; font-weight: bold; color: ${periodColor}; background: ${periodBg}; padding: 1px 5px; border-radius: 4px; flex-shrink: 0;`
+						}),
+						buildElement("span", {
+							className: "spkmod-quest-row-title",
+							innerText: getQuestTitle(q),
+							style: "font-weight: 500; color: #f1f5f9; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"
+						})
+					]),
+
+					// Right side: Progress / Claim / Star / Dismiss
+					buildElement("div", {
+						style: "display: flex; align-items: center; gap: 6px; flex-shrink: 0;"
+					}, [
+						// Claim button or Progress or Claimed text
+						isClaimable ? buildElement("button", {
+							className: "spkmod-panel-btn-small",
+							innerText: "🎁 " + (t("claimQuestBtn") || "Claim"),
+							style: "padding: 2px 7px; font-size: 10.5px; background: #16a34a; color: #fff; border: 1px solid #4ade80; border-radius: 4px; font-weight: bold; cursor: pointer;",
+							onclick: async (e) => {
+								e.stopPropagation();
+								e.target.disabled = true;
+								e.target.innerText = "...";
+								const ok = await claimQuest(q.questId);
+								if (!ok) {
+									e.target.innerText = t("claimQuestBtn") || "Claim";
+									e.target.disabled = false;
+								}
+							}
+						}) : (isClaimed ? buildElement("span", {
+							innerText: "✓ " + (t("claimedQuestStatus") || "Claimed"),
+							style: "font-size: 10.5px; color: #4ade80; font-weight: bold;"
+						}) : buildElement("span", {
+							className: "spkmod-quest-progress-text",
+							innerText: `${cur}/${tgt}`,
+							style: "font-size: 11px; font-weight: bold; color: #fbbf24; min-width: 32px; text-align: right;"
+						})),
+
+						// Star button (Single HUD Pinned Quest)
+						buildElement("button", {
+							className: "spkmod-panel-btn-small",
+							innerText: isStarred ? "⭐" : "☆",
+							title: isStarred ? (t("unstarQuestBtn") || "Unstar from HUD") : (t("starQuestBtn") || "Star on HUD"),
+							style: `padding: 1px 5px; font-size: 11px; cursor: pointer; border-radius: 4px; border: 1px solid ${isStarred ? "#eab308" : "rgba(255,255,255,0.15)"}; background: ${isStarred ? "rgba(234, 179, 8, 0.25)" : "rgba(255,255,255,0.06)"}; color: ${isStarred ? "#ffd700" : "#94a3b8"};`,
+							onclick: (e) => {
+								e.stopPropagation();
+								if (isStarred) {
+									unpinQuest();
+								} else {
+									pinQuest(q);
+								}
+								renderQuestChecklist();
+							}
+						}),
+
+						// Dismiss (✕) or Restore (↩️) button
+						isDismissed ? buildElement("button", {
+							className: "spkmod-panel-btn-small",
+							innerText: "↩️",
+							title: "Restore Quest",
+							style: "padding: 1px 4px; font-size: 10px; cursor: pointer; border-radius: 4px;",
+							onclick: (e) => {
+								e.stopPropagation();
+								undismissQuest(q.questId);
+								renderQuestChecklist();
+							}
+						}) : buildElement("button", {
+							className: "spkmod-panel-btn-small",
+							innerText: "✕",
+							title: "Dismiss from list until reset",
+							style: "padding: 1px 5px; font-size: 10.5px; cursor: pointer; color: #ff6b6b; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 4px;",
+							onclick: (e) => {
+								e.stopPropagation();
+								dismissQuest(q.questId, q.period);
+								renderQuestChecklist();
+							}
+						})
+					])
 				]),
 
-				// Right side: Progress / Claim / Star / Dismiss
-				buildElement("div", {
-					style: "display: flex; align-items: center; gap: 6px; flex-shrink: 0;"
-				}, [
-					// Claim button or Progress or Claimed text
-					isClaimable ? buildElement("button", {
-						className: "spkmod-panel-btn-small",
-						innerText: "🎁 " + (t("claimQuestBtn") || "Claim"),
-						style: "padding: 2px 7px; font-size: 10.5px; background: #16a34a; color: #fff; border: 1px solid #4ade80; border-radius: 4px; font-weight: bold; cursor: pointer;",
-						onclick: async (e) => {
-							e.stopPropagation();
-							e.target.disabled = true;
-							e.target.innerText = "...";
-							const ok = await claimQuest(q.questId);
-							if (!ok) {
-								e.target.innerText = t("claimQuestBtn") || "Claim";
-								e.target.disabled = false;
-							}
-						}
-					}) : (isClaimed ? buildElement("span", {
-						innerText: "✓ " + (t("claimedQuestStatus") || "Claimed"),
-						style: "font-size: 10.5px; color: #4ade80; font-weight: bold;"
-					}) : buildElement("span", {
-						className: "spkmod-quest-progress-text",
-						innerText: `${cur}/${tgt}`,
-						style: "font-size: 11px; font-weight: bold; color: #fbbf24; min-width: 32px; text-align: right;"
-					})),
-
-					// Star button (Single HUD Pinned Quest)
-					buildElement("button", {
-						className: "spkmod-panel-btn-small",
-						innerText: isStarred ? "⭐" : "☆",
-						title: isStarred ? (t("unstarQuestBtn") || "Unstar from HUD") : (t("starQuestBtn") || "Star on HUD"),
-						style: `padding: 1px 5px; font-size: 11px; cursor: pointer; border-radius: 4px; border: 1px solid ${isStarred ? "#eab308" : "rgba(255,255,255,0.15)"}; background: ${isStarred ? "rgba(234, 179, 8, 0.25)" : "rgba(255,255,255,0.06)"}; color: ${isStarred ? "#ffd700" : "#94a3b8"};`,
-						onclick: (e) => {
-							e.stopPropagation();
-							if (isStarred) {
-								unpinQuest();
-							} else {
-								pinQuest(q);
-							}
-							renderQuestChecklist();
-						}
-					}),
-
-					// Dismiss (✕) or Restore (↩️) button
-					isDismissed ? buildElement("button", {
-						className: "spkmod-panel-btn-small",
-						innerText: "↩️",
-						title: "Restore Quest",
-						style: "padding: 1px 4px; font-size: 10px; cursor: pointer; border-radius: 4px;",
-						onclick: (e) => {
-							e.stopPropagation();
-							undismissQuest(q.questId);
-							renderQuestChecklist();
-						}
-					}) : buildElement("button", {
-						className: "spkmod-panel-btn-small",
-						innerText: "✕",
-						title: "Dismiss from list until reset",
-						style: "padding: 1px 5px; font-size: 10.5px; cursor: pointer; color: #ff6b6b; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 4px;",
-						onclick: (e) => {
-							e.stopPropagation();
-							dismissQuest(q.questId, q.period);
-							renderQuestChecklist();
-						}
-					})
-				])
+				// Second part of the text (Description): shown when clicked/tapped, hidden by default
+				(isExpanded && descText) ? buildElement("div", {
+					className: "spkmod-quest-row-desc",
+					style: `font-size: 10.5px; color: #cbd5e1; line-height: 1.4; padding: 5px 8px; background: rgba(0,0,0,0.35); border-radius: 4px; border-left: 2px solid ${periodColor}; margin-top: 2px; white-space: pre-wrap; word-break: break-word; user-select: text;`,
+					innerText: descText
+				}) : null
 			]);
 
 			row.setAttribute("data-quest-id", String(q.questId));
 			row.__questId = String(q.questId);
+
+			// Tapping/clicking anywhere on the quest toggles description expansion
+			row.onclick = (e) => {
+				if (e.target.closest("button") || e.target.closest(".spkmod-panel-btn-small")) return;
+				if (!descText) return;
+				if (!questsModalElements.expandedQuestIds) questsModalElements.expandedQuestIds = new Set();
+				const qIdStr = String(q.questId);
+				if (questsModalElements.expandedQuestIds.has(qIdStr)) {
+					questsModalElements.expandedQuestIds.delete(qIdStr);
+				} else {
+					questsModalElements.expandedQuestIds.add(qIdStr);
+				}
+				renderQuestChecklist();
+			};
+
 			container.appendChild(row);
 		} catch (rowErr) {
 			console.warn("[SpeakiMod+] Error rendering quest row:", q, rowErr);
