@@ -2344,9 +2344,12 @@ if (typeof window !== "undefined" && window.electronAPI && typeof window.electro
 	window.electronAPI.setDiscordRpc(lunDiscordRpcEnabled);
 }
 
-var lunIsMuted = (window.localStorage && localStorage.getItem("spkmod-muted")) === "true";
+// Sound starts Unmuted by default on game launch (Option A)
+var lunIsMuted = false;
 var lunMuteMinimizedEnabled = (window.localStorage && localStorage.getItem("spkmod-mute-minimized")) === "true";
 var isMutedByMinimize = false;
+var spkmodStartupTime = Date.now();
+try { if (window.localStorage) localStorage.removeItem("spkmod-muted"); } catch (_) {}
 
 function isGameMuted() {
 	return lunIsMuted || isMutedByMinimize;
@@ -2396,20 +2399,9 @@ function hookNativeMuteCheckbox() {
 		cb.addEventListener("change", () => {
 			if (!isMutedByMinimize) {
 				lunIsMuted = cb.checked;
-				if (window.localStorage) {
-					localStorage.setItem("spkmod-muted", lunIsMuted ? "true" : "false");
-				}
 				updateMuteButtonUI();
 			}
 		});
-		// Sync on startup if preference is stored
-		if (lunIsMuted && !cb.checked) {
-			cb.click();
-		} else if (!lunIsMuted && cb.checked) {
-			lunIsMuted = true;
-			if (window.localStorage) localStorage.setItem("spkmod-muted", "true");
-			updateMuteButtonUI();
-		}
 	}
 }
 
@@ -2449,11 +2441,8 @@ function applyGameMuteState(muted) {
 	updateMuteButtonUI();
 }
 
-function setGameMuted(muted, save = true) {
+function setGameMuted(muted) {
 	lunIsMuted = !!muted;
-	if (save && window.localStorage) {
-		localStorage.setItem("spkmod-muted", lunIsMuted ? "true" : "false");
-	}
 	// Manual user action clears any minimize-override
 	isMutedByMinimize = false;
 	applyGameMuteState(lunIsMuted);
@@ -2479,6 +2468,8 @@ function setMuteMinimized(enabled) {
 
 function handleMinimizeState(isMinimized) {
 	if (!lunMuteMinimizedEnabled) return;
+	// Prevent startup window creation or initial blur from accidentally muting on launch
+	if (isMinimized && Date.now() - spkmodStartupTime < 5000) return;
 
 	if (isMinimized) {
 		if (!lunIsMuted && !isMutedByMinimize) {
@@ -2529,7 +2520,6 @@ function hookGameSettings() {
 			if (newSettings && typeof newSettings.muteAll === "boolean" && !isMutedByMinimize) {
 				if (lunIsMuted !== newSettings.muteAll) {
 					lunIsMuted = newSettings.muteAll;
-					if (window.localStorage) localStorage.setItem("spkmod-muted", lunIsMuted ? "true" : "false");
 					updateMuteButtonUI();
 				}
 			}
