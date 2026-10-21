@@ -77,6 +77,17 @@
       "bossLevel": 75,
       "requiredLevel": 75,
       "name": "Earthshaker Sealed Altar"
+    },
+    {
+      "raidId": 10,
+      "templateZoneId": 910,
+      "altarZoneId": 306,
+      "altarX": 1018,
+      "altarZ": -806,
+      "bossMonsterId": 1385,
+      "bossLevel": 94,
+      "requiredLevel": 85,
+      "name": "Theater Backstage (Soggy Stage Curtain)"
     }
   ],
   "portals": {

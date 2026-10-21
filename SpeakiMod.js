@@ -974,6 +974,17 @@ const DEFAULT_RAIDS = [
 		"bossLevel": 75,
 		"requiredLevel": 75,
 		"name": "Earthshaker Sealed Altar"
+	},
+	{
+		"raidId": 10,
+		"templateZoneId": 910,
+		"altarZoneId": 306,
+		"altarX": 1018,
+		"altarZ": -806,
+		"bossMonsterId": 1385,
+		"bossLevel": 94,
+		"requiredLevel": 85,
+		"name": "Theater Backstage (Soggy Stage Curtain)"
 	}
 ];
 
@@ -4144,6 +4155,7 @@ function updateDynamicStyles() {
 		}
 				#app { filter: ${filterRule}; }
 		#app > *:not(:has(canvas)):not(canvas):not(.sr-click-ripple-layer) { zoom: ${lunGameUiScale} !important; }
+		/* Note: #spkmod-map-modal is intentionally excluded from CSS transform scale to prevent double coordinate adjustments during drag/pan/zoom */
 		#spkmod-hud, #spkmod-settings-modal, #spkmod-event-modal, #spkmod-patchnotes-modal, #spkmod-bbs-modal, #spkmod-info-modal, #spkmod-effects-modal, #spkmod-stats-modal, #spkmod-edits-modal { transform: scale(var(--spkmod-scale)); transform-origin: top left; }
 		#spkmod-pq, body > #spkmod-panel { transform: scale(var(--spkmod-scale)); transform-origin: top right; }
 		#spkmod-main, #spkmod-pq, #spkmod-settings-modal, #spkmod-gamepad-modal, #spkmod-players-modal, #spkmod-event-modal, #spkmod-patchnotes-modal, #spkmod-bbs-modal, #spkmod-info-modal, #spkmod-effects-modal, #spkmod-stats-modal, #spkmod-edits-modal, .spkmod-panel-btn, .spkmod-panel-counter, .spkmod-panel-combo, #spkmod-discord-btn {
@@ -11648,9 +11660,14 @@ function updateMapLoop() {
 
 	ctx.strokeStyle = "rgba(255, 200, 50, 0.4)";
 	ctx.lineWidth = 1.5;
+	const drawnConnections = new Set();
 	for (const src in Portals) {
 		for (const tgt in Portals[src]) {
+			const pairKey = parseInt(src) < parseInt(tgt) ? `${src}-${tgt}` : `${tgt}-${src}`;
+			if (drawnConnections.has(pairKey)) continue;
+
 			if (Portals[tgt] && Portals[tgt][src] && zonePos[src] && zonePos[tgt]) {
+				drawnConnections.add(pairKey);
 				const p1 = zonePos[src];
 				const p2 = zonePos[tgt];
 				const pInfo1 = Portals[src][tgt];
@@ -11663,11 +11680,31 @@ function updateMapLoop() {
 					if (lPos1 && lPos2) {
 						ctx.beginPath();
 						ctx.moveTo(lPos1.x, lPos1.y);
-						if (Math.abs(lPos1.y - lPos2.y) > 10) { 
-							ctx.lineTo(lPos1.x, (lPos1.y + lPos2.y)/2);
-							ctx.lineTo(lPos2.x, (lPos1.y + lPos2.y)/2);
+						
+						const dy = Math.abs(p1.y - p2.y);
+						if (dy > 10) {
+							// If connecting across non-adjacent rows (e.g. World 1 to World 4 skipping over World 3),
+							// route through the left margin track so it doesn't slice through intermediate zone boxes!
+							if (dy > rowSpacingY * 1.5) {
+								const lowerPos = p1.y > p2.y ? lPos1 : lPos2;
+								const upperPos = p1.y > p2.y ? lPos2 : lPos1;
+								const lowerZone = p1.y > p2.y ? p1 : p2;
+								const gapY = lowerZone.y - boxH/2 - (rowSpacingY - boxH) / 2;
+								const marginTrackX = 14;
+
+								ctx.lineTo(lowerPos.x, gapY);
+								ctx.lineTo(marginTrackX, gapY);
+								ctx.lineTo(marginTrackX, upperPos.y);
+								ctx.lineTo(upperPos.x, upperPos.y);
+							} else {
+								const midY = (lPos1.y + lPos2.y) / 2;
+								ctx.lineTo(lPos1.x, midY);
+								ctx.lineTo(lPos2.x, midY);
+								ctx.lineTo(lPos2.x, lPos2.y);
+							}
+						} else {
+							ctx.lineTo(lPos2.x, lPos2.y);
 						}
-						ctx.lineTo(lPos2.x, lPos2.y);
 						ctx.stroke();
 					}
 				}
@@ -11741,7 +11778,9 @@ function updateMapLoop() {
 			ctx.font = "bold 9px sans-serif";
 			ctx.textAlign = "center";
 			ctx.textBaseline = "middle";
-			ctx.fillText(isUnlocked ? `⚔️ LV${raid.requiredLevel}` : `🔒 LV${raid.requiredLevel}`, zp.x, pillY + pillH / 2 + 0.5);
+			const reqLvl = raid.requiredLevel || 1;
+			const displayLvl = raid.bossLevel || reqLvl;
+			ctx.fillText(isUnlocked ? `⚔️ LV${displayLvl}` : `🔒 LV${reqLvl}`, zp.x, pillY + pillH / 2 + 0.5);
 			ctx.restore();
 		}
 	}
@@ -11815,6 +11854,7 @@ document.body.appendChild(
 		})
 	])
 );
+mapModalElements.modalWindow.style.setProperty("--spkmod-scale", "1");
 
 document.body.appendChild(
 	lunHudElements.eventModal = buildElement("div", {
