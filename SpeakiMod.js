@@ -146,6 +146,51 @@ if (!window.__speakiFetchHooked) {
 	};
 }
 
+// --- NETWORK RESILIENCE: SAFE FETCH & CIRCUIT BREAKER ---
+window.spkmodSafeFetch = async function(url, options = {}, timeoutMs = 5000) {
+	const controller = new AbortController();
+	const timer = setTimeout(() => {
+		try { controller.abort(); } catch (_) {}
+	}, timeoutMs);
+	const opts = { ...options };
+	if (options.signal) {
+		options.signal.addEventListener("abort", () => {
+			try { controller.abort(); } catch (_) {}
+		});
+	}
+	opts.signal = controller.signal;
+	try {
+		const fetchFn = window.__origFetch || window.fetch;
+		const res = await fetchFn(url, opts);
+		return res;
+	} finally {
+		clearTimeout(timer);
+	}
+};
+
+window.spkmodServerHealth = {
+	failures: 0,
+	lastFailTime: 0,
+	baseCooldownMs: 60000,   // 1 minute initial cooldown
+	maxCooldownMs: 300000,   // 5 minutes max cooldown
+	isAvailable() {
+		if (this.failures === 0) return true;
+		const delay = Math.min(this.baseCooldownMs * Math.pow(2, this.failures - 1), this.maxCooldownMs);
+		return (Date.now() - this.lastFailTime) > delay;
+	},
+	recordSuccess() {
+		this.failures = 0;
+		this.lastFailTime = 0;
+	},
+	recordFailure() {
+		this.failures++;
+		this.lastFailTime = Date.now();
+	},
+	forceRetry() {
+		this.lastFailTime = 0;
+	}
+};
+
 if (!window.__speakiWsHooked && typeof window.WebSocket !== "undefined") {
 	window.__speakiWsHooked = true;
 	const OrigWebSocket = window.WebSocket;
@@ -6458,7 +6503,7 @@ function parseCustomEmojisToHtml(html) {
     for (const [ename, eurl] of Object.entries(spkmodAllEmojis)) {
         const tag = ":" + ename + ":";
         if (html.includes(tag)) {
-            html = html.split(tag).join(`<span class="spkmod-custom-emoji" data-name="${ename}" data-url="${eurl}" title="${tag}"><img src="${eurl}" style="height: 1.6em; vertical-align: middle; padding: 0 1px; display: inline-block;"></span>`);
+            html = html.split(tag).join(`<span class="spkmod-custom-emoji" data-name="${ename}" data-url="${eurl}" title="${tag}"><img src="${eurl}" style="height: 1.6em; vertical-align: middle; padding: 0 1px; display: inline-block;" loading="lazy" onerror="this.onerror=null; this.style.opacity='0.4';"></span>`);
         }
     }
     return html;
@@ -7359,11 +7404,12 @@ window.showPollModal = function(forceLang) {
             } catch (_) {}
 
             const sUrl = getPollServerUrl().replace(/\/+$/, "");
-            fetch(`${sUrl}/api/poll/vote`, {
+            const safeFetch = window.spkmodSafeFetch || window.fetch;
+            safeFetch(`${sUrl}/api/poll/vote`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(voteData)
-            })
+            }, 5000)
             .then(res => {
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 return res.json();
@@ -7404,6 +7450,7 @@ window.showPollModal = function(forceLang) {
             retryBtn.onmouseover = () => retryBtn.style.background = '#059669';
             retryBtn.onmouseleave = () => retryBtn.style.background = '#10b981';
             retryBtn.onclick = () => {
+                if (window.spkmodServerHealth) window.spkmodServerHealth.forceRetry();
                 retryBtn.disabled = true;
                 retryBtn.innerText = getTranslation("pollSubmitting");
                 if (voteData) {
@@ -7444,7 +7491,8 @@ window.showPollModal = function(forceLang) {
 
         bodyContainer.innerHTML = `<div style="text-align: center; color: #94a3b8; padding: 24px; font-size: 15px;">⏳ ${getTranslation("pollSubmitting")}</div>`;
 
-        fetch(`${sUrl}/api/poll/status?username=${encodeURIComponent(username)}&playerId=${encodeURIComponent(playerId)}`)
+        const safeFetch = window.spkmodSafeFetch || window.fetch;
+        safeFetch(`${sUrl}/api/poll/status?username=${encodeURIComponent(username)}&playerId=${encodeURIComponent(playerId)}`, {}, 5000)
         .then(res => {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             return res.json();
@@ -14104,15 +14152,18 @@ window.toggleBbsModal = function() {
 };
 
 async function fetchBbsPosts(isBackground) {
-	if (lunBbsLoading && !isBackground) return;
+	if (lunBbsLoading) return;
+	if (isBackground && window.spkmodServerHealth && !window.spkmodServerHealth.isAvailable()) return;
 	lunBbsLoading = true;
 	if (bbsModalElements.refreshBtn) bbsModalElements.refreshBtn.style.opacity = "0.4";
 
 	try {
 		const sUrl = getBbsServerUrl();
-		const res = await fetch(`${sUrl}/api/bbs/posts?limit=100`);
+		const safeFetch = window.spkmodSafeFetch || window.fetch;
+		const res = await safeFetch(`${sUrl}/api/bbs/posts?limit=100`, {}, 5000);
 		if (res.ok) {
 			const data = await res.json();
+			if (window.spkmodServerHealth) window.spkmodServerHealth.recordSuccess();
 			if (data && data.success && Array.isArray(data.posts)) {
 				lunBbsPosts = data.posts;
 				renderBbsPosts();
@@ -14135,6 +14186,7 @@ async function fetchBbsPosts(isBackground) {
 			}
 		}
 	} catch (err) {
+		if (window.spkmodServerHealth) window.spkmodServerHealth.recordFailure();
 		console.warn("[SpeakiMod+] Failed to fetch BBS posts:", err);
 		if (!isBackground && bbsModalElements.postsContainer && lunBbsPosts.length === 0) {
 			bbsModalElements.postsContainer.innerHTML = `<div style="text-align: center; color: #f87171; font-size: 11px; padding: 20px 0;">${t("bbsError")}</div>`;
@@ -14963,7 +15015,8 @@ async function sendBbsPost() {
 		if (adminSecret) {
 			bodyPayload.adminSecret = adminSecret;
 		}
-		const res = await fetch(`${sUrl}/api/bbs/post`, {
+		const safeFetch = window.spkmodSafeFetch || window.fetch;
+		const res = await safeFetch(`${sUrl}/api/bbs/post`, {
 			method: "POST",
 			headers: headers,
 			body: JSON.stringify(bodyPayload)
@@ -15067,7 +15120,8 @@ async function deleteBbsPost(postId) {
 	}
 	try {
 		const sUrl = getBbsServerUrl();
-		const res = await fetch(`${sUrl}/api/bbs/delete`, {
+		const safeFetch = window.spkmodSafeFetch || window.fetch;
+		const res = await safeFetch(`${sUrl}/api/bbs/delete`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
@@ -15128,7 +15182,8 @@ async function toggleBbsHeart(postId, btnEl) {
 	// 2. Synchronize with BBS server
 	try {
 		const sUrl = getBbsServerUrl();
-		const res = await fetch(`${sUrl}/api/bbs/heart`, {
+		const safeFetch = window.spkmodSafeFetch || window.fetch;
+		const res = await safeFetch(`${sUrl}/api/bbs/heart`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
@@ -15309,7 +15364,7 @@ document.body.appendChild(
 					innerText: "🔄",
 					title: "Refresh posts",
 					style: "cursor: pointer; font-size: 11px; opacity: 0.8; user-select: none;",
-					onclick: () => fetchBbsPosts()
+					onclick: () => { if (window.spkmodServerHealth) window.spkmodServerHealth.forceRetry(); fetchBbsPosts(); }
 				}),
 				bbsModalElements.closeBtn = buildElement("span", {
 					id: "spkmod-bbs-close",
@@ -17629,7 +17684,7 @@ if (!window.__beyBladeLoopRunning) {
 // --- MOD PLAYERS TELEMETRY & HOURLY PING ---
 var lunModPlayersCounts = { count1h: null, count24h: null, count7d: null, countAllTime: null };
 var lunLastTelemetryPingTime = 0;
-var lunTelemetryPingIntervalMs = 60 * 60 * 1000; // 1 hour
+var lunTelemetryPingIntervalMs = 10 * 60 * 1000; // 10 minutes
 
 window.spkmodRenderChannelTracker = function() {
 	if (!window.__spkmodLastChannelResp || !lunHudElements.channelTracker) return;
@@ -17649,38 +17704,54 @@ window.spkmodSendTelemetryPing = function() {
 	const sUrl = (window.spkmodPollServerUrl || saved || "https://spk.lena.moe").replace(/\/+$/, "");
 	const consent = window.localStorage ? localStorage.getItem("spkmod-telemetry-consent") : null;
 
+	// Always mark attempt timestamp so failures never trigger repeated pings every second
+	lunLastTelemetryPingTime = Date.now();
+	const safeFetch = window.spkmodSafeFetch || window.fetch;
+
 	if (consent === "granted") {
 		const username = (window.gameState && window.gameState.myPlayerName) ? String(window.gameState.myPlayerName).trim() : (localStorage.getItem("spkmod-last-player-name") || "Player");
 		const playerId = (window.gameState && window.gameState.myPlayerId) ? String(window.gameState.myPlayerId) : (localStorage.getItem("spkmod-last-player-id") || "");
 
-		fetch(`${sUrl}/api/telemetry/ping`, {
+		safeFetch(`${sUrl}/api/telemetry/ping`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ username, playerId })
+		}, 4000)
+		.then(res => {
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			return res.json();
 		})
-		.then(res => res.json())
 		.then(data => {
+			if (window.spkmodServerHealth) window.spkmodServerHealth.recordSuccess();
 			if (data && data.success) {
 				lunModPlayersCounts = { count1h: data.count1h, count24h: data.count24h, count7d: data.count7d, countAllTime: data.countAllTime };
-				lunLastTelemetryPingTime = Date.now();
 				window.spkmodRenderChannelTracker();
 			}
 		})
-		.catch(_ => {});
+		.catch(_ => {
+			if (window.spkmodServerHealth) window.spkmodServerHealth.recordFailure();
+		});
 	} else {
-		fetch(`${sUrl}/api/telemetry/stats`)
-		.then(res => res.json())
+		safeFetch(`${sUrl}/api/telemetry/stats`, {}, 4000)
+		.then(res => {
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			return res.json();
+		})
 		.then(data => {
+			if (window.spkmodServerHealth) window.spkmodServerHealth.recordSuccess();
 			if (data && data.success) {
 				lunModPlayersCounts = { count1h: data.count1h, count24h: data.count24h, count7d: data.count7d, countAllTime: data.countAllTime };
 				window.spkmodRenderChannelTracker();
 			}
 		})
-		.catch(_ => {});
+		.catch(_ => {
+			if (window.spkmodServerHealth) window.spkmodServerHealth.recordFailure();
+		});
 	}
 };
 
 window.spkmodCheckTelemetryPing = function() {
+	if (window.spkmodServerHealth && !window.spkmodServerHealth.isAvailable()) return;
 	if (Date.now() - lunLastTelemetryPingTime >= lunTelemetryPingIntervalMs) {
 		window.spkmodSendTelemetryPing();
 	}
@@ -17726,7 +17797,7 @@ function tick() {
 	if (lunTickCount % 20 === 0 && typeof hookChatEmojiButton === "function") {
 		hookChatEmojiButton();
 	}
-	if (lunTickCount % 60 === 0 && typeof window.spkmodCheckTelemetryPing === "function") {
+	if (lunTickCount % 1800 === 0 && typeof window.spkmodCheckTelemetryPing === "function") {
 		window.spkmodCheckTelemetryPing();
 	}
 
@@ -19016,7 +19087,7 @@ function hookGameStateOnce() {
 						for (const [ename, eurl] of Object.entries(spkmodAllEmojis)) {
 							const tag = ":" + ename + ":";
 							if (html.includes(tag)) {
-								html = html.split(tag).join(`<span class="spkmod-custom-emoji" data-name="${ename}" data-url="${eurl}" title="${tag}"><img src="${eurl}" style="height: 1.6em; vertical-align: middle; padding: 0 1px; display: inline-block;"></span>`);
+								html = html.split(tag).join(`<span class="spkmod-custom-emoji" data-name="${ename}" data-url="${eurl}" title="${tag}"><img src="${eurl}" style="height: 1.6em; vertical-align: middle; padding: 0 1px; display: inline-block;" loading="lazy" onerror="this.onerror=null; this.style.opacity='0.4';"></span>`);
 								changed = true;
 							}
 						}
@@ -19104,7 +19175,7 @@ function appendColoredChatLine(id, name, text) {
 			for (const [ename, eurl] of Object.entries(spkmodAllEmojis)) {
 				const tag = ":" + ename + ":";
 				if (html.includes(tag)) {
-					html = html.split(tag).join(`<span class="spkmod-custom-emoji" data-name="${ename}" data-url="${eurl}" title="${tag}"><img src="${eurl}" style="height: 1.6em; vertical-align: middle; padding: 0 1px; display: inline-block;"></span>`);
+					html = html.split(tag).join(`<span class="spkmod-custom-emoji" data-name="${ename}" data-url="${eurl}" title="${tag}"><img src="${eurl}" style="height: 1.6em; vertical-align: middle; padding: 0 1px; display: inline-block;" loading="lazy" onerror="this.onerror=null; this.style.opacity='0.4';"></span>`);
 					changed = true;
 				}
 			}
