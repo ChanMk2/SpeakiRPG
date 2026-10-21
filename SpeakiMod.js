@@ -2408,6 +2408,13 @@ function hookNativeMuteCheckbox() {
 	const cb = findGameMuteCheckbox();
 	if (cb && !cb.__spkmodMuteHooked) {
 		cb.__spkmodMuteHooked = true;
+		// Sync visual state if native modal opened with mismatched checked state
+		if (!isMutedByMinimize && cb.checked !== lunIsMuted) {
+			cb.checked = lunIsMuted;
+			if (typeof window.updateGameSettings === "function") {
+				try { window.updateGameSettings({ muteAll: lunIsMuted }); } catch (_) {}
+			}
+		}
 		cb.addEventListener("change", () => {
 			if (!isMutedByMinimize) {
 				lunIsMuted = cb.checked;
@@ -2516,12 +2523,8 @@ if (typeof document !== "undefined") {
 	});
 }
 
-// Hook window blur and focus for Alt-Tab / background switching
+// Hook window focus for background switching and audio restoration
 if (typeof window !== "undefined") {
-	window.addEventListener("blur", () => {
-		if (document.activeElement && document.activeElement.tagName === "IFRAME") return;
-		handleMinimizeState(true);
-	});
 	window.addEventListener("focus", () => {
 		handleMinimizeState(false);
 	});
@@ -2561,17 +2564,15 @@ setInterval(() => {
 	if (typeof window.getGameSettings === "function" && !window.__spkmodAudioInitialized) {
 		window.__spkmodAudioInitialized = true;
 		// Option A: Actively ensure native game settings start unmuted on boot
-		const current = window.getGameSettings();
-		if (current && current.muteAll) {
-			if (typeof window.updateGameSettings === "function") {
-				try { window.updateGameSettings({ muteAll: false }); } catch (_) {}
-			}
-			const cb = findGameMuteCheckbox();
-			if (cb && cb.checked) {
-				cb.checked = false;
-				cb.dispatchEvent(new Event("change", { bubbles: true }));
-			}
+		if (typeof window.updateGameSettings === "function") {
+			try { window.updateGameSettings({ muteAll: false }); } catch (_) {}
 		}
+		const cb = findGameMuteCheckbox();
+		if (cb && cb.checked) {
+			cb.checked = false;
+			cb.dispatchEvent(new Event("change", { bubbles: true }));
+		}
+		applyGameMuteState(false, true);
 	}
 }, 500);
 

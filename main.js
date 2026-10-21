@@ -1,6 +1,9 @@
 const { app, BrowserWindow, ipcMain, nativeImage, globalShortcut, session } = require('electron');
 const axios = require('axios');
 const path = require('path');
+
+// Allow Web Audio to play immediately on launch without waiting for user interaction
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 const RPC = require('discord-rpc');
 const clientId = '861430403955949569';
 
@@ -232,22 +235,10 @@ async function createWindow() {
 
   mainWindow.on('focus', () => {
     registerShortcuts();
-    try {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('window-minimized', false);
-      }
-    } catch (_) {}
   });
 
   mainWindow.on('blur', () => {
     globalShortcut.unregisterAll();
-    try {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        if (!mainWindow.webContents.isDevToolsFocused()) {
-          mainWindow.webContents.send('window-minimized', true);
-        }
-      }
-    } catch (_) {}
   });
 
   mainWindow.on('minimize', () => {

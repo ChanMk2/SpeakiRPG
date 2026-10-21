@@ -1,4 +1,16 @@
 try {
+	// Sanitize native audio settings early before i18n/game bundle boots
+	const s = localStorage.getItem("sr1_settings");
+	if (s) {
+		const p = JSON.parse(s);
+		if (p && p.muteAll) {
+			p.muteAll = false;
+			localStorage.setItem("sr1_settings", JSON.stringify(p));
+		}
+	}
+} catch (_) {}
+
+try {
 	const isMobile = typeof window.speakiMobile !== "undefined" ||
 		(typeof navigator !== "undefined" && /mobi|android|iphone|ipad|ipod/i.test(navigator.userAgent || "")) ||
 		(typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches && navigator.maxTouchPoints > 0);
@@ -79,12 +91,6 @@ async function patchScript(og, src) {
 	const handleLoginPattern = /handleLogin\(([^)]*)\)\s*\{/;
 	if (handleLoginPattern.test(code)) {
 		code = code.replace(handleLoginPattern, `handleLogin($1){window.gameState = this; window.getGameSettings = ${m_getSettings}; window.updateGameSettings = ${m_updateSettings}; window.getNativeAuthToken = ${m_getToken}; window.refreshAuthToken = ${m_refreshToken}; if (typeof window.injectSpeakiMod === "function") window.injectSpeakiMod();`);
-	}
-
-	// Layer C: External connect invocation hook (supports ;, :, ,, or ) before .connect)
-	const callerPattern = /([;:,]|\)\s*)\s*((\w+)\.connect\(\w+\)),/;
-	if (callerPattern.test(code)) {
-		code = code.replace(callerPattern, `$1((window.speakiInjectorVer = 2), (window.gameState = $3), (window.i18n = ${m_i18n}), (window.questManager = ${m_questManager}), (window.getGameSettings = ${m_getSettings}), (window.updateGameSettings = ${m_updateSettings}), (window.getNativeAuthToken = ${m_getToken}), (window.refreshAuthToken = ${m_refreshToken}), $2),`);
 	}
 
 	code += `\ntry { window.getGameSettings = ${m_getSettings}; window.updateGameSettings = ${m_updateSettings}; window.getNativeAuthToken = ${m_getToken}; window.refreshAuthToken = ${m_refreshToken}; } catch (_) {}\n`;
