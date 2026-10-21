@@ -4272,9 +4272,9 @@ function updateDynamicStyles() {
 		}
 				#app { filter: ${filterRule}; }
 		#app > *:not(:has(canvas)):not(canvas):not(.sr-click-ripple-layer) { zoom: ${lunGameUiScale} !important; }
-		#spkmod-hud, #spkmod-settings-modal, #spkmod-event-modal, #spkmod-patchnotes-modal, #spkmod-bbs-modal, #spkmod-info-modal, #spkmod-effects-modal, #spkmod-stats-modal, #spkmod-edits-modal { transform: scale(var(--spkmod-scale)); transform-origin: top left; }
+		#spkmod-hud, #spkmod-settings-modal, #spkmod-event-modal, #spkmod-patchnotes-modal, #spkmod-bbs-modal, #spkmod-info-modal, #spkmod-effects-modal, #spkmod-stats-modal, #spkmod-edits-modal, #spkmod-quests-modal { transform: scale(var(--spkmod-scale)); transform-origin: top left; }
 		#spkmod-pq, body > #spkmod-panel { transform: scale(var(--spkmod-scale)); transform-origin: top right; }
-		#spkmod-main, #spkmod-pq, #spkmod-settings-modal, #spkmod-gamepad-modal, #spkmod-players-modal, #spkmod-event-modal, #spkmod-patchnotes-modal, #spkmod-bbs-modal, #spkmod-info-modal, #spkmod-effects-modal, #spkmod-stats-modal, #spkmod-edits-modal, .spkmod-panel-btn, .spkmod-panel-counter, .spkmod-panel-combo, #spkmod-discord-btn {
+		#spkmod-main, #spkmod-pq, #spkmod-settings-modal, #spkmod-gamepad-modal, #spkmod-players-modal, #spkmod-event-modal, #spkmod-patchnotes-modal, #spkmod-bbs-modal, #spkmod-info-modal, #spkmod-effects-modal, #spkmod-stats-modal, #spkmod-edits-modal, #spkmod-quests-modal, .spkmod-panel-btn, .spkmod-panel-counter, .spkmod-panel-combo, #spkmod-discord-btn {
 			background: var(--spkmod-bg) !important;
 			backdrop-filter: var(--spkmod-blur) !important;
 			border-color: var(--spkmod-accent) !important;
@@ -4695,7 +4695,7 @@ document.head.appendChild(buildElement(
 			from { opacity: 0.7; transform: scale(0.98); }
 			to { opacity: 1.0; transform: scale(1.02); }
 		}
-		#spkmod-hud.hidden, .hidden, #spkmod-pq.hidden, #spkmod-settings-modal.hidden, #spkmod-gamepad-modal.hidden, #spkmod-players-modal.hidden, #spkmod-event-modal.hidden, #spkmod-stats-modal.hidden, #spkmod-effects-modal.hidden, #spkmod-edits-modal.hidden {
+		#spkmod-hud.hidden, .hidden, #spkmod-pq.hidden, #spkmod-settings-modal.hidden, #spkmod-gamepad-modal.hidden, #spkmod-players-modal.hidden, #spkmod-event-modal.hidden, #spkmod-stats-modal.hidden, #spkmod-effects-modal.hidden, #spkmod-edits-modal.hidden, #spkmod-quests-modal.hidden {
 			display: none !important;
 		}
 		
@@ -4712,9 +4712,33 @@ document.head.appendChild(buildElement(
 		body.spkmod-ui-hidden #spkmod-stats-modal,
 		body.spkmod-ui-hidden #spkmod-effects-modal,
 		body.spkmod-ui-hidden #spkmod-edits-modal,
+		body.spkmod-ui-hidden #spkmod-quests-modal,
 		body.spkmod-ui-hidden #spkmod-info-modal,
 		body.spkmod-ui-hidden #spkmod-translate-picker {
 			display: none !important;
+		}
+		#spkmod-quests-modal {
+			min-width: 380px;
+			max-width: 95vw;
+			max-height: 80vh;
+			display: flex;
+			flex-direction: column;
+			gap: 6px;
+			padding: 8px 10px;
+			box-sizing: border-box;
+			position: fixed;
+			z-index: 600000;
+			color: #FFF;
+			user-select: none;
+		}
+		#spkmod-quests-list::-webkit-scrollbar { width: 4px; }
+		#spkmod-quests-list::-webkit-scrollbar-track { background: transparent; }
+		#spkmod-quests-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+		.spkmod-quest-row {
+			transition: background 0.15s ease, border-color 0.15s ease;
+		}
+		.spkmod-quest-row:hover {
+			background: rgba(255, 255, 255, 0.08) !important;
 		}
 		#spkmod-pq-pbar {
 			margin-top: 2px;
@@ -5831,6 +5855,16 @@ document.body.appendChild(
 					title: t("statsBtnTooltip"),
 					onclick: _ => {
 						toggleStatsModal();
+					}
+				}),
+				lunPanelElements.questsBtn = buildElement("button", {
+					id: "spkmod-quests-btn",
+					className: "spkmod-panel-btn",
+					style: "flex: 1; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 12pt; cursor: pointer; position: relative;",
+					innerText: "📋",
+					title: t("questsBtnTooltip") || "Quests Checklist",
+					onclick: _ => {
+						if (typeof toggleQuestsModal === "function") toggleQuestsModal();
 					}
 				}),
 				lunPanelElements.dragBtn = buildElement("button", {
@@ -17056,7 +17090,12 @@ spkmodI18nRenderers.push(() => {
 	if (lunPanelElements.patchNotesBtn) lunPanelElements.patchNotesBtn.title = t("patchNotesBtnTooltip");
 	if (lunPanelElements.bbsBtn) lunPanelElements.bbsBtn.title = t("bbsBtnTooltip");
 	if (lunPanelElements.mapBtn) lunPanelElements.mapBtn.title = t("mapModalTitle");
+	if (lunPanelElements.questsBtn) lunPanelElements.questsBtn.title = t("questsBtnTooltip") || "Quests Checklist";
 	if (typeof mapModalElements !== "undefined" && mapModalElements.titleLabel) mapModalElements.titleLabel.innerText = t("mapModalTitle");
+	if (typeof questsModalElements !== "undefined" && questsModalElements.headerTitle) {
+		questsModalElements.headerTitle.innerText = "📋 " + (t("questsModalTitle") || "Quests Checklist");
+	}
+	if (typeof renderQuestChecklist === "function") renderQuestChecklist();
 	const qlBtn = document.getElementById("spkmod-settings-accounts-btn");
 	if (qlBtn) {
 		qlBtn.innerText = "🔑 " + t("quickLoginTitle");
@@ -17198,6 +17237,19 @@ function getQuestDisplayText(quest) {
 	return desc ? `${title ? title + " — " : ""}${desc}` : (title || quest.code || "Quest");
 }
 
+function getQuestTitle(quest) {
+	if (!quest) return "";
+	let title = quest.title || "";
+	if (quest.code && typeof window.i18n === "function") {
+		try {
+			const tKey = `content.quest.${quest.code}.title`;
+			const tVal = window.i18n(tKey);
+			if (tVal && tVal !== tKey) title = tVal;
+		} catch (_) {}
+	}
+	return title || quest.code || "Quest";
+}
+
 function updatePinnedQuestDisplay(quest) {
 	if (!quest) return;
 	const text = getQuestDisplayText(quest);
@@ -17288,8 +17340,23 @@ function isQuestPanel(panel) {
 function refreshPinButtons() {
 	document.querySelectorAll(".sr-panel, .sr-modal, .sr-dialog, [role='dialog']").forEach(panel => {
 		if (!isQuestPanel(panel)) {
-			panel.querySelectorAll(".spkmod-pq-button").forEach(btn => btn.remove());
+			panel.querySelectorAll(".spkmod-pq-button, .spkmod-star-button, .spkmod-list-button").forEach(btn => btn.remove());
 		}
+	});
+
+	document.querySelectorAll(".spkmod-star-button").forEach(btn => {
+		const isThisStarred = lunPinnedQuestId && String(btn.__questId) === String(lunPinnedQuestId);
+		btn.innerText = isThisStarred ? "⭐ HUD" : "☆ HUD";
+		btn.title = isThisStarred ? (t("unstarQuestBtn") || "Unstar from HUD") : (t("starQuestBtn") || "Star on HUD");
+		btn.style.background = isThisStarred ? "#eab308" : "rgba(255,255,255,0.15)";
+		btn.style.color = isThisStarred ? "#000" : "#fff";
+	});
+
+	document.querySelectorAll(".spkmod-list-button").forEach(btn => {
+		const isThisInList = typeof isChecklistPinned === "function" && isChecklistPinned(btn.__questId);
+		btn.innerText = isThisInList ? ("✕ " + (t("unpinChecklistBtn") !== "unpinChecklistBtn" ? t("unpinChecklistBtn") : "List")) : ("📌 " + (t("pinChecklistBtn") !== "pinChecklistBtn" ? t("pinChecklistBtn") : "List"));
+		btn.title = isThisInList ? (t("unpinChecklistBtn") || "Unpin from List") : (t("pinChecklistBtn") || "Pin to List");
+		btn.style.background = isThisInList ? "#dc2626" : "#2563eb";
 	});
 
 	document.querySelectorAll(".spkmod-pq-button").forEach(btn => {
@@ -17316,6 +17383,7 @@ function unpinQuest() {
 	}
 
 	refreshPinButtons();
+	if (typeof renderQuestChecklist === "function") renderQuestChecklist();
 }
 window.unpinQuest = unpinQuest;
 
@@ -17336,6 +17404,7 @@ function pinQuest(quest, questElm) {
 	}
 
 	refreshPinButtons();
+	if (typeof renderQuestChecklist === "function") renderQuestChecklist();
 }
 
 // Restore saved pinned quest on initialization
@@ -17449,6 +17518,9 @@ function hookQuestManagerOnce() {
 								if (n.targetAmount !== undefined) cached.targetAmount = n.targetAmount;
 								if (cached.currentAmount >= cached.targetAmount) cached.isCompleted = true;
 							}
+							if (typeof updateQuestChecklistProgress === "function") {
+								updateQuestChecklistProgress(n.questId, n.currentAmount, n.targetAmount);
+							}
 							if (lunPinnedQuestId && String(n.questId) === String(lunPinnedQuestId)) {
 								const cur = n.currentAmount ?? 0;
 								const tgt = n.targetAmount ?? 1;
@@ -17483,6 +17555,7 @@ function hookQuestManagerOnce() {
 				if (quest && quest.questId && lunPinnedQuestId && String(lunPinnedQuestId) === String(quest.questId)) {
 					unpinQuest();
 				}
+				if (typeof renderQuestChecklist === "function") renderQuestChecklist();
 				return res;
 			};
 		}
@@ -17514,7 +17587,7 @@ async function fetchAllQuests() {
 
 		const endpoint = window.lunActiveApiEndpoint ||
 		                 (window.speakiServerEndpoint ? window.speakiServerEndpoint : "") ||
-		                 "https://relay.overture.io.kr";
+		                 "https://sr1.overture.io.kr";
 		const periods = ["daily", "weekly", "permanent"];
 		for (const p of periods) {
 			try {
@@ -17543,8 +17616,483 @@ async function fetchAllQuests() {
 	} finally {
 		_fetchingQuests = false;
 		refreshPinButtons();
+		if (typeof renderQuestChecklist === "function") {
+			renderQuestChecklist();
+		}
 	}
 }
+
+// --- SpeakiMod Quest Checklist System ---
+
+function getChecklistPinnedIds() {
+	try {
+		const raw = localStorage.getItem("spkmod-checklist-pins");
+		if (raw) return JSON.parse(raw);
+	} catch (_) {}
+	return [];
+}
+
+function setChecklistPinnedIds(ids) {
+	try {
+		localStorage.setItem("spkmod-checklist-pins", JSON.stringify(ids));
+	} catch (_) {}
+}
+
+function isChecklistPinned(questId) {
+	if (!questId) return false;
+	const pins = getChecklistPinnedIds();
+	return pins.some(id => String(id) === String(questId));
+}
+
+function toggleChecklistPin(questId) {
+	if (!questId) return false;
+	const pins = getChecklistPinnedIds();
+	const idx = pins.findIndex(id => String(id) === String(questId));
+	let nowPinned = false;
+	if (idx >= 0) {
+		pins.splice(idx, 1);
+		nowPinned = false;
+	} else {
+		pins.push(questId);
+		nowPinned = true;
+	}
+	setChecklistPinnedIds(pins);
+	return nowPinned;
+}
+
+function getDismissedQuests() {
+	try {
+		const raw = localStorage.getItem("spkmod-dismissed-quests");
+		if (raw) return JSON.parse(raw);
+	} catch (_) {}
+	return {};
+}
+
+function dismissQuest(questId, period) {
+	try {
+		const dismissed = getDismissedQuests();
+		dismissed[String(questId)] = { ts: Date.now(), period: period || "daily" };
+		localStorage.setItem("spkmod-dismissed-quests", JSON.stringify(dismissed));
+	} catch (_) {}
+}
+
+function undismissQuest(questId) {
+	try {
+		const dismissed = getDismissedQuests();
+		delete dismissed[String(questId)];
+		localStorage.setItem("spkmod-dismissed-quests", JSON.stringify(dismissed));
+	} catch (_) {}
+}
+
+function isQuestDismissed(questId, period) {
+	if (!questId) return false;
+	try {
+		const dismissed = getDismissedQuests();
+		const entry = dismissed[String(questId)];
+		if (!entry) return false;
+		const ts = typeof entry === "object" ? entry.ts : entry;
+		const qPeriod = (typeof entry === "object" ? entry.period : period) || period || "daily";
+
+		const now = new Date();
+		const dismissedDate = new Date(ts);
+
+		// Korean Standard Time (UTC+9) daily reset
+		if (qPeriod === "daily") {
+			const kstNow = new Date(now.getTime() + 9 * 3600000);
+			const kstDismissed = new Date(dismissedDate.getTime() + 9 * 3600000);
+			if (kstNow.getUTCDate() !== kstDismissed.getUTCDate() || (now.getTime() - ts) > 86400000) {
+				undismissQuest(questId);
+				return false;
+			}
+			return true;
+		}
+
+		if (qPeriod === "weekly") {
+			if ((now.getTime() - ts) > 7 * 86400000) {
+				undismissQuest(questId);
+				return false;
+			}
+			return true;
+		}
+
+		return true;
+	} catch (_) {
+		return false;
+	}
+}
+
+async function claimQuest(questId) {
+	try {
+		const token = (typeof window.getNativeAuthToken === "function" ? window.getNativeAuthToken() : "") ||
+		              (typeof getAuthToken === "function" ? getAuthToken() : "") ||
+		              (window.speakiAuthToken || "");
+		const headers = { "Content-Type": "application/json" };
+		if (token) headers["authorization"] = `Bearer ${token.replace(/^Bearer /i, "")}`;
+
+		const endpoint = window.lunActiveApiEndpoint ||
+		                 (window.speakiServerEndpoint ? window.speakiServerEndpoint : "") ||
+		                 "https://sr1.overture.io.kr";
+
+		const res = await fetch(`${endpoint}/api/quests/${questId}/claim`, {
+			method: "POST",
+			headers: headers,
+			credentials: "include"
+		});
+
+		if (res.ok) {
+			if (window.__spkmodCachedQuests && window.__spkmodCachedQuests[questId]) {
+				window.__spkmodCachedQuests[questId].isClaimed = true;
+				window.__spkmodCachedQuests[questId].isCompleted = true;
+			}
+			if (lunPinnedQuestId && String(lunPinnedQuestId) === String(questId)) {
+				unpinQuest();
+			}
+			if (typeof renderQuestChecklist === "function") renderQuestChecklist();
+			if (typeof refreshPinButtons === "function") refreshPinButtons();
+
+			// Refresh player inventory and quest status in background
+			try {
+				fetch(`${endpoint}/api/items/inventory`, { method: "GET", headers: headers, credentials: "include" });
+			} catch (_) {}
+
+			return true;
+		} else {
+			console.warn(`[SpeakiMod+] Failed to claim quest ${questId}: HTTP ${res.status}`);
+		}
+	} catch (err) {
+		console.warn("[SpeakiMod+] Error claiming quest:", err);
+	}
+	return false;
+}
+
+let questsModalElements = {
+	modal: null,
+	headerRow: null,
+	headerTitle: null,
+	countBadge: null,
+	showHiddenBtn: null,
+	listContainer: null,
+	showHidden: false
+};
+
+function buildQuestsModal() {
+	if (lunHudElements.questsModal) return;
+
+	lunHudElements.questsModal = buildElement("div", {
+		id: "spkmod-quests-modal",
+		className: "hidden",
+		style: `display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; box-sizing: border-box; min-width: 380px; max-width: 95vw; max-height: 80vh; background: #000C; border: ${spkmodBorderWidth} solid #DDD; border-radius: 8px; position: fixed; z-index: 600000; color: #FFF; user-select: none;`
+	}, [
+		// Header Row
+		questsModalElements.headerRow = buildElement("div", {
+			id: "spkmod-quests-header-row",
+			className: "spkmod-panel-cat",
+			style: "display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; cursor: move; user-select: none; flex-shrink: 0; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 4px;"
+		}, [
+			buildElement("div", { style: "display: flex; align-items: center; gap: 6px; cursor: move; user-select: none;" }, [
+				questsModalElements.headerTitle = buildElement("span", {
+					innerText: "📋 " + (t("questsModalTitle") || "Quests Checklist"),
+					style: "font-weight: bold; font-size: 12px; color: #ffd54a; cursor: move; user-select: none;"
+				}),
+				questsModalElements.countBadge = buildElement("span", {
+					innerText: "0",
+					style: "font-size: 9.5px; background: rgba(255,255,255,0.15); padding: 1px 6px; border-radius: 8px; color: #94a3b8; font-weight: bold; cursor: move; user-select: none;"
+				})
+			]),
+			buildElement("div", { style: "display: flex; align-items: center; gap: 5px;" }, [
+				questsModalElements.showHiddenBtn = buildElement("button", {
+					className: "spkmod-panel-btn-small",
+					innerText: "👁️",
+					title: t("showHiddenQuests") || "Show Dismissed Quests",
+					style: "padding: 2px 6px; font-size: 11px; cursor: pointer; border-radius: 4px;",
+					onclick: (e) => {
+						e.stopPropagation();
+						questsModalElements.showHidden = !questsModalElements.showHidden;
+						questsModalElements.showHiddenBtn.style.background = questsModalElements.showHidden ? "#2563eb" : "";
+						questsModalElements.showHiddenBtn.title = questsModalElements.showHidden ? (t("hideHiddenQuests") || "Hide Dismissed") : (t("showHiddenQuests") || "Show Dismissed");
+						renderQuestChecklist();
+					}
+				}),
+				buildElement("button", {
+					className: "spkmod-panel-btn-small",
+					innerText: "🔄",
+					title: "Refresh Quests",
+					style: "padding: 2px 6px; font-size: 11px; cursor: pointer; border-radius: 4px;",
+					onclick: async (e) => {
+						e.stopPropagation();
+						if (typeof fetchAllQuests === "function") await fetchAllQuests();
+						renderQuestChecklist();
+					}
+				}),
+				buildElement("button", {
+					className: "spkmod-panel-btn-small",
+					innerText: "✕",
+					style: "padding: 2px 6px; font-size: 11px; cursor: pointer; color: #ff6b6b; border-radius: 4px;",
+					onclick: (e) => {
+						e.stopPropagation();
+						lunHudElements.questsModal.classList.add("hidden");
+					}
+				})
+			])
+		]),
+		// Scrollable List container
+		questsModalElements.listContainer = buildElement("div", {
+			id: "spkmod-quests-list",
+			style: "display: flex; flex-direction: column; gap: 4px; overflow-y: auto; max-height: calc(80vh - 60px); padding-right: 2px;"
+		})
+	]);
+
+	document.body.appendChild(lunHudElements.questsModal);
+
+	if (typeof makeDraggable === 'function') {
+		makeDraggable(lunHudElements.questsModal, [questsModalElements.headerRow]);
+	}
+
+	lunHudElements.questsModal.addEventListener("wheel", (e) => { e.stopPropagation(); }, { passive: true });
+	lunHudElements.questsModal.addEventListener("touchmove", (e) => { e.stopPropagation(); }, { passive: true });
+	lunHudElements.questsModal.addEventListener("keydown", (e) => { e.stopPropagation(); });
+}
+
+function renderQuestChecklist() {
+	if (!questsModalElements.listContainer) {
+		buildQuestsModal();
+	}
+	if (!questsModalElements.listContainer) return;
+	const container = questsModalElements.listContainer;
+	container.innerHTML = "";
+
+	const cached = window.__spkmodCachedQuests || {};
+	const allQuests = Object.values(cached);
+
+	if (allQuests.length === 0) {
+		container.appendChild(buildElement("div", {
+			style: "padding: 20px; text-align: center; color: #94a3b8; font-size: 11.5px;",
+			innerText: _fetchingQuests ? "Loading quests..." : (t("noQuestsTracked") || "No quests tracked. Pin some in the native quest log!")
+		}));
+		if (questsModalElements.countBadge) questsModalElements.countBadge.innerText = "0";
+		return;
+	}
+
+	// Filter quests to show
+	const toShow = [];
+	let claimableCount = 0;
+
+	for (const q of allQuests) {
+		if (!q || !q.questId) continue;
+		const period = (q.period || "daily").toLowerCase();
+		const isDaily = (period === "daily");
+		const isPinned = isChecklistPinned(q.questId);
+		const isDismissed = isQuestDismissed(q.questId, period);
+
+		const cur = q.currentAmount ?? 0;
+		const tgt = q.targetAmount ?? 1;
+		const isClaimable = (cur >= tgt && !q.isClaimed);
+
+		if (isClaimable) claimableCount++;
+
+		// Mode 1: Dailies auto-added if uncompleted, or any pinned quest
+		let shouldInclude = false;
+		if (isDaily && !q.isClaimed) {
+			shouldInclude = true;
+		} else if (isPinned) {
+			shouldInclude = true;
+		}
+
+		if (!shouldInclude) continue;
+
+		if (isDismissed && !questsModalElements.showHidden) {
+			continue;
+		}
+
+		toShow.push({ quest: q, isDismissed: isDismissed, isClaimable: isClaimable });
+	}
+
+	// Update badge
+	if (questsModalElements.countBadge) {
+		questsModalElements.countBadge.innerText = String(toShow.length);
+		questsModalElements.countBadge.style.color = claimableCount > 0 ? "#4ade80" : "#94a3b8";
+	}
+	if (lunPanelElements && lunPanelElements.questsBtn) {
+		lunPanelElements.questsBtn.style.color = claimableCount > 0 ? "#4ade80" : "";
+	}
+
+	if (toShow.length === 0) {
+		container.appendChild(buildElement("div", {
+			style: "padding: 20px; text-align: center; color: #94a3b8; font-size: 11.5px;",
+			innerText: t("noQuestsTracked") || "No quests tracked. Pin some in the native quest log!"
+		}));
+		return;
+	}
+
+	// Sort: Claimable first, then Daily, Weekly, Standing
+	const periodOrder = { "daily": 1, "weekly": 2, "permanent": 3, "standing": 3 };
+	toShow.sort((a, b) => {
+		if (a.isClaimable !== b.isClaimable) return a.isClaimable ? -1 : 1;
+		if (a.isDismissed !== b.isDismissed) return a.isDismissed ? 1 : -1;
+		const pA = periodOrder[a.quest.period] || 9;
+		const pB = periodOrder[b.quest.period] || 9;
+		if (pA !== pB) return pA - pB;
+		return Number(a.quest.questId) - Number(b.quest.questId);
+	});
+
+	// Render rows
+	for (const item of toShow) {
+		const q = item.quest;
+		const isDismissed = item.isDismissed;
+		const cur = q.currentAmount ?? 0;
+		const tgt = q.targetAmount ?? 1;
+		const isClaimable = (cur >= tgt && !q.isClaimed);
+		const isClaimed = !!q.isClaimed;
+		const isStarred = (lunPinnedQuestId && String(lunPinnedQuestId) === String(q.questId));
+		const period = (q.period || "daily").toLowerCase();
+
+		let periodBadgeText = `(${t("periodDaily") || "Daily"})`;
+		let periodColor = "#38bdf8";
+		let periodBg = "rgba(56, 189, 248, 0.15)";
+		if (period === "weekly") {
+			periodBadgeText = `(${t("periodWeekly") || "Weekly"})`;
+			periodColor = "#c084fc";
+			periodBg = "rgba(168, 85, 247, 0.15)";
+		} else if (period === "permanent" || period === "standing") {
+			periodBadgeText = `(${t("periodStanding") || "Standing"})`;
+			periodColor = "#facc15";
+			periodBg = "rgba(234, 179, 8, 0.15)";
+		}
+
+		const row = buildElement("div", {
+			className: "spkmod-quest-row",
+			dataset: { questId: String(q.questId) },
+			style: `display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px; border-radius: 5px; font-size: 11.5px; border: 1px solid ${isClaimable ? "rgba(74, 222, 128, 0.45)" : "rgba(255,255,255,0.1)"}; background: ${isDismissed ? "rgba(255,255,255,0.02)" : (isClaimable ? "rgba(34, 197, 94, 0.12)" : "rgba(255,255,255,0.04)")}; opacity: ${isDismissed ? "0.45" : "1"};`
+		}, [
+			// Left side: Period Tag & Quest Title ONLY
+			buildElement("div", {
+				style: "display: flex; align-items: center; gap: 6px; overflow: hidden; min-width: 0; flex: 1;",
+				title: getQuestDisplayText(q)
+			}, [
+				buildElement("span", {
+					innerText: periodBadgeText,
+					style: `font-size: 10px; font-weight: bold; color: ${periodColor}; background: ${periodBg}; padding: 1px 5px; border-radius: 4px; flex-shrink: 0;`
+				}),
+				buildElement("span", {
+					className: "spkmod-quest-row-title",
+					innerText: getQuestTitle(q),
+					style: "font-weight: 500; color: #f1f5f9; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"
+				})
+			]),
+
+			// Right side: Progress / Claim / Star / Dismiss
+			buildElement("div", {
+				style: "display: flex; align-items: center; gap: 6px; flex-shrink: 0;"
+			}, [
+				// Claim button or Progress or Claimed text
+				isClaimable ? buildElement("button", {
+					className: "spkmod-panel-btn-small",
+					innerText: "🎁 " + (t("claimQuestBtn") || "Claim"),
+					style: "padding: 2px 7px; font-size: 10.5px; background: #16a34a; color: #fff; border: 1px solid #4ade80; border-radius: 4px; font-weight: bold; cursor: pointer;",
+					onclick: async (e) => {
+						e.stopPropagation();
+						e.target.disabled = true;
+						e.target.innerText = "...";
+						const ok = await claimQuest(q.questId);
+						if (!ok) {
+							e.target.innerText = t("claimQuestBtn") || "Claim";
+							e.target.disabled = false;
+						}
+					}
+				}) : (isClaimed ? buildElement("span", {
+					innerText: "✓ " + (t("claimedQuestStatus") || "Claimed"),
+					style: "font-size: 10.5px; color: #4ade80; font-weight: bold;"
+				}) : buildElement("span", {
+					className: "spkmod-quest-progress-text",
+					innerText: `${cur}/${tgt}`,
+					style: "font-size: 11px; font-weight: bold; color: #fbbf24; min-width: 32px; text-align: right;"
+				})),
+
+				// Star button (Single HUD Pinned Quest)
+				buildElement("button", {
+					className: "spkmod-panel-btn-small",
+					innerText: isStarred ? "⭐" : "☆",
+					title: isStarred ? (t("unstarQuestBtn") || "Unstar from HUD") : (t("starQuestBtn") || "Star on HUD"),
+					style: `padding: 1px 5px; font-size: 11px; cursor: pointer; border-radius: 4px; border: 1px solid ${isStarred ? "#eab308" : "rgba(255,255,255,0.15)"}; background: ${isStarred ? "rgba(234, 179, 8, 0.25)" : "rgba(255,255,255,0.06)"}; color: ${isStarred ? "#ffd700" : "#94a3b8"};`,
+					onclick: (e) => {
+						e.stopPropagation();
+						if (isStarred) {
+							unpinQuest();
+						} else {
+							pinQuest(q);
+						}
+						renderQuestChecklist();
+					}
+				}),
+
+				// Dismiss (✕) or Restore (↩️) button
+				isDismissed ? buildElement("button", {
+					className: "spkmod-panel-btn-small",
+					innerText: "↩️",
+					title: "Restore Quest",
+					style: "padding: 1px 4px; font-size: 10px; cursor: pointer; border-radius: 4px;",
+					onclick: (e) => {
+						e.stopPropagation();
+						undismissQuest(q.questId);
+						renderQuestChecklist();
+					}
+				}) : buildElement("button", {
+					className: "spkmod-panel-btn-small",
+					innerText: "✕",
+					title: "Dismiss from list until reset",
+					style: "padding: 1px 5px; font-size: 10.5px; cursor: pointer; color: #ff6b6b; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 4px;",
+					onclick: (e) => {
+						e.stopPropagation();
+						dismissQuest(q.questId, q.period);
+						renderQuestChecklist();
+					}
+				})
+			])
+		]);
+
+		container.appendChild(row);
+	}
+}
+
+function updateQuestChecklistProgress(questId, cur, tgt) {
+	if (!questsModalElements.listContainer) return;
+	const row = questsModalElements.listContainer.querySelector(`[data-quest-id='${questId}']`);
+	if (!row) return;
+
+	// If it reached target, re-render so Claim button appears
+	if (cur !== undefined && tgt !== undefined && cur >= tgt) {
+		renderQuestChecklist();
+		return;
+	}
+
+	const progEl = row.querySelector(".spkmod-quest-progress-text");
+	if (progEl && cur !== undefined && tgt !== undefined) {
+		progEl.innerText = `${cur}/${tgt}`;
+	}
+}
+
+window.toggleQuestsModal = function() {
+	if (!lunHudElements.questsModal) {
+		buildQuestsModal();
+	}
+	if (!lunHudElements.questsModal) return;
+
+	const isClosed = lunHudElements.questsModal.classList.contains("hidden");
+	if (isClosed) {
+		if (typeof positionModalNicely === "function") positionModalNicely(lunHudElements.questsModal);
+		lunHudElements.questsModal.classList.remove("hidden");
+		if (typeof bringToFront === "function") bringToFront(lunHudElements.questsModal);
+		if (typeof fetchAllQuests === "function") fetchAllQuests();
+		renderQuestChecklist();
+	} else {
+		lunHudElements.questsModal.classList.add("hidden");
+	}
+};
+
+// Initialize Quests Modal structure
+setTimeout(() => {
+	buildQuestsModal();
+}, 600);
 
 function matchQuestFromTitleText(titleText, item) {
 	if (!titleText) return null;
@@ -17607,7 +18155,7 @@ function injectPinButtonsIntoQuestList() {
 	// 1. Purge any accidental pin buttons from non-quest panels (e.g. shop)
 	document.querySelectorAll(".sr-panel, .sr-modal, .sr-dialog, [role='dialog']").forEach(panel => {
 		if (!isQuestPanel(panel)) {
-			panel.querySelectorAll(".spkmod-pq-button").forEach(btn => btn.remove());
+			panel.querySelectorAll(".spkmod-pq-button, .spkmod-star-button, .spkmod-list-button").forEach(btn => btn.remove());
 		}
 	});
 
@@ -17617,7 +18165,7 @@ function injectPinButtonsIntoQuestList() {
 	panelBodies.forEach(panelBody => {
 		const panel = panelBody.closest(".sr-panel, .sr-modal, .sr-dialog, [role='dialog']") || panelBody.parentElement;
 		if (!isQuestPanel(panel)) {
-			panelBody.querySelectorAll(".spkmod-pq-button").forEach(btn => btn.remove());
+			panelBody.querySelectorAll(".spkmod-pq-button, .spkmod-star-button, .spkmod-list-button").forEach(btn => btn.remove());
 			return;
 		}
 
@@ -17627,11 +18175,11 @@ function injectPinButtonsIntoQuestList() {
 		items.forEach(item => {
 			// Item-level guard: never attach pin button if item has currency / price indicators or shop actions
 			if (item.querySelector(".sr-currency, .sr-price") || /leave shop|buy item/i.test(item.textContent)) {
-				item.querySelectorAll(".spkmod-pq-button").forEach(btn => btn.remove());
+				item.querySelectorAll(".spkmod-pq-button, .spkmod-star-button, .spkmod-list-button").forEach(btn => btn.remove());
 				return;
 			}
 
-			if (item.querySelector(".spkmod-pq-button")) return;
+			if (item.querySelector(".spkmod-star-button, .spkmod-list-button, .spkmod-pq-button")) return;
 
 			const topRow = item.firstElementChild;
 			if (!topRow) return;
@@ -17642,7 +18190,7 @@ function injectPinButtonsIntoQuestList() {
 			const titleText = (titleEl.textContent || "").trim();
 			if (!titleText) return;
 
-			// If already claimed, no pin button needed
+			// If already claimed, no buttons needed
 			if (topRow.querySelector(".sr-badge--success") || topRow.textContent.includes("✓")) {
 				return;
 			}
@@ -17651,48 +18199,88 @@ function injectPinButtonsIntoQuestList() {
 			if (!quest || !quest.questId) return;
 
 			const questId = quest.questId;
-			const isPinned = (lunPinnedQuestId && questId && String(lunPinnedQuestId) === String(questId));
+			const isStarred = (lunPinnedQuestId && questId && String(lunPinnedQuestId) === String(questId));
+			const isInList = typeof isChecklistPinned === "function" && isChecklistPinned(questId);
 
-			const pinBtn = document.createElement("button");
-			pinBtn.type = "button";
-			pinBtn.className = "spkmod-pq-button";
-			pinBtn.__quest = quest;
-			pinBtn.__questId = questId;
-			pinBtn.innerText = isPinned ? ("✕ " + (t("unpinQuestBtn") !== "unpinQuestBtn" ? t("unpinQuestBtn") : "Unpin")) : ("📌 " + (t("pinQuestBtn") || "Pin Quest"));
-			pinBtn.style.cssText = `
+			const starBtn = document.createElement("button");
+			starBtn.type = "button";
+			starBtn.className = "spkmod-star-button";
+			starBtn.__quest = quest;
+			starBtn.__questId = questId;
+			starBtn.innerText = isStarred ? "⭐ HUD" : "☆ HUD";
+			starBtn.title = isStarred ? (t("unstarQuestBtn") || "Unstar from HUD") : (t("starQuestBtn") || "Star on HUD");
+			starBtn.style.cssText = `
 				flex-shrink: 0;
-				margin-left: 8px;
-				padding: 3px 8px;
+				margin-left: 6px;
+				padding: 3px 6px;
 				font-size: 11px;
 				line-height: 1.2;
 				height: auto;
 				border-radius: 4px;
 				cursor: pointer;
-				background: ${isPinned ? "#dc2626" : "#2563eb"};
+				background: ${isStarred ? "#eab308" : "rgba(255,255,255,0.15)"};
+				color: ${isStarred ? "#000" : "#fff"};
+				border: 1px solid rgba(255,255,255,0.25);
+				font-weight: bold;
+				user-select: none;
+				transition: background 0.15s ease;
+			`;
+			starBtn.onclick = function (e) {
+				e.preventDefault();
+				e.stopPropagation();
+				const q = starBtn.__quest || matchQuestFromTitleText(titleText, item);
+				if (q) {
+					pinQuest(q, item);
+				}
+			};
+
+			const pinBtn = document.createElement("button");
+			pinBtn.type = "button";
+			pinBtn.className = "spkmod-list-button";
+			pinBtn.__quest = quest;
+			pinBtn.__questId = questId;
+			pinBtn.innerText = isInList ? ("✕ " + (t("unpinChecklistBtn") !== "unpinChecklistBtn" ? t("unpinChecklistBtn") : "List")) : ("📌 " + (t("pinChecklistBtn") !== "pinChecklistBtn" ? t("pinChecklistBtn") : "List"));
+			pinBtn.title = isInList ? (t("unpinChecklistBtn") || "Unpin from List") : (t("pinChecklistBtn") || "Pin to List");
+			pinBtn.style.cssText = `
+				flex-shrink: 0;
+				margin-left: 4px;
+				padding: 3px 6px;
+				font-size: 11px;
+				line-height: 1.2;
+				height: auto;
+				border-radius: 4px;
+				cursor: pointer;
+				background: ${isInList ? "#dc2626" : "#2563eb"};
 				color: #fff;
 				border: 1px solid rgba(255,255,255,0.25);
 				font-weight: bold;
 				user-select: none;
 				transition: background 0.15s ease;
 			`;
-
 			pinBtn.onclick = function (e) {
 				e.preventDefault();
 				e.stopPropagation();
 				const q = pinBtn.__quest || matchQuestFromTitleText(titleText, item);
 				if (q) {
-					pinQuest(q, item);
+					if (typeof toggleChecklistPin === "function") {
+						toggleChecklistPin(q.questId);
+					}
+					refreshPinButtons();
+					if (typeof renderQuestChecklist === "function") renderQuestChecklist();
 				}
 			};
 
 			const statusEl = topRow.querySelector(".sr-list-item__subtitle") || topRow.querySelector("button.sr-btn--primary");
 			if (statusEl && statusEl.parentElement === topRow) {
 				const rightCol = document.createElement("div");
-				rightCol.style.cssText = "display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: 8px;";
+				rightCol.className = "spkmod-quest-actions-col";
+				rightCol.style.cssText = "display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; margin-left: 8px;";
 				topRow.replaceChild(rightCol, statusEl);
 				rightCol.appendChild(statusEl);
+				rightCol.appendChild(starBtn);
 				rightCol.appendChild(pinBtn);
-			} else if (!topRow.querySelector(".spkmod-pq-button")) {
+			} else if (!topRow.querySelector(".spkmod-star-button")) {
+				topRow.appendChild(starBtn);
 				topRow.appendChild(pinBtn);
 			}
 		});
@@ -18251,7 +18839,7 @@ function tick() {
 
 		const endpoint = window.lunActiveApiEndpoint ||
 		                 (window.speakiServerEndpoint ? window.speakiServerEndpoint : "") ||
-		                 "https://relay.overture.io.kr";
+		                 "https://sr1.overture.io.kr";
 		fetch(`${endpoint}/api/quests?period=${period}`, {
 			method: "GET",
 			headers: headers,
@@ -18570,6 +19158,9 @@ function hookGameStateOnce() {
 							if (n.currentAmount !== undefined) cached.currentAmount = n.currentAmount;
 							if (n.targetAmount !== undefined) cached.targetAmount = n.targetAmount;
 							if (cached.currentAmount >= cached.targetAmount) cached.isCompleted = true;
+						}
+						if (typeof updateQuestChecklistProgress === "function") {
+							updateQuestChecklistProgress(n.questId, n.currentAmount, n.targetAmount);
 						}
 						if (lunPinnedQuestId && String(n.questId) === String(lunPinnedQuestId)) {
 							const cur = n.currentAmount ?? 0;
