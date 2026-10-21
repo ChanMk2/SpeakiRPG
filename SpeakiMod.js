@@ -4155,7 +4155,6 @@ function updateDynamicStyles() {
 		}
 				#app { filter: ${filterRule}; }
 		#app > *:not(:has(canvas)):not(canvas):not(.sr-click-ripple-layer) { zoom: ${lunGameUiScale} !important; }
-		/* Note: #spkmod-map-modal is intentionally excluded from CSS transform scale to prevent double coordinate adjustments during drag/pan/zoom */
 		#spkmod-hud, #spkmod-settings-modal, #spkmod-event-modal, #spkmod-patchnotes-modal, #spkmod-bbs-modal, #spkmod-info-modal, #spkmod-effects-modal, #spkmod-stats-modal, #spkmod-edits-modal { transform: scale(var(--spkmod-scale)); transform-origin: top left; }
 		#spkmod-pq, body > #spkmod-panel { transform: scale(var(--spkmod-scale)); transform-origin: top right; }
 		#spkmod-main, #spkmod-pq, #spkmod-settings-modal, #spkmod-gamepad-modal, #spkmod-players-modal, #spkmod-event-modal, #spkmod-patchnotes-modal, #spkmod-bbs-modal, #spkmod-info-modal, #spkmod-effects-modal, #spkmod-stats-modal, #spkmod-edits-modal, .spkmod-panel-btn, .spkmod-panel-counter, .spkmod-panel-combo, #spkmod-discord-btn {
@@ -11567,8 +11566,152 @@ window.spkmodToggleBurstSpam = function(forceState) {
 const mapModalElements = {};
 let mapUpdateFrame = null;
 
+// ---- World map viewport (pan / pinch-zoom) ----
+// The map is laid out in a fixed logical space (the canvas size, currently 1000x520). On small screens we keep
+// that space at a readable scale and show it through a small, pannable window.
+let MAP_LW = 1000, MAP_LH = 520; // re-synced from the canvas size right after the map modal is built
+// Tune these to change how tall the map window is on small screens.
+const MAP_H_RATIO_PORTRAIT = 0.38;  // portrait:  38% of screen height
+const MAP_H_RATIO_LANDSCAPE = 0.58; // landscape: 58% of screen height
+const MAP_MIN_H = 130;              // never shorter than this (px)
+const mapView = { zoom: 1, panX: 0, panY: 0, viewW: MAP_LW, viewH: MAP_LH, dpr: 1, small: false, needCenter: false, needFit: false };
+
+function mapMinZoom() { return Math.min(mapView.viewW / MAP_LW, mapView.viewH / MAP_LH); }
+
+function clampMapPan() {
+	const cw = MAP_LW * mapView.zoom, ch = MAP_LH * mapView.zoom, m = 30;
+	mapView.panX = cw <= mapView.viewW ? (mapView.viewW - cw) / 2 : Math.max(mapView.viewW - cw - m, Math.min(m, mapView.panX));
+	mapView.panY = ch <= mapView.viewH ? (mapView.viewH - ch) / 2 : Math.max(mapView.viewH - ch - m, Math.min(m, mapView.panY));
+}
+
+function zoomMapAt(px, py, factor) {
+	const nz = Math.max(mapMinZoom(), Math.min(4, mapView.zoom * factor));
+	const f = nz / mapView.zoom;
+	mapView.panX = px - (px - mapView.panX) * f;
+	mapView.panY = py - (py - mapView.panY) * f;
+	mapView.zoom = nz;
+	clampMapPan();
+}
+
+function layoutMapModal() {
+	const m = mapModalElements.modalWindow, c = mapModalElements.canvas;
+	if (!m || !c) return;
+	// Mobile only. On desktop nothing below runs, so the original desktop layout is left untouched.
+	const small = typeof spkmodIsMobile === "function" && spkmodIsMobile();
+	mapView.small = small;
+	if (!small) {
+		mapView.viewW = MAP_LW; mapView.viewH = MAP_LH; mapView.dpr = 1;
+		mapView.zoom = 1; mapView.panX = 0; mapView.panY = 0;
+		return;
+	}
+	{
+		// 📍 / ⤢ buttons and touch-sized close button: mobile only (hidden / original style by default)
+		if (mapModalElements.centerBtn) mapModalElements.centerBtn.style.display = "";
+		if (mapModalElements.fitBtn) mapModalElements.fitBtn.style.display = "";
+		if (mapModalElements.btnRow) mapModalElements.btnRow.style.marginTop = "12px";
+		if (mapModalElements.closeBtn) { mapModalElements.closeBtn.style.padding = "8px 20px"; mapModalElements.closeBtn.style.minHeight = "40px"; }
+		mapView.dpr = Math.min(window.devicePixelRatio || 1, 2);
+		if (window.innerHeight >= window.innerWidth) {
+			// Portrait: full width, canvas height = MAP_H_RATIO_PORTRAIT of the screen height.
+			mapView.viewW = Math.max(200, Math.min(MAP_LW, window.innerWidth - 24));
+			mapView.viewH = Math.max(MAP_MIN_H, Math.min(MAP_LH, Math.round(window.innerHeight * MAP_H_RATIO_PORTRAIT)));
+		} else {
+			// Landscape: canvas height = MAP_H_RATIO_LANDSCAPE of the screen height, width capped at ~2.2:1.
+			mapView.viewH = Math.max(MAP_MIN_H, Math.min(MAP_LH, Math.round(window.innerHeight * MAP_H_RATIO_LANDSCAPE)));
+			mapView.viewW = Math.max(200, Math.min(MAP_LW, window.innerWidth - 24, Math.round(mapView.viewH * 2.2)));
+		}
+		if (mapModalElements.titleLabel) {
+			mapModalElements.titleLabel.style.fontSize = "14px";
+			mapModalElements.titleLabel.style.marginBottom = "6px";
+		}
+		m.style.position = "fixed";
+		m.style.boxSizing = "border-box";
+		m.style.padding = "10px";
+		m.style.maxWidth = "calc(100vw - 8px)";
+		if (mapView.zoom < mapMinZoom()) mapView.zoom = mapMinZoom();
+		clampMapPan();
+	}
+	c.style.width = mapView.viewW + "px";
+	c.style.height = mapView.viewH + "px";
+	c.style.maxWidth = "none";
+	c.style.touchAction = "none";
+	c.width = Math.round(mapView.viewW * mapView.dpr);
+	c.height = Math.round(mapView.viewH * mapView.dpr);
+	{
+		const mw = mapView.viewW + 22;
+		if (m.dataset.userDragged !== "true") {
+			m.style.left = Math.max(4, (window.innerWidth - mw) / 2) + "px";
+			m.style.top = "8px";
+		} else {
+			const r = m.getBoundingClientRect();
+			m.style.left = Math.max(0, Math.min(r.left, window.innerWidth - mw)) + "px";
+			m.style.top = Math.max(0, Math.min(r.top, window.innerHeight - 60)) + "px";
+		}
+	}
+}
+
+function initMapGestures() {
+	const c = mapModalElements.canvas;
+	if (!c || c.__spkmodGestures) return;
+	c.__spkmodGestures = true;
+	const ptrs = new Map();
+	let lastDist = 0, lastMid = null;
+	const local = e => { const r = c.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+	const stop = e => { e.stopPropagation(); };
+	c.addEventListener("pointerdown", e => {
+		if (!mapView.small) return;
+		stop(e);
+		try { c.setPointerCapture(e.pointerId); } catch (_) {}
+		ptrs.set(e.pointerId, local(e));
+		lastDist = 0; lastMid = null;
+	});
+	c.addEventListener("pointermove", e => {
+		if (!mapView.small || !ptrs.has(e.pointerId)) return;
+		stop(e);
+		const prev = ptrs.get(e.pointerId), cur = local(e);
+		ptrs.set(e.pointerId, cur);
+		if (ptrs.size === 1) {
+			mapView.panX += cur.x - prev.x;
+			mapView.panY += cur.y - prev.y;
+			clampMapPan();
+		} else if (ptrs.size === 2) {
+			const [a, b] = [...ptrs.values()];
+			const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+			const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+			if (lastDist) {
+				mapView.panX += mid.x - lastMid.x;
+				mapView.panY += mid.y - lastMid.y;
+				zoomMapAt(mid.x, mid.y, dist / lastDist);
+			}
+			lastDist = dist; lastMid = mid;
+		}
+	});
+	const up = e => { stop(e); ptrs.delete(e.pointerId); lastDist = 0; lastMid = null; };
+	c.addEventListener("pointerup", up);
+	c.addEventListener("pointercancel", up);
+	c.addEventListener("wheel", e => {
+		if (!mapView.small) return;
+		e.preventDefault(); e.stopPropagation();
+		const p = local(e);
+		zoomMapAt(p.x, p.y, Math.exp(-e.deltaY * 0.0015));
+	}, { passive: false });
+}
+
+window.addEventListener("resize", () => {
+	if (mapView.small && mapModalElements.modalWindow && mapModalElements.modalWindow.style.display !== "none") {
+		layoutMapModal();
+		mapView.needCenter = true;
+	}
+});
+
 function openMapModal() {
 	mapModalElements.modalWindow.style.display = "flex";
+	layoutMapModal();
+	if (mapView.small) {
+		initMapGestures();
+		mapView.zoom = Math.max(mapMinZoom(), 1);
+		mapView.needCenter = true;
+	}
 	updateMapLoop();
 }
 
@@ -11593,10 +11736,11 @@ function updateMapLoop() {
 		return;
 	}
 	const ctx = mapModalElements.canvas.getContext("2d");
-	const w = mapModalElements.canvas.width;
-	const h = mapModalElements.canvas.height;
+	const w = MAP_LW;
+	const h = MAP_LH;
 	
-	ctx.clearRect(0, 0, w, h);
+	ctx.setTransform(1, 0, 0, 1, 0, 0);
+	ctx.clearRect(0, 0, mapModalElements.canvas.width, mapModalElements.canvas.height);
 	
 	const padding = 20;
 	const drawW = w - padding * 2;
@@ -11657,6 +11801,27 @@ function updateMapLoop() {
 			y: zp.y - boxH/2 + pctZ * boxH
 		};
 	};
+
+	if (mapView.needFit) {
+		mapView.zoom = mapMinZoom();
+		mapView.needFit = false;
+		clampMapPan();
+	}
+	if (mapView.needCenter && mapView.small) {
+		const cz = gameState && gameState.zoneId ? gameState.zoneId % 10000 : null;
+		let target = cz !== null && zonePos[cz] ? zonePos[cz] : null;
+		if (target && gameState.playerContainer) {
+			const lp = getLogicalPos(cz, gameState.playerContainer.position.x, gameState.playerContainer.position.z);
+			if (lp) target = lp;
+		}
+		if (target) {
+			mapView.panX = mapView.viewW / 2 - target.x * mapView.zoom;
+			mapView.panY = mapView.viewH / 2 - target.y * mapView.zoom;
+			clampMapPan();
+		}
+		mapView.needCenter = false;
+	}
+	ctx.setTransform(mapView.dpr * mapView.zoom, 0, 0, mapView.dpr * mapView.zoom, mapView.dpr * mapView.panX, mapView.dpr * mapView.panY);
 
 	ctx.strokeStyle = "rgba(255, 200, 50, 0.4)";
 	ctx.lineWidth = 1.5;
@@ -11847,14 +12012,33 @@ document.body.appendChild(
 			height: 520,
 			style: "border: 1px solid #666; border-radius: 4px; background: #080808; width: 1000px;"
 		}),
-		buildElement("button", {
-			innerText: t("closeBtn"),
-			style: "margin-top: 15px; padding: 6px 20px; cursor: pointer; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; font-weight: bold;",
-			onclick: () => closeMapModal()
-		})
+		mapModalElements.btnRow = buildElement("div", { style: "display: flex; gap: 8px; margin-top: 15px; align-items: center;" }, [
+			mapModalElements.centerBtn = buildElement("button", {
+				innerText: "📍",
+				title: "My position",
+				style: "display: none; padding: 8px 14px; min-height: 40px; cursor: pointer; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; font-weight: bold;",
+				onclick: () => { mapView.needCenter = true; }
+			}),
+			mapModalElements.fitBtn = buildElement("button", {
+				innerText: "⤢",
+				title: "Fit whole map",
+				style: "display: none; padding: 8px 14px; min-height: 40px; cursor: pointer; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; font-weight: bold;",
+				onclick: () => { mapView.needFit = true; }
+			}),
+			mapModalElements.closeBtn = buildElement("button", {
+				innerText: t("closeBtn"),
+				style: "padding: 6px 20px; cursor: pointer; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; font-weight: bold;",
+				onclick: () => closeMapModal()
+			})
+		])
 	])
 );
+// Do NOT add #spkmod-map-modal to the --spkmod-scale transform rule in updateDynamicStyles(), because this window sizes itself
+// in layoutMapModal(); pin --spkmod-scale to 1 here so makeDraggable doesn't divide the drag distance by the mobile UI scale (0.55)
 mapModalElements.modalWindow.style.setProperty("--spkmod-scale", "1");
+// Fucking Important! Logical map size = the canvas size set above, so a future upstream change to it is followed automatically.
+MAP_LW = mapModalElements.canvas.width; MAP_LH = mapModalElements.canvas.height;
+mapView.viewW = MAP_LW; mapView.viewH = MAP_LH;
 
 document.body.appendChild(
 	lunHudElements.eventModal = buildElement("div", {
