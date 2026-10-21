@@ -16354,6 +16354,8 @@ function updateReverseBeyBladeButtonText() {
 	setText(mainBtn, t(window.ReverseBeyBladeActive ? "reversebeybladeOn" : "reversebeybladeOff"));
 }
 
+var questsModalElements = window.questsModalElements || null;
+
 function sec(t) {
 	return t * lunTPS;
 }
@@ -17092,8 +17094,8 @@ spkmodI18nRenderers.push(() => {
 	if (lunPanelElements.mapBtn) lunPanelElements.mapBtn.title = t("mapModalTitle");
 	if (lunPanelElements.questsBtn) lunPanelElements.questsBtn.title = t("questsBtnTooltip") || "Quests Checklist";
 	if (typeof mapModalElements !== "undefined" && mapModalElements.titleLabel) mapModalElements.titleLabel.innerText = t("mapModalTitle");
-	if (typeof questsModalElements !== "undefined" && questsModalElements.headerTitle) {
-		questsModalElements.headerTitle.innerText = "📋 " + (t("questsModalTitle") || "Quests Checklist");
+	if (window.questsModalElements && window.questsModalElements.headerTitle) {
+		window.questsModalElements.headerTitle.innerText = "📋 " + (t("questsModalTitle") || "Quests Checklist");
 	}
 	if (typeof renderQuestChecklist === "function") renderQuestChecklist();
 	const qlBtn = document.getElementById("spkmod-settings-accounts-btn");
@@ -17765,7 +17767,7 @@ async function claimQuest(questId) {
 	return false;
 }
 
-let questsModalElements = {
+var questsModalElements = window.questsModalElements = {
 	modal: null,
 	headerRow: null,
 	headerTitle: null,
