@@ -321,7 +321,8 @@
             "906": "Mountain Canyon Speed Track",
             "908": "Obstacle Race",
             "909": "Lunch Time",
-            "950": "On-the-Hour Tag"
+            "950": "On-the-Hour Tag",
+            "910": "Ghost Backstage"
         },
         "closeBtn": "Close",
         "refreshBtn": "Refresh",
@@ -831,7 +832,8 @@
             "906": "山岳峡谷スピードコース",
             "908": "障害物レース",
             "909": "給食の時間",
-            "950": "正時の鬼ごっこ"
+            "950": "正時の鬼ごっこ",
+            "910": "ゴーストバックステージ"
         },
         "for_memo_jp_8": "🔽w_stats🔽",
         "statsHeader": "プレイ情報",
@@ -1653,7 +1655,8 @@
             "906": "산악 협곡 스피드 트랙",
             "908": "장애물 레이스",
             "909": "급식 시간",
-            "950": "정시의 술래잡기"
+            "950": "정시의 술래잡기",
+            "910": "유령 백스테이지"
         },
         "closeBtn": "닫기",
         "refreshBtn": "새로고침",
@@ -2251,7 +2254,8 @@
             "906": "山地峽谷競速賽道",
             "908": "障礙賽跑",
             "909": "午餐時間",
-            "950": "整點捕捉戰"
+            "950": "整點捕捉戰",
+            "910": "幽靈後台"
         },
         "eventInfoBtnTooltip": "活動資訊",
         "eventInfoHeader": "活動資訊",
@@ -2897,7 +2901,8 @@
             "906": "山地峡谷竞速赛道",
             "908": "障碍赛跑",
             "909": "午餐时间",
-            "950": "整点捕捉战"
+            "950": "整点捕捉战",
+            "910": "幽灵后台"
         },
         "eventInfoBtnTooltip": "活动信息",
         "eventInfoHeader": "活动信息",
@@ -3596,7 +3601,8 @@
             "906": "Pista Rápida del Cañón de Montaña",
             "908": "Carrera de Obstáculos",
             "909": "Hora del Almuerzo",
-            "950": "Juego de las Traes en Punto"
+            "950": "Juego de las Traes en Punto",
+            "910": "Entre Bastidores Fantasmal"
         },
         "closeBtn": "Cerrar",
         "refreshBtn": "Actualizar",
