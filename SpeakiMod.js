@@ -16354,7 +16354,15 @@ function updateReverseBeyBladeButtonText() {
 	setText(mainBtn, t(window.ReverseBeyBladeActive ? "reversebeybladeOn" : "reversebeybladeOff"));
 }
 
-var questsModalElements = window.questsModalElements || null;
+var questsModalElements = window.questsModalElements = window.questsModalElements || {
+	modal: null,
+	headerRow: null,
+	headerTitle: null,
+	countBadge: null,
+	showHiddenBtn: null,
+	listContainer: null,
+	showHidden: false
+};
 
 function sec(t) {
 	return t * lunTPS;
@@ -17097,7 +17105,9 @@ spkmodI18nRenderers.push(() => {
 	if (window.questsModalElements && window.questsModalElements.headerTitle) {
 		window.questsModalElements.headerTitle.innerText = "📋 " + (t("questsModalTitle") || "Quests Checklist");
 	}
-	if (typeof renderQuestChecklist === "function") renderQuestChecklist();
+	if (lunHudElements && lunHudElements.questsModal && !lunHudElements.questsModal.classList.contains("hidden") && typeof renderQuestChecklist === "function") {
+		renderQuestChecklist();
+	}
 	const qlBtn = document.getElementById("spkmod-settings-accounts-btn");
 	if (qlBtn) {
 		qlBtn.innerText = "🔑 " + t("quickLoginTitle");
@@ -17856,10 +17866,10 @@ function buildQuestsModal() {
 }
 
 function renderQuestChecklist() {
-	if (!questsModalElements.listContainer) {
+	if (!questsModalElements || !questsModalElements.listContainer) {
 		buildQuestsModal();
 	}
-	if (!questsModalElements.listContainer) return;
+	if (!questsModalElements || !questsModalElements.listContainer) return;
 	const container = questsModalElements.listContainer;
 	container.innerHTML = "";
 
@@ -18057,7 +18067,7 @@ function renderQuestChecklist() {
 }
 
 function updateQuestChecklistProgress(questId, cur, tgt) {
-	if (!questsModalElements.listContainer) return;
+	if (!questsModalElements || !questsModalElements.listContainer) return;
 	const row = questsModalElements.listContainer.querySelector(`[data-quest-id='${questId}']`);
 	if (!row) return;
 
