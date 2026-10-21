@@ -11664,9 +11664,9 @@ function layoutMapModal() {
 			mapView.viewW = Math.max(200, Math.min(MAP_LW, window.innerWidth - 24));
 			mapView.viewH = Math.max(MAP_MIN_H, Math.min(MAP_LH, Math.round(window.innerHeight * MAP_H_RATIO_PORTRAIT)));
 		} else {
-			// Landscape: canvas height = MAP_H_RATIO_LANDSCAPE of the screen height, width capped at ~2.2:1.
+			// Landscape: canvas height = MAP_H_RATIO_LANDSCAPE of the screen height, width capped at ~1.92:1.
 			mapView.viewH = Math.max(MAP_MIN_H, Math.min(MAP_LH, Math.round(window.innerHeight * MAP_H_RATIO_LANDSCAPE)));
-			mapView.viewW = Math.max(200, Math.min(MAP_LW, window.innerWidth - 24, Math.round(mapView.viewH * 2.2)));
+			mapView.viewW = Math.max(200, Math.min(MAP_LW, window.innerWidth - 24, Math.round(mapView.viewH * 1.92)));
 		}
 		if (mapModalElements.titleLabel) {
 			mapModalElements.titleLabel.style.fontSize = "14px";
