@@ -20638,6 +20638,7 @@ function getClientBuildVersion() {
 }
 
 let speakiNewsChecked = false;
+window.speakiNewsChecked = false;
 
 function showNewsModal(remoteVer, htmlBody, stylesHtml = "") {
 	let backdrop = document.getElementById("spkmod-news-modal");
@@ -20808,30 +20809,46 @@ function showNewsModal(remoteVer, htmlBody, stylesHtml = "") {
 }
 
 async function checkAndShowNewsPopup(force = false) {
+	if (typeof window !== "undefined" && typeof window.speakiNewsChecked !== "undefined") {
+		speakiNewsChecked = Boolean(window.speakiNewsChecked);
+	}
 	if (speakiNewsChecked && !force) return;
 	const clientVer = getClientBuildVersion();
 	if (!clientVer && !force) return;
 	speakiNewsChecked = true;
+	if (typeof window !== "undefined") window.speakiNewsChecked = true;
 
 	try {
 		const res = await fetch(`https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/refs/heads/main/news.html?_t=${Date.now()}`, {
 			cache: "no-store"
 		});
-		if (!res.ok) return;
+		if (!res.ok) {
+			console.warn("[SpeakiMod+] News fetch HTTP error:", res.status);
+			return;
+		}
 		const htmlText = await res.text();
 		const parser = new DOMParser();
 		const doc = parser.parseFromString(htmlText, "text/html");
 		const metaEl = doc.querySelector('meta[name="min-build-version"]');
 		const remoteVer = metaEl ? metaEl.getAttribute("content") : null;
-		if (!remoteVer) return;
+		if (!remoteVer) {
+			console.warn("[SpeakiMod+] News meta min-build-version not found in remote news.html");
+			return;
+		}
 
 		if (!force) {
 			try {
 				const dismissedVer = localStorage.getItem("spkmod-dismissed-news-version");
-				if (dismissedVer && dismissedVer === remoteVer) return;
+				if (dismissedVer && dismissedVer === remoteVer) {
+					console.log(`[SpeakiMod+] News for version ${remoteVer} was already dismissed.`);
+					return;
+				}
 			} catch (_) {}
 
-			if (!isNewerVersion(remoteVer, clientVer)) return;
+			if (!isNewerVersion(remoteVer, clientVer)) {
+				console.log(`[SpeakiMod+] Client version (${clientVer}) is up to date with remote (${remoteVer}). No popup needed.`);
+				return;
+			}
 		}
 
 		const styleEl = doc.head ? doc.head.querySelector("style") : null;
