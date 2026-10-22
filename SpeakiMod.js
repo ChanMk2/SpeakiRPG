@@ -1157,65 +1157,25 @@ function buildElement(tag, characteristics, inner, callback) {
 
 function findNametagSprite(container) {
 	if (!container) return null;
-	const cached = container.__spkmodNametagSprite;
-	if (cached && cached.isSprite && cached.parent) {
-		let p = cached.parent;
-		while (p && p !== container) {
-			p = p.parent;
-		}
-		if (p === container) {
-			return cached;
-		}
+	if (container.__spkmodNametagSprite && container.__spkmodNametagSprite.isSprite) {
+		return container.__spkmodNametagSprite;
+	}
+	const direct = container.children?.[0]?.children?.[0]?.children?.[1];
+	if (direct && direct.isSprite) {
+		container.__spkmodNametagSprite = direct;
+		return direct;
 	}
 
 	let sprite = null;
 	if (typeof container.traverse === "function") {
 		container.traverse(obj => {
-			if (!sprite && obj && obj.isSprite && obj.position && obj.position.y > 0.5) {
+			if (!sprite && obj && obj.isSprite) {
 				sprite = obj;
 			}
 		});
 	}
-	if (sprite) {
-		container.__spkmodNametagSprite = sprite;
-	} else {
-		delete container.__spkmodNametagSprite;
-	}
+	if (sprite) container.__spkmodNametagSprite = sprite;
 	return sprite;
-}
-
-function setPlayerNametagVisibility(container, isVisible) {
-	if (!container || typeof container.traverse !== "function") return;
-	delete container.__spkmodNametagSprite;
-	container.traverse(obj => {
-		if (obj && obj.isSprite && obj.position && obj.position.y > 0.5) {
-			obj.visible = isVisible;
-		}
-	});
-}
-
-function isPlayerNametagVisible(entity) {
-	if (lunNametagMode === 0) return true;
-	if (lunNametagMode === 3) return false;
-	if (!entity || !entity.info) return false;
-
-	const pName = (entity.info.name || "").trim().toLowerCase();
-	const origName = (entity.info.__spkmodOrigName || "").trim().toLowerCase();
-
-	if (lunNametagMode === 1) {
-		const partyNames = new Set(Array.from(document.querySelectorAll('.sr-party__name')).map(el => el.innerText.trim().toLowerCase()));
-		return partyNames.has(pName) || (Boolean(origName) && partyNames.has(origName));
-	}
-	if (lunNametagMode === 2) {
-		return lunFriendNicknames.has(pName) || (Boolean(origName) && lunFriendNicknames.has(origName));
-	}
-	return true;
-}
-
-function applyNametagVisibility(entity) {
-	if (!entity || !entity.container) return;
-	const isVis = isPlayerNametagVisible(entity);
-	setPlayerNametagVisibility(entity.container, isVis);
 }
 
 
@@ -1643,16 +1603,6 @@ var lunWalkToPortal = -1;
 var lunAutoTravelTarget = null;
 var lunCameraLocked = false;
 var lunNametagMode = 0; 
-if (window.localStorage) {
-	try {
-		const savedNametagMode = localStorage.getItem("spkmod-nametag-mode");
-		if (savedNametagMode !== null) {
-			const parsedMode = parseInt(savedNametagMode, 10);
-			if (!isNaN(parsedMode) && parsedMode >= 0 && parsedMode <= 3) lunNametagMode = parsedMode;
-		}
-	} catch (_) {}
-}
-window.lunNametagMode = lunNametagMode;
 const NAMETAG_MODES = ["showAllNametags", "keepPartyNametags", "keepFriendsNametags", "hideAllNametags"];
 
 var lunFriendNicknames = new Set();
@@ -5437,28 +5387,16 @@ document.body.appendChild(
 
 			buildElement("div", { className: "spkmod-panel-cat" }, [
 				lunPanelElements.nametagsBtn = buildElement("button", {
-					id: "lun-nametags-btn",
 					className: "spkmod-panel-btn",
-					innerText: t(NAMETAG_MODES[lunNametagMode] + "Btn") || t("showAllNametagsBtn"),
+					innerText: t("showAllNametagsBtn"),
 					value: "",
 					onclick: () => {
 						lunNametagMode = (lunNametagMode + 1) % 4;
-						window.lunNametagMode = lunNametagMode;
-						if (window.localStorage) {
-							try { localStorage.setItem("spkmod-nametag-mode", String(lunNametagMode)); } catch (_) {}
-						}
 						if (lunNametagMode === 2) {
 							fetchFriendsList(true);
 						}
 						if (lunPanelElements.nametagsBtn) {
 							setText(lunPanelElements.nametagsBtn, t(NAMETAG_MODES[lunNametagMode] + "Btn"));
-						}
-						if (typeof gameState !== "undefined" && gameState?.remotePlayers?.remotePlayers) {
-							gameState.remotePlayers.remotePlayers.forEach(p => {
-								if (typeof applyNametagVisibility === "function") {
-									applyNametagVisibility(p);
-								}
-							});
 						}
 					}
 				}),
@@ -19079,11 +19017,7 @@ function hookAvatarLabel(entity) {
 			}
 		} catch(e) {}
 
-		const res = origSetLabel.call(this, text, ...args);
-		if (typeof applyNametagVisibility === "function") {
-			applyNametagVisibility(entity);
-		}
-		return res;
+		return origSetLabel.call(this, text, ...args);
 	};
 	avatar.__spkmodLabelPatched = true;
 	
@@ -19097,9 +19031,6 @@ function hookAvatarLabel(entity) {
 			const name = (gameState.myPlayerName || (gameState.myStat && gameState.myStat.name)) || "";
 			if (name) avatar.setLabel("LV" + lvl + " " + name);
 		}
-	}
-	if (typeof applyNametagVisibility === "function") {
-		applyNametagVisibility(entity);
 	}
 }
 
@@ -19124,14 +19055,29 @@ function hookAvatarLabel(entity) {
 		hookAvatarLabel(gameState.playerContainer);
 	}
 
-	if (gameState?.remotePlayers?.remotePlayers) {
-		gameState.remotePlayers.remotePlayers.forEach(t => {
-			if (t.avatar) hookAvatarLabel(t);
-			if (typeof applyNametagVisibility === "function") {
-				applyNametagVisibility(t);
+	let partyNames = null;
+	gameState.remotePlayers.remotePlayers.forEach(t => {
+		if (t.avatar) hookAvatarLabel(t);
+		const sprite = findNametagSprite(t.container);
+		if (sprite) {
+			if (lunNametagMode === 0) {
+				sprite.visible = true;
+			} else if (lunNametagMode === 3) {
+				sprite.visible = false;
+			} else if (lunNametagMode === 1) {
+				if (partyNames === null) {
+					partyNames = new Set(Array.from(document.querySelectorAll('.sr-party__name')).map(el => el.innerText.trim().toLowerCase()));
+				}
+				const pName = (t.info?.name || "").trim().toLowerCase();
+				const origName = (t.info?.__spkmodOrigName || "").trim().toLowerCase();
+				sprite.visible = partyNames.has(pName) || (Boolean(origName) && partyNames.has(origName));
+			} else if (lunNametagMode === 2) {
+				const pName = (t.info?.name || "").trim().toLowerCase();
+				const origName = (t.info?.__spkmodOrigName || "").trim().toLowerCase();
+				sprite.visible = lunFriendNicknames.has(pName) || (Boolean(origName) && lunFriendNicknames.has(origName));
 			}
-		});
-	}
+		}
+	});
 	updateKnownBotVisibility();
 	hookKnownBotHeartEmotes();
 	hookKnownBotPlayerEmotesForAll();
@@ -20072,21 +20018,12 @@ function hookRemotePlayersOnce() {
 		if (typeof window.spkmodSanitizeRemotePlayers === "function") {
 			window.spkmodSanitizeRemotePlayers();
 		}
-		const res = hkRemotePlayersSet(key, value);
-		if (value) {
-			if (value.avatar && typeof hookAvatarLabel === "function") hookAvatarLabel(value);
-			if (typeof applyNametagVisibility === "function") applyNametagVisibility(value);
-		}
-		return res;
+		return hkRemotePlayersSet(key, value);
 	};
 
 	gameState.remotePlayers.remotePlayers.forEach(v => {
 		if (v && v.info && typeof v.info.name === "string") {
 			v.info.name = filterName(v.info.name);
-		}
-		if (v) {
-			if (v.avatar && typeof hookAvatarLabel === "function") hookAvatarLabel(v);
-			if (typeof applyNametagVisibility === "function") applyNametagVisibility(v);
 		}
 	});
 	hookKnownBotHeartEmotes();
