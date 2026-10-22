@@ -1155,6 +1155,27 @@ function buildElement(tag, characteristics, inner, callback) {
 	return elem;
 }
 
+var __spkmodSpriteProtoHooked = false;
+function hookSpritePrototypeOnce(sprite) {
+	if (__spkmodSpriteProtoHooked || !sprite) return;
+	const proto = Object.getPrototypeOf(sprite);
+	if (!proto) return;
+	__spkmodSpriteProtoHooked = true;
+
+	Object.defineProperty(proto, "visible", {
+		get() {
+			if (typeof lunNametagMode !== "undefined" && lunNametagMode === 3 && this.position && this.position.y > 0.5) {
+				return false;
+			}
+			return this._spkmodVisible !== undefined ? this._spkmodVisible : true;
+		},
+		set(v) {
+			this._spkmodVisible = v;
+		},
+		configurable: true
+	});
+}
+
 function findNametagSprite(container) {
 	if (!container) return null;
 	const cached = container.__spkmodNametagSprite;
@@ -1164,6 +1185,7 @@ function findNametagSprite(container) {
 			p = p.parent;
 		}
 		if (p === container) {
+			hookSpritePrototypeOnce(cached);
 			return cached;
 		}
 	}
@@ -1171,8 +1193,11 @@ function findNametagSprite(container) {
 	let sprite = null;
 	if (typeof container.traverse === "function") {
 		container.traverse(obj => {
-			if (!sprite && obj && obj.isSprite && obj.position && obj.position.y > 0.5) {
-				sprite = obj;
+			if (obj && obj.isSprite) {
+				hookSpritePrototypeOnce(obj);
+				if (!sprite && obj.position && obj.position.y > 0.5) {
+					sprite = obj;
+				}
 			}
 		});
 	}
@@ -1609,6 +1634,16 @@ var lunWalkToPortal = -1;
 var lunAutoTravelTarget = null;
 var lunCameraLocked = false;
 var lunNametagMode = 0; 
+if (window.localStorage) {
+	try {
+		const savedNametagMode = localStorage.getItem("spkmod-nametag-mode");
+		if (savedNametagMode !== null) {
+			const parsedMode = parseInt(savedNametagMode, 10);
+			if (!isNaN(parsedMode) && parsedMode >= 0 && parsedMode <= 3) lunNametagMode = parsedMode;
+		}
+	} catch (_) {}
+}
+window.lunNametagMode = lunNametagMode;
 const NAMETAG_MODES = ["showAllNametags", "keepPartyNametags", "keepFriendsNametags", "hideAllNametags"];
 
 var lunFriendNicknames = new Set();
@@ -5395,10 +5430,14 @@ document.body.appendChild(
 				lunPanelElements.nametagsBtn = buildElement("button", {
 					id: "lun-nametags-btn",
 					className: "spkmod-panel-btn",
-					innerText: t("showAllNametagsBtn"),
+					innerText: t(NAMETAG_MODES[lunNametagMode] + "Btn") || t("showAllNametagsBtn"),
 					value: "",
 					onclick: () => {
 						lunNametagMode = (lunNametagMode + 1) % 4;
+						window.lunNametagMode = lunNametagMode;
+						if (window.localStorage) {
+							try { localStorage.setItem("spkmod-nametag-mode", String(lunNametagMode)); } catch (_) {}
+						}
 						if (lunNametagMode === 2) {
 							fetchFriendsList(true);
 						}
@@ -18541,6 +18580,13 @@ function tick() {
 			hookQuestManagerOnce();
 		}
 	}
+	if (typeof __spkmodSpriteProtoHooked !== "undefined" && !__spkmodSpriteProtoHooked && gameState?.playerContainer?.traverse) {
+		gameState.playerContainer.traverse(obj => {
+			if (obj && obj.isSprite && typeof hookSpritePrototypeOnce === "function") {
+				hookSpritePrototypeOnce(obj);
+			}
+		});
+	}
 	if (lunTickCount % 5 === 0) {
 		injectPinButtonsIntoQuestList();
 	}
@@ -19090,8 +19136,11 @@ function hookAvatarLabel(entity) {
 
 			if (typeof t.container.traverse === "function") {
 				t.container.traverse(obj => {
-					if (obj && obj.isSprite && obj.position && obj.position.y > 0.5) {
-						obj.visible = shouldBeVisible;
+					if (obj && obj.isSprite) {
+						if (typeof hookSpritePrototypeOnce === "function") hookSpritePrototypeOnce(obj);
+						if (obj.position && obj.position.y > 0.5) {
+							obj.visible = shouldBeVisible;
+						}
 					}
 				});
 			}
