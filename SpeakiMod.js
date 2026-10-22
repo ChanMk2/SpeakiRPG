@@ -1157,24 +1157,30 @@ function buildElement(tag, characteristics, inner, callback) {
 
 function findNametagSprite(container) {
 	if (!container) return null;
-	if (container.__spkmodNametagSprite && container.__spkmodNametagSprite.isSprite) {
-		return container.__spkmodNametagSprite;
-	}
-	const direct = container.children?.[0]?.children?.[0]?.children?.[1];
-	if (direct && direct.isSprite) {
-		container.__spkmodNametagSprite = direct;
-		return direct;
+	const cached = container.__spkmodNametagSprite;
+	if (cached && cached.isSprite && cached.parent) {
+		let p = cached.parent;
+		while (p && p !== container) {
+			p = p.parent;
+		}
+		if (p === container) {
+			return cached;
+		}
 	}
 
 	let sprite = null;
 	if (typeof container.traverse === "function") {
 		container.traverse(obj => {
-			if (!sprite && obj && obj.isSprite) {
+			if (!sprite && obj && obj.isSprite && obj.position && obj.position.y > 0.5) {
 				sprite = obj;
 			}
 		});
 	}
-	if (sprite) container.__spkmodNametagSprite = sprite;
+	if (sprite) {
+		container.__spkmodNametagSprite = sprite;
+	} else {
+		delete container.__spkmodNametagSprite;
+	}
 	return sprite;
 }
 
@@ -5387,6 +5393,7 @@ document.body.appendChild(
 
 			buildElement("div", { className: "spkmod-panel-cat" }, [
 				lunPanelElements.nametagsBtn = buildElement("button", {
+					id: "lun-nametags-btn",
 					className: "spkmod-panel-btn",
 					innerText: t("showAllNametagsBtn"),
 					value: "",
@@ -19056,28 +19063,40 @@ function hookAvatarLabel(entity) {
 	}
 
 	let partyNames = null;
-	gameState.remotePlayers.remotePlayers.forEach(t => {
-		if (t.avatar) hookAvatarLabel(t);
-		const sprite = findNametagSprite(t.container);
-		if (sprite) {
+	if (gameState?.remotePlayers?.remotePlayers) {
+		gameState.remotePlayers.remotePlayers.forEach(t => {
+			if (t.avatar) hookAvatarLabel(t);
+			if (!t.container) return;
+
+			delete t.container.__spkmodNametagSprite;
+
+			let shouldBeVisible = true;
 			if (lunNametagMode === 0) {
-				sprite.visible = true;
+				shouldBeVisible = true;
 			} else if (lunNametagMode === 3) {
-				sprite.visible = false;
+				shouldBeVisible = false;
 			} else if (lunNametagMode === 1) {
 				if (partyNames === null) {
 					partyNames = new Set(Array.from(document.querySelectorAll('.sr-party__name')).map(el => el.innerText.trim().toLowerCase()));
 				}
 				const pName = (t.info?.name || "").trim().toLowerCase();
 				const origName = (t.info?.__spkmodOrigName || "").trim().toLowerCase();
-				sprite.visible = partyNames.has(pName) || (Boolean(origName) && partyNames.has(origName));
+				shouldBeVisible = partyNames.has(pName) || (Boolean(origName) && partyNames.has(origName));
 			} else if (lunNametagMode === 2) {
 				const pName = (t.info?.name || "").trim().toLowerCase();
 				const origName = (t.info?.__spkmodOrigName || "").trim().toLowerCase();
-				sprite.visible = lunFriendNicknames.has(pName) || (Boolean(origName) && lunFriendNicknames.has(origName));
+				shouldBeVisible = lunFriendNicknames.has(pName) || (Boolean(origName) && lunFriendNicknames.has(origName));
 			}
-		}
-	});
+
+			if (typeof t.container.traverse === "function") {
+				t.container.traverse(obj => {
+					if (obj && obj.isSprite && obj.position && obj.position.y > 0.5) {
+						obj.visible = shouldBeVisible;
+					}
+				});
+			}
+		});
+	}
 	updateKnownBotVisibility();
 	hookKnownBotHeartEmotes();
 	hookKnownBotPlayerEmotesForAll();
