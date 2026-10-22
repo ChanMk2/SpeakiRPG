@@ -20807,10 +20807,10 @@ function showNewsModal(remoteVer, htmlBody, stylesHtml = "") {
 	document.body.appendChild(backdrop);
 }
 
-async function checkAndShowNewsPopup() {
-	if (speakiNewsChecked) return;
+async function checkAndShowNewsPopup(force = false) {
+	if (speakiNewsChecked && !force) return;
 	const clientVer = getClientBuildVersion();
-	if (!clientVer) return;
+	if (!clientVer && !force) return;
 	speakiNewsChecked = true;
 
 	try {
@@ -20825,12 +20825,14 @@ async function checkAndShowNewsPopup() {
 		const remoteVer = metaEl ? metaEl.getAttribute("content") : null;
 		if (!remoteVer) return;
 
-		try {
-			const dismissedVer = localStorage.getItem("spkmod-dismissed-news-version");
-			if (dismissedVer && dismissedVer === remoteVer) return;
-		} catch (_) {}
+		if (!force) {
+			try {
+				const dismissedVer = localStorage.getItem("spkmod-dismissed-news-version");
+				if (dismissedVer && dismissedVer === remoteVer) return;
+			} catch (_) {}
 
-		if (!isNewerVersion(remoteVer, clientVer)) return;
+			if (!isNewerVersion(remoteVer, clientVer)) return;
+		}
 
 		const styleEl = doc.head ? doc.head.querySelector("style") : null;
 		const stylesHtml = styleEl ? styleEl.outerHTML : "";
@@ -20840,6 +20842,8 @@ async function checkAndShowNewsPopup() {
 		console.warn("[SpeakiMod+] Failed to check news/update:", e);
 	}
 }
+window.checkAndShowNewsPopup = checkAndShowNewsPopup;
+window.showNewsModal = showNewsModal;
 
 setTimeout(() => {
 	if (typeof gameState !== "undefined" && gameState) {
