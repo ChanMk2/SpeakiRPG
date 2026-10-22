@@ -13,7 +13,7 @@
         "avatarEmpty": "No matching emojis. The list may still be loading.",
         "avatarUnavailable": "This image is unavailable. Choose another emoji or use initials.",
         "avatarSaveError": "Could not save your avatar. Please try again.",
-        "header": "SpeakiMod+ v2.26",
+        "header": "SpeakiMod+ v2.27",
         "playersNearby": "Speaki nearby: {0}",
         "zoneId": "Zone ID: {0}",
         "expPerMinute": "{0} EXP/min",
@@ -120,7 +120,7 @@
         "gamepadInvertY": "Invert Camera Y",
         "gamepadResetBtn": "Reset Defaults",
         "gamepadPressPrompt": "Press button on controller...",
-        "gamepadAction_jump": "Jump / Portal",
+        "gamepadAction_jump": "Jump",
         "gamepadAction_potion": "Heal / Use Potion",
         "gamepadAction_target": "Target Nearest / Cycle",
         "gamepadAction_beyblade": "Left Spin",
@@ -321,8 +321,8 @@
             "906": "Mountain Canyon Speed Track",
             "908": "Obstacle Race",
             "909": "Lunch Time",
-            "950": "On-the-Hour Tag",
-            "910": "Ghost Backstage"
+            "910": "Ghost Backstage",
+            "950": "On-the-Hour Tag"
         },
         "closeBtn": "Close",
         "refreshBtn": "Refresh",
@@ -664,7 +664,9 @@
         "noQuestsTracked": "No quests tracked. Pin some from the native quest log!",
         "periodDaily": "Daily",
         "periodWeekly": "Weekly",
-        "periodStanding": "Standing"
+        "periodStanding": "Standing",
+        "gamepadAction_interact": "Enter Portal / Interact",
+        "gamepadAction_hobagiCar": "Hobagi Car (Vehicle)"
     },
     "ja": {
         "langName": "日本語",
@@ -680,7 +682,7 @@
         "avatarEmpty": "一致する絵文字がありません。読み込み中の場合もあります。",
         "avatarUnavailable": "画像を読み込めません。別の絵文字か頭文字を選んでください。",
         "avatarSaveError": "アイコンを保存できませんでした。もう一度お試しください。",
-        "header": "SpeakiMod+ v2.26",
+        "header": "SpeakiMod+ v2.27",
         "credits": "• 原作ゲーム: EPID Games\n• Speaki MMO 開発: GMDT\n• クライアント＆SpeakiMod+コーディング: Glas\n• SpeakiMod原作者: Alluseri\n• 日本語翻訳: JPN_健全なエルフ名15T\n• 品質保証＆調整: Chan.\n\n使用ファンアート：\nUI背景への作品使用を許可してくださったアーティストの皆様に心より感謝申し上げます！\n- 느그 유노(Yuno)",
         "for_memo_jp_1": "🔽window_main🔽",
         "playersNearby": "近くのｽﾋﾟｷ数: {0}",
@@ -846,8 +848,8 @@
             "906": "山岳峡谷スピードコース",
             "908": "障害物レース",
             "909": "給食の時間",
-            "950": "正時の鬼ごっこ",
-            "910": "ゴーストバックステージ"
+            "910": "ゴーストバックステージ",
+            "950": "正時の鬼ごっこ"
         },
         "for_memo_jp_8": "🔽w_stats🔽",
         "statsHeader": "プレイ情報",
@@ -1040,7 +1042,7 @@
         "gamepadInvertY": "カメラ上下反転 (Invert Y)",
         "gamepadResetBtn": "初期設定に戻す",
         "gamepadPressPrompt": "コントローラーのボタンを押してください……",
-        "gamepadAction_jump": "ジャンプ / 決定",
+        "gamepadAction_jump": "ジャンプ",
         "gamepadAction_potion": "回復 / ポーション使用",
         "gamepadAction_target": "敵ターゲット / 巡回",
         "gamepadAction_beyblade": "左くるりん",
@@ -1360,7 +1362,9 @@
         "noQuestsTracked": "追跡中のクエストはありません。クエスト一覧からピン留めしてください。",
         "periodDaily": "デイリー",
         "periodWeekly": "ウィークリー",
-        "periodStanding": "常設"
+        "periodStanding": "常設",
+        "gamepadAction_interact": "ポータル入場 / 対話",
+        "gamepadAction_hobagiCar": "ホバギカー (乗り物)"
     },
     "ko": {
         "langName": "한국어",
@@ -1376,7 +1380,7 @@
         "avatarEmpty": "일치하는 이모지가 없습니다. 목록을 불러오는 중일 수 있습니다.",
         "avatarUnavailable": "이미지를 불러올 수 없습니다. 다른 이모지나 이름 첫 글자를 선택하세요.",
         "avatarSaveError": "프로필 이미지를 저장하지 못했습니다. 다시 시도해 주세요.",
-        "header": "SpeakiMod+ v2.26",
+        "header": "SpeakiMod+ v2.27",
         "playersNearby": "근처 스피키: {0}",
         "zoneId": "존 ID: {0}",
         "expPerMinute": "{0} EXP/분",
@@ -1482,7 +1486,7 @@
         "gamepadInvertY": "카메라 상하 반전",
         "gamepadResetBtn": "기본값으로 복원",
         "gamepadPressPrompt": "컨트롤러의 버튼을 누르세요...",
-        "gamepadAction_jump": "점프 / 상호작용",
+        "gamepadAction_jump": "점프",
         "gamepadAction_potion": "회복 / 아이템 사용",
         "gamepadAction_target": "가까운 적 타겟 / 순환",
         "gamepadAction_beyblade": "좌측 회전",
@@ -1683,8 +1687,8 @@
             "906": "산악 협곡 스피드 트랙",
             "908": "장애물 레이스",
             "909": "급식 시간",
-            "950": "정시의 술래잡기",
-            "910": "유령 백스테이지"
+            "910": "유령 백스테이지",
+            "950": "정시의 술래잡기"
         },
         "closeBtn": "닫기",
         "refreshBtn": "새로고침",
@@ -2026,7 +2030,9 @@
         "noQuestsTracked": "추적 중인 퀘스트가 없습니다. 게임 퀘스트 창에서 📌 목록 추가를 눌러보세요!",
         "periodDaily": "일일",
         "periodWeekly": "주간",
-        "periodStanding": "상시"
+        "periodStanding": "상시",
+        "gamepadAction_interact": "포털 입장 / 상호작용",
+        "gamepadAction_hobagiCar": "호바기 카 (탈것)"
     },
     "zh-TW": {
         "langName": "繁體中文",
@@ -2042,7 +2048,7 @@
         "avatarEmpty": "沒有符合的表情，或清單仍在載入中。",
         "avatarUnavailable": "無法載入圖片，請選擇其他表情或恢復名字首字。",
         "avatarSaveError": "無法儲存頭貼，請重試。",
-        "header": "SpeakiMod+ v2.26",
+        "header": "SpeakiMod+ v2.27",
         "playersNearby": "附近的斯皮奇: {0}",
         "zoneId": "區域 ID: {0}",
         "expPerMinute": "{0} 經驗值/每分鐘",
@@ -2148,7 +2154,7 @@
         "gamepadInvertY": "反轉鏡頭 Y 軸",
         "gamepadResetBtn": "重置為預設值",
         "gamepadPressPrompt": "請按下控制器上的按鈕...",
-        "gamepadAction_jump": "跳躍 / 傳送門",
+        "gamepadAction_jump": "跳躍",
         "gamepadAction_potion": "治療 / 使用藥水",
         "gamepadAction_target": "鎖定最近目標 / 切換",
         "gamepadAction_beyblade": "左旋轉",
@@ -2296,8 +2302,8 @@
             "906": "山地峽谷競速賽道",
             "908": "障礙賽跑",
             "909": "午餐時間",
-            "950": "整點捕捉戰",
-            "910": "幽靈後台"
+            "910": "幽靈後台",
+            "950": "整點捕捉戰"
         },
         "eventInfoBtnTooltip": "活動資訊",
         "eventInfoHeader": "活動資訊",
@@ -2687,7 +2693,9 @@
         "noQuestsTracked": "沒有追蹤中的任務。請在任務面板中釘選！",
         "periodDaily": "每日",
         "periodWeekly": "每週",
-        "periodStanding": "常規"
+        "periodStanding": "常規",
+        "gamepadAction_interact": "進入傳送門 / 互動",
+        "gamepadAction_hobagiCar": "南瓜車 (坐騎)"
     },
     "zh-CN": {
         "langName": "简体中文",
@@ -2703,7 +2711,7 @@
         "avatarEmpty": "没有匹配的表情，或列表仍在加载中。",
         "avatarUnavailable": "无法加载图片，请选择其他表情或恢复名字首字。",
         "avatarSaveError": "无法保存头像，请重试。",
-        "header": "SpeakiMod+ v2.26",
+        "header": "SpeakiMod+ v2.27",
         "playersNearby": "附近的斯皮奇: {0}",
         "zoneId": "区域 ID: {0}",
         "expPerMinute": "{0} 经验值/每分钟",
@@ -2809,7 +2817,7 @@
         "gamepadInvertY": "反转镜头 Y 轴",
         "gamepadResetBtn": "重置为预设值",
         "gamepadPressPrompt": "请按下控制器上的按钮...",
-        "gamepadAction_jump": "跳跃 / 传送门",
+        "gamepadAction_jump": "跳跃",
         "gamepadAction_potion": "治疗 / 使用药水",
         "gamepadAction_target": "锁定最近目标 / 切换",
         "gamepadAction_beyblade": "左旋转",
@@ -2957,8 +2965,8 @@
             "906": "山地峡谷竞速赛道",
             "908": "障碍赛跑",
             "909": "午餐时间",
-            "950": "整点捕捉战",
-            "910": "幽灵后台"
+            "910": "幽灵后台",
+            "950": "整点捕捉战"
         },
         "eventInfoBtnTooltip": "活动信息",
         "eventInfoHeader": "活动信息",
@@ -3348,7 +3356,9 @@
         "noQuestsTracked": "没有追踪中的任务。请在任务面板中置顶！",
         "periodDaily": "每日",
         "periodWeekly": "每周",
-        "periodStanding": "常规"
+        "periodStanding": "常规",
+        "gamepadAction_interact": "进入传送门 / 互动",
+        "gamepadAction_hobagiCar": "南瓜车 (坐骑)"
     },
     "es-419": {
         "langName": "Español",
@@ -3364,7 +3374,7 @@
         "avatarEmpty": "No hay emojis coincidentes. La lista puede estar cargando.",
         "avatarUnavailable": "Imagen no disponible. Elige otro emoji o usa la inicial.",
         "avatarSaveError": "No se pudo guardar el avatar. Inténtalo de nuevo.",
-        "header": "SpeakiMod+ v2.26",
+        "header": "SpeakiMod+ v2.27",
         "playersNearby": "Speaki cercanos: {0}",
         "zoneId": "ID de zona: {0}",
         "expPerMinute": "{0} EXP/min",
@@ -3470,7 +3480,7 @@
         "gamepadInvertY": "Invertir cámara Y",
         "gamepadResetBtn": "Restablecer valores",
         "gamepadPressPrompt": "Presiona un botón del control...",
-        "gamepadAction_jump": "Saltar / Portal",
+        "gamepadAction_jump": "Saltar",
         "gamepadAction_potion": "Curar / Usar poción",
         "gamepadAction_target": "Apuntar al más cercano / Alternar",
         "gamepadAction_beyblade": "Girar a la izquierda",
@@ -3671,8 +3681,8 @@
             "906": "Pista Rápida del Cañón de Montaña",
             "908": "Carrera de Obstáculos",
             "909": "Hora del Almuerzo",
-            "950": "Juego de las Traes en Punto",
-            "910": "Entre Bastidores Fantasmal"
+            "910": "Entre Bastidores Fantasmal",
+            "950": "Juego de las Traes en Punto"
         },
         "closeBtn": "Cerrar",
         "refreshBtn": "Actualizar",
@@ -4009,6 +4019,8 @@
         "noQuestsTracked": "¡No hay misiones rastreadas. Fija algunas en el registro!",
         "periodDaily": "Diaria",
         "periodWeekly": "Semanal",
-        "periodStanding": "Permanente"
+        "periodStanding": "Permanente",
+        "gamepadAction_interact": "Entrar al portal / Interactuar",
+        "gamepadAction_hobagiCar": "Carro Hobagi (Vehículo)"
     }
 }

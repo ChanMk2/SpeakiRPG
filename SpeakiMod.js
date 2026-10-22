@@ -9068,7 +9068,9 @@ const SPKMOD_DEFAULT_GAMEPAD_CONFIG = {
 	invertCameraY: false,
 	bindings: {
 		0: "potion",            // A / Cross (Heal / Potion)
-		2: "jump",              // X / Square (Jump / Portal)
+		1: "interact",          // B / Circle (Interact / Portal - F key)
+		2: "jump",              // X / Square (Jump)
+		3: "hobagiCar",         // Y / Triangle (Hobagi Car - = key)
 		5: "zoomIn",            // RB / R1 (Zoom In)
 		7: "zoomOut",           // RT / R2 (Zoom Out)
 		8: "town",              // Back / View / Select (Back to Town)
@@ -9083,7 +9085,7 @@ const SPKMOD_DEFAULT_GAMEPAD_CONFIG = {
 };
 
 const SPKMOD_GAMEPAD_ACTIONS = [
-	"jump", "potion",
+	"jump", "interact", "hobagiCar", "potion",
 	"beyblade", "reversebeyblade", "dance", "chowayo", "hearts", "town",
 	"zoomIn", "zoomOut", "lockCamera", "autoJump", "toggleSettings"
 ];
@@ -9099,7 +9101,13 @@ let spkmodGamepadConfig = (() => {
 		const raw = localStorage.getItem(SPKMOD_GAMEPAD_CONFIG_KEY);
 		if (raw) {
 			const parsed = JSON.parse(raw);
-			if (parsed.version === 3) {
+			if (parsed.version === 4) {
+				return Object.assign({}, SPKMOD_DEFAULT_GAMEPAD_CONFIG, parsed);
+			} else if (parsed.version === 3) {
+				parsed.version = 4;
+				parsed.bindings = parsed.bindings || {};
+				if (!parsed.bindings[1]) parsed.bindings[1] = "interact";
+				if (!parsed.bindings[3]) parsed.bindings[3] = "hobagiCar";
 				return Object.assign({}, SPKMOD_DEFAULT_GAMEPAD_CONFIG, parsed);
 			}
 		}
@@ -9121,7 +9129,17 @@ function executeGamepadAction(actionName) {
 	switch (actionName) {
 		case "jump":
 			spkmodPerformJump();
-			if (typeof gameState !== "undefined" && gameState && typeof gameState.tryUsePortal === "function") gameState.tryUsePortal();
+			break;
+		case "interact":
+			if (typeof gameState !== "undefined" && gameState && typeof gameState.tryUsePortal === "function") {
+				gameState.tryUsePortal();
+			}
+			window.dispatchEvent(new KeyboardEvent("keydown", { key: "f", code: "KeyF", keyCode: 70, which: 70, bubbles: true }));
+			window.dispatchEvent(new KeyboardEvent("keyup", { key: "f", code: "KeyF", keyCode: 70, bubbles: true }));
+			break;
+		case "hobagiCar":
+			window.dispatchEvent(new KeyboardEvent("keydown", { key: "=", code: "Equal", keyCode: 187, which: 187, bubbles: true }));
+			window.dispatchEvent(new KeyboardEvent("keyup", { key: "=", code: "Equal", keyCode: 187, bubbles: true }));
 			break;
 
 
@@ -18479,7 +18497,7 @@ function injectPinButtonsIntoQuestList() {
 			starBtn.title = isStarred ? (t("unstarQuestBtn") || "Unstar from HUD") : (t("starQuestBtn") || "Star on HUD");
 			starBtn.style.cssText = `
 				flex-shrink: 0;
-				margin-left: 6px;
+				margin-left: 0;
 				padding: 3px 6px;
 				font-size: 11px;
 				line-height: 1.2;
@@ -18511,7 +18529,7 @@ function injectPinButtonsIntoQuestList() {
 			pinBtn.title = isInList ? (t("unpinChecklistBtn") || "Unpin from List") : (t("pinChecklistBtn") || "Pin to List");
 			pinBtn.style.cssText = `
 				flex-shrink: 0;
-				margin-left: 4px;
+				margin-left: 0;
 				padding: 3px 6px;
 				font-size: 11px;
 				line-height: 1.2;
@@ -18538,18 +18556,22 @@ function injectPinButtonsIntoQuestList() {
 				}
 			};
 
+			const subRow = document.createElement("div");
+			subRow.className = "spkmod-quest-subrow";
+			subRow.style.cssText = "display: flex; gap: 4px; align-items: center;";
+			subRow.appendChild(starBtn);
+			subRow.appendChild(pinBtn);
+
 			const statusEl = topRow.querySelector(".sr-list-item__subtitle") || topRow.querySelector("button.sr-btn--primary");
 			if (statusEl && statusEl.parentElement === topRow) {
 				const rightCol = document.createElement("div");
 				rightCol.className = "spkmod-quest-actions-col";
-				rightCol.style.cssText = "display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; margin-left: 8px;";
+				rightCol.style.cssText = "display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 4px; flex-shrink: 0; margin-left: 8px;";
 				topRow.replaceChild(rightCol, statusEl);
 				rightCol.appendChild(statusEl);
-				rightCol.appendChild(starBtn);
-				rightCol.appendChild(pinBtn);
+				rightCol.appendChild(subRow);
 			} else if (!topRow.querySelector(".spkmod-star-button")) {
-				topRow.appendChild(starBtn);
-				topRow.appendChild(pinBtn);
+				topRow.appendChild(subRow);
 			}
     });
 }
@@ -21844,3 +21866,5 @@ setTimeout(() => {
 		if (typeof updateDynamicStyles === "function") updateDynamicStyles();
 	}
 }, 1000);
+
+
