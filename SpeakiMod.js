@@ -6427,13 +6427,13 @@ document.body.appendChild(
 				buildElement("div", { className: "spkmod-panel-cat" }, [
 					lunPanelElements.disableRightClickPinningLabel = buildElement("span", {
 						style: "color: #fff; font-size: 11px; font-weight: bold; flex: 1;",
-						innerText: t("disableRightClickPinningLabel") || "Disable Right-Click Pinning",
-						title: "Disable right-clicking HUD and modal buttons to pin them floating on screen"
+						innerText: t("disableRightClickPinningLabel") || "Disable Double Right-Click Pinning",
+						title: "Disable double right-clicking HUD and modal buttons to pin them floating on screen"
 					}),
 					lunPanelElements.disableRightClickPinningToggleInput = buildElement("input", {
 						type: "checkbox",
 						checked: lunDisableRightClickPinning,
-						title: "Disable right-clicking HUD and modal buttons to pin them floating on screen",
+						title: "Disable double right-clicking HUD and modal buttons to pin them floating on screen",
 						onchange: e => setDisableRightClickPinning(e.target.checked)
 					})
 				]),
@@ -8684,7 +8684,10 @@ setTimeout(spkmodRestoreFloatingButtons, 600);
 setTimeout(spkmodRestoreFloatingButtons, 1800);
 setTimeout(spkmodRestoreFloatingButtons, 3500);
 
-// Global Right-Click Delegate for summoning buttons outside HUD
+// Global Double Right-Click Delegate for summoning buttons outside HUD
+let spkmodLastRightClickBtn = null;
+let spkmodLastRightClickTime = 0;
+
 document.addEventListener("contextmenu", (e) => {
     const btn = e.target.closest("button.spkmod-panel-btn, #spkmod-effects-modal button, #spkmod-hud button, .spkmod-quick-btn, .spkmod-floating-button");
     if (!btn) return;
@@ -8702,7 +8705,15 @@ document.addEventListener("contextmenu", (e) => {
         return;
     }
 
-    spkmodSpawnFloatingButton(btn, e.clientX, e.clientY);
+    const now = Date.now();
+    if (spkmodLastRightClickBtn === btn && (now - spkmodLastRightClickTime) <= 500) {
+        spkmodLastRightClickBtn = null;
+        spkmodLastRightClickTime = 0;
+        spkmodSpawnFloatingButton(btn, e.clientX, e.clientY);
+    } else {
+        spkmodLastRightClickBtn = btn;
+        spkmodLastRightClickTime = now;
+    }
 }, true);
 
 
@@ -17426,7 +17437,7 @@ spkmodI18nRenderers.push(() => {
 		renderPatchNotesUI();
 	}
 	if (lunPanelElements.gamepadRumbleLabel) setText(lunPanelElements.gamepadRumbleLabel, t("gamepadRumbleToggleLabel"));
-	if (lunPanelElements.disableRightClickPinningLabel) setText(lunPanelElements.disableRightClickPinningLabel, t("disableRightClickPinningLabel") || "Disable Right-Click Pinning");
+	if (lunPanelElements.disableRightClickPinningLabel) setText(lunPanelElements.disableRightClickPinningLabel, t("disableRightClickPinningLabel") || "Disable Double Right-Click Pinning");
 	if (lunPanelElements.discordRpcLabel) setText(lunPanelElements.discordRpcLabel, t("discordRpcToggleLabel") || "Discord Activity (RPC)");
 	if (lunPanelElements.uiScaleLabel) setText(lunPanelElements.uiScaleLabel, t("uiScaleLabel"));
 	if (lunPanelElements.gameUiScaleLabel) setText(lunPanelElements.gameUiScaleLabel, t("gameUiScaleLabel") || "Game UI Scale");

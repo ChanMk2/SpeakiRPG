@@ -422,7 +422,7 @@
         "aFaintOff": "Situps: ▶️",
         "separatePanel": "Separate Action Panel (Mobile)",
         "hidePlayerLevelsLabel": "Hide Player Levels",
-        "disableRightClickPinningLabel": "Disable Right-Click Pinning",
+        "disableRightClickPinningLabel": "Disable Double Right-Click Pinning",
         "emojiTabTrickcal2": "2",
         "emojiTabTrickcal3": "3",
         "decalogue": {
@@ -1128,7 +1128,7 @@
         "for_memo_jp_29": "⏩コンマ要確認⏩",
         "separatePanel": "アクションパネルを分離 (モバイル)",
         "hidePlayerLevelsLabel": "プレイヤーレベルを非表示",
-        "disableRightClickPinningLabel": "右クリック固定を無効化",
+        "disableRightClickPinningLabel": "ダブル右クリック固定を無効化",
         "emojiTabTrickcal2": "2",
         "emojiTabTrickcal3": "3",
         "decalogue": {
@@ -1806,7 +1806,7 @@
         "aFaintOff": "윗몸일으키기: ▶️",
         "separatePanel": "액션 패널 분리 (모바일)",
         "hidePlayerLevelsLabel": "플레이어 레벨 숨기기",
-        "disableRightClickPinningLabel": "우클릭 핀 고정 비활성화",
+        "disableRightClickPinningLabel": "더블 우클릭 핀 고정 비활성화",
         "emojiTabTrickcal2": "2",
         "emojiTabTrickcal3": "3",
         "decalogue": {
@@ -2483,7 +2483,7 @@
         "aFaintOff": "Situps: ▶️",
         "separatePanel": "分離動作面板 (手機)",
         "hidePlayerLevelsLabel": "隱藏玩家等級",
-        "disableRightClickPinningLabel": "停用右鍵固定按鈕",
+        "disableRightClickPinningLabel": "停用雙擊右鍵固定按鈕",
         "emojiTabTrickcal2": "2",
         "emojiTabTrickcal3": "3",
         "decalogue": {
@@ -3155,7 +3155,7 @@
         "aFaintOff": "Situps: ▶️",
         "separatePanel": "分离动作面板 (手机)",
         "hidePlayerLevelsLabel": "隐藏玩家等级",
-        "disableRightClickPinningLabel": "禁用右键固定按钮",
+        "disableRightClickPinningLabel": "禁用双击右键固定按钮",
         "emojiTabTrickcal2": "2",
         "emojiTabTrickcal3": "3",
         "decalogue": {
@@ -3827,7 +3827,7 @@
         "aFaintOff": "Situps: ▶️",
         "separatePanel": "Separar Panel de Acciones (Móvil)",
         "hidePlayerLevelsLabel": "Ocultar Niveles de Jugadores",
-        "disableRightClickPinningLabel": "Desactivar fijar con clic derecho",
+        "disableRightClickPinningLabel": "Desactivar fijar con doble clic derecho",
         "emojiTabTrickcal2": "2",
         "emojiTabTrickcal3": "3",
         "decalogue": {
