@@ -2357,7 +2357,7 @@ var isMobClient = typeof spkmodIsMobile === "function" ? spkmodIsMobile() : fals
 var lunResolutionOverride = 1; // 1.0 = Off (use the game's own resolution option)
 if (isMobClient && window.localStorage) {
 	const v = parseFloat(localStorage.getItem("spkmod-resolution-override"));
-	if (v >= 1 && v <= 3) lunResolutionOverride = v;
+	if (v >= 1 && v <= 3.5) lunResolutionOverride = v;
 } else if (window.localStorage) {
 	try { localStorage.removeItem("spkmod-resolution-override"); } catch (_) {}
 }
@@ -2381,7 +2381,7 @@ function setResolutionOverride(value) {
 		return;
 	}
 	const v = parseFloat(value);
-	lunResolutionOverride = (v >= 1 && v <= 3) ? v : 1;
+	lunResolutionOverride = (v >= 1 && v <= 3.5) ? v : 1;
 	window.spkmodResolutionOverride = lunResolutionOverride;
 	if (window.localStorage) localStorage.setItem("spkmod-resolution-override", String(lunResolutionOverride));
 	if (lunPanelElements.resolutionOverrideInput) {
@@ -4432,7 +4432,7 @@ function updateDynamicStyles() {
 			--spkmod-accent: ${lunAccentColor};
 		}
 				#app { filter: ${filterRule}; }
-		#app > *:not(:has(canvas)):not(canvas):not(.sr-click-ripple-layer) { zoom: ${lunGameUiScale} !important; }
+		#app > *:not(.sr-game-canvas):not(canvas):not(.sr-click-ripple-layer) { zoom: ${lunGameUiScale} !important; }
 		#spkmod-hud, #spkmod-settings-modal, #spkmod-event-modal, #spkmod-patchnotes-modal, #spkmod-bbs-modal, #spkmod-info-modal, #spkmod-effects-modal, #spkmod-stats-modal, #spkmod-edits-modal, #spkmod-quests-modal { transform: scale(var(--spkmod-scale)); transform-origin: top left; }
 		#spkmod-pq, body > #spkmod-panel { transform: scale(var(--spkmod-scale)); transform-origin: top right; }
 		#spkmod-main, #spkmod-pq, #spkmod-settings-modal, #spkmod-gamepad-modal, #spkmod-players-modal, #spkmod-event-modal, #spkmod-patchnotes-modal, #spkmod-bbs-modal, #spkmod-info-modal, #spkmod-effects-modal, #spkmod-stats-modal, #spkmod-edits-modal, #spkmod-quests-modal, .spkmod-panel-btn, .spkmod-panel-counter, .spkmod-panel-combo, #spkmod-discord-btn {
@@ -6197,7 +6197,7 @@ document.body.appendChild(
 					lunPanelElements.resolutionOverrideInput = buildElement("input", {
 						type: "range",
 						min: "1",
-						max: "3",
+						max: "3.5",
 						step: "0.05",
 						value: lunResolutionOverride,
 						style: "width: 75px; accent-color: #38bdf8; cursor: pointer;",
@@ -20375,7 +20375,6 @@ if (hudWindow) {
 }
 
 let lunLastFrameTime = performance.now();
-let lunFrameCount = 0;
 lunCurrentFps = 0;
 lunCurrentPing = "--";
 let lunLastPingTime = performance.now() + 3000; // 3s initial delay on boot
@@ -20457,13 +20456,82 @@ async function performActivePing() {
 	}
 }
 
+const spkmodFpsState = {
+	enabled: false,
+	drawn: false,
+	frames: 0
+};
+
+let lunFpsLastRenderedFrames = 0;
+
+function spkmodResetFpsBaseline() {
+	lunLastFrameTime = performance.now();
+	lunFpsLastRenderedFrames = spkmodFpsState.frames;
+	spkmodFpsState.drawn = false;
+}
+
+document.addEventListener("visibilitychange", spkmodResetFpsBaseline);
+const spkmodGameGl = new WeakSet();
+
+function spkmodIsGameGl(gl) {
+	if (spkmodGameGl.has(gl)) return true;
+	if (gl.canvas && gl.canvas.classList && gl.canvas.classList.contains("sr-game-canvas")) {
+		spkmodGameGl.add(gl);
+		return true;
+	}
+	return false;
+}
+
+(function installGameFpsHooks() {
+	const methods = ["drawArrays", "drawElements", "drawRangeElements", "drawArraysInstanced", "drawElementsInstanced"];
+	const prototypes = [
+		window.WebGLRenderingContext && window.WebGLRenderingContext.prototype,
+		window.WebGL2RenderingContext && window.WebGL2RenderingContext.prototype
+	].filter(Boolean);
+
+	for (const proto of new Set(prototypes)) {
+		for (const name of methods) {
+			const descriptor = Object.getOwnPropertyDescriptor(proto, name);
+			if (!descriptor || typeof descriptor.value !== "function") continue;
+
+			const original = descriptor.value;
+			if (original.__spkmodActualFpsHook) continue;
+
+			const wrapped = function () {
+				if (spkmodFpsState.enabled && spkmodIsGameGl(this)) {
+					spkmodFpsState.drawn = true;
+				}
+				return original.apply(this, arguments);
+			};
+			wrapped.__spkmodActualFpsHook = true;
+
+			try {
+				Object.defineProperty(proto, name, { ...descriptor, value: wrapped });
+			} catch (_) {}
+		}
+	}
+})();
+
 function fpsLoop() {
 	const now = performance.now();
-	lunFrameCount++;
+
+	const fpsWanted = lunFpsPingEnabled || !!(lunHudElements.statsModal && !lunHudElements.statsModal.classList.contains("hidden"));
+	if (fpsWanted !== spkmodFpsState.enabled) {
+		spkmodFpsState.enabled = fpsWanted;
+		spkmodResetFpsBaseline();
+	}
+
+	if (spkmodFpsState.drawn) {
+		spkmodFpsState.frames++;
+		spkmodFpsState.drawn = false;
+	}
 
 	if (now - lunLastFrameTime >= 1000) {
-		lunCurrentFps = lunFrameCount;
-		lunFrameCount = 0;
+		if (spkmodFpsState.enabled) {
+			lunCurrentFps = Math.round((spkmodFpsState.frames - lunFpsLastRenderedFrames) * 1000 / (now - lunLastFrameTime));
+		}
+		lunFpsLastRenderedFrames = spkmodFpsState.frames;
+
 		if (lunFpsPingEnabled && lunHudElements.fpsPingTracker) {
 			setText(lunHudElements.fpsPingTracker, t("fpsPingText", lunCurrentFps, lunCurrentPing));
 		}
@@ -20479,8 +20547,8 @@ function fpsLoop() {
 			const hours = Math.floor(diffTotalSeconds / 3600);
 			const minutes = Math.floor((diffTotalSeconds % 3600) / 60);
 			const seconds = diffTotalSeconds % 60;
-			setText(lunHudElements.resetTimerTracker, t("resetTimerText", 
-				String(hours).padStart(2, '0'), 
+			setText(lunHudElements.resetTimerTracker, t("resetTimerText",
+				String(hours).padStart(2, '0'),
 				String(minutes).padStart(2, '0'),
 				String(seconds).padStart(2, '0')
 			));
@@ -20494,7 +20562,7 @@ function fpsLoop() {
 
 		lunLastFrameTime = now;
 	}
-	
+
 	requestAnimationFrame(fpsLoop);
 }
 requestAnimationFrame(fpsLoop);
