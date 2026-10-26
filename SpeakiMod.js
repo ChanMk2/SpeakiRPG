@@ -4089,6 +4089,18 @@ var lunChromaFloorShape = (window.localStorage && localStorage.getItem("spkmod-c
 var lunChromaFloorScale = parseFloat((window.localStorage && localStorage.getItem("spkmod-chroma-floor-scale")) || "1.0") || 1.0;
 var lunHideAllOtherPlayers = (window.localStorage && localStorage.getItem("spkmod-hide-all-players") === "true") || false;
 var lunLockedFacialExpression = (window.localStorage && localStorage.getItem("spkmod-locked-facial-expression")) || "none";
+var lunAllPlayersFacialExpression = "none";
+var lunTargetFacialExpressions = new Map();
+const LUN_FACIAL_EXPR_EMOJIS = {
+	open_confident: "😏",
+	open_curious: "🥺",
+	closed_lash_smile: "☺️",
+	closed_smile: "😄",
+	open_gentle: "😊",
+	closed_tongue_2: "😜",
+	open_teasing_tongue: "😛",
+	open_worried_tongue: "😨"
+};
 try { if (typeof window !== "undefined" && window.localStorage) localStorage.removeItem("spkmod-local-skin"); } catch (_) {}
 
 var lunSpeedometerEnabled = window.localStorage ? (localStorage.getItem("spkmod-speedometer") !== "false") : true;
@@ -4353,23 +4365,58 @@ function setHideAllOtherPlayers(enabled) {
 	}
 }
 
+function setAvatarFacialExpression(avatar, exprKey) {
+	const fe = avatar?.faceExpression;
+	if (!fe) return false;
+	if (!exprKey || exprKey === "none") {
+		if (typeof fe.endOverride === "function") {
+			fe.endOverride();
+		}
+	} else {
+		if (typeof fe.beginOverride === "function") {
+			fe.beginOverride();
+		}
+		if (typeof fe.setOverrideExpression === "function") {
+			fe.setOverrideExpression(exprKey);
+		}
+	}
+	return true;
+}
+
+function getRemotePlayerTargetExpression(player) {
+	if (!player || !player.info || !lunTargetFacialExpressions || lunTargetFacialExpressions.size === 0) return null;
+	const curName = (player.info.name || "").trim().toLowerCase();
+	const origName = (player.info.__spkmodOrigName || "").trim().toLowerCase();
+	if (curName && lunTargetFacialExpressions.has(curName)) return lunTargetFacialExpressions.get(curName);
+	if (origName && lunTargetFacialExpressions.has(origName)) return lunTargetFacialExpressions.get(origName);
+	return null;
+}
+
 function applyLockedFacialExpression(exprKey) {
 	lunLockedFacialExpression = exprKey || "none";
 	if (window.localStorage) {
 		localStorage.setItem("spkmod-locked-facial-expression", lunLockedFacialExpression);
 	}
-	const fe = gameState?.localAvatar?.faceExpression;
-	if (fe) {
-		if (lunLockedFacialExpression === "none") {
-			if (typeof fe.endOverride === "function") {
-				fe.endOverride();
-			}
-		} else {
-			if (typeof fe.beginOverride === "function") {
-				fe.beginOverride();
-			}
-			if (typeof fe.setOverrideExpression === "function") {
-				fe.setOverrideExpression(lunLockedFacialExpression);
+	setAvatarFacialExpression(gameState?.localAvatar, lunLockedFacialExpression);
+	if (typeof updateLocalEditsUI === "function") {
+		updateLocalEditsUI();
+	}
+}
+
+function applyAllPlayersFacialExpression(exprKey) {
+	const selected = (typeof exprKey === "string" ? exprKey : lunLockedFacialExpression) || "none";
+	if (selected === "none" || lunAllPlayersFacialExpression === selected) {
+		lunAllPlayersFacialExpression = "none";
+	} else {
+		lunAllPlayersFacialExpression = selected;
+	}
+	if (gameState?.remotePlayers?.remotePlayers) {
+		for (const player of gameState.remotePlayers.remotePlayers.values()) {
+			const targetExpr = getRemotePlayerTargetExpression(player);
+			if (targetExpr) {
+				setAvatarFacialExpression(player?.avatar, targetExpr);
+			} else {
+				setAvatarFacialExpression(player?.avatar, lunAllPlayersFacialExpression);
 			}
 		}
 	}
@@ -4378,11 +4425,79 @@ function applyLockedFacialExpression(exprKey) {
 	}
 }
 
+function applyTargetPlayerFacialExpression(targetName, exprKey) {
+	const cleanLower = String(targetName || "").trim().toLowerCase();
+	if (!cleanLower) return 0;
+	const selected = (typeof exprKey === "string" ? exprKey : lunLockedFacialExpression) || "none";
+
+	const localName = (
+		(typeof gameState !== "undefined" && (gameState?.myPlayerName || gameState?.myStat?.name)) ||
+		document.querySelector(".sr-player-card__name")?.innerText ||
+		""
+	).trim().toLowerCase();
+	if (localName && localName === cleanLower) {
+		applyLockedFacialExpression(selected);
+		return 1;
+	}
+
+	if (selected === "none") {
+		lunTargetFacialExpressions.delete(cleanLower);
+	} else {
+		lunTargetFacialExpressions.set(cleanLower, selected);
+	}
+
+	let matched = 0;
+	if (gameState?.remotePlayers?.remotePlayers) {
+		for (const player of gameState.remotePlayers.remotePlayers.values()) {
+			const curName = (player?.info?.name || "").trim().toLowerCase();
+			const origName = (player?.info?.__spkmodOrigName || "").trim().toLowerCase();
+			if (curName === cleanLower || origName === cleanLower) {
+				if (selected === "none") {
+					if (curName) lunTargetFacialExpressions.delete(curName);
+					if (origName) lunTargetFacialExpressions.delete(origName);
+					setAvatarFacialExpression(player?.avatar, lunAllPlayersFacialExpression || "none");
+				} else {
+					setAvatarFacialExpression(player?.avatar, selected);
+				}
+				matched++;
+			}
+		}
+	}
+
+	if (typeof updateLocalEditsUI === "function") {
+		updateLocalEditsUI();
+	}
+	return matched;
+}
+
+function resetRemoteFacialExpressions() {
+	lunAllPlayersFacialExpression = "none";
+	lunTargetFacialExpressions.clear();
+	if (gameState?.remotePlayers?.remotePlayers) {
+		for (const player of gameState.remotePlayers.remotePlayers.values()) {
+			setAvatarFacialExpression(player?.avatar, "none");
+		}
+	}
+	if (typeof updateLocalEditsUI === "function") {
+		updateLocalEditsUI();
+	}
+}
+
 function maintainLockedFacialExpression() {
-	if (!lunLockedFacialExpression || lunLockedFacialExpression === "none") return;
-	const fe = gameState?.localAvatar?.faceExpression;
-	if (!fe) return;
-	if (typeof fe.beginOverride === "function") fe.beginOverride();
+	if (lunLockedFacialExpression && lunLockedFacialExpression !== "none") {
+		setAvatarFacialExpression(gameState?.localAvatar, lunLockedFacialExpression);
+	}
+	const hasAll = lunAllPlayersFacialExpression && lunAllPlayersFacialExpression !== "none";
+	const hasTargets = lunTargetFacialExpressions && lunTargetFacialExpressions.size > 0;
+	if ((hasAll || hasTargets) && gameState?.remotePlayers?.remotePlayers) {
+		for (const player of gameState.remotePlayers.remotePlayers.values()) {
+			const targetExpr = hasTargets ? getRemotePlayerTargetExpression(player) : null;
+			const exprToApply = targetExpr || (hasAll ? lunAllPlayersFacialExpression : null);
+			if (exprToApply && exprToApply !== "none") {
+				setAvatarFacialExpression(player?.avatar, exprToApply);
+			}
+		}
+	}
 }
 
 
@@ -13549,7 +13664,34 @@ function updateLocalEditsUI() {
 	}
 	if (editsModalElements.facialResetBtn) {
 		setText(editsModalElements.facialResetBtn, t("exprResetBtn") || "↺ Reset");
-		editsModalElements.facialResetBtn.title = t("exprResetTooltip") || "Reset / Unlock Expression";
+		editsModalElements.facialResetBtn.title = t("exprResetTooltip") || "Reset all other players' expressions";
+	}
+	if (editsModalElements.facialApplyAllBtn) {
+		const baseAllText = t("exprApplyAllBtn") || "🌍 Apply to All Players";
+		const activeAll = (typeof lunAllPlayersFacialExpression !== "undefined" && lunAllPlayersFacialExpression) || "none";
+		if (activeAll !== "none") {
+			const badge = (typeof LUN_FACIAL_EXPR_EMOJIS !== "undefined" && LUN_FACIAL_EXPR_EMOJIS[activeAll]) || "";
+			setText(editsModalElements.facialApplyAllBtn, badge ? `${baseAllText} (${badge})` : baseAllText);
+			editsModalElements.facialApplyAllBtn.style.borderColor = "var(--spkmod-accent, #ffd54a)";
+			editsModalElements.facialApplyAllBtn.style.background = "rgba(255, 255, 255, 0.25)";
+			editsModalElements.facialApplyAllBtn.style.fontWeight = "bold";
+		} else {
+			setText(editsModalElements.facialApplyAllBtn, baseAllText);
+			editsModalElements.facialApplyAllBtn.style.borderColor = "";
+			editsModalElements.facialApplyAllBtn.style.background = "";
+			editsModalElements.facialApplyAllBtn.style.fontWeight = "normal";
+		}
+		editsModalElements.facialApplyAllBtn.title = t("exprApplyAllTooltip") || "Apply selected expression to all other players on the map";
+	}
+	if (editsModalElements.facialTargetInput) {
+		editsModalElements.facialTargetInput.placeholder = t("exprTargetPlaceholder") || "Character Name...";
+	}
+	if (editsModalElements.facialTargetApplyBtn) {
+		const baseTargetBtn = t("exprApplyTargetBtn") || "Apply";
+		const targetCount = (typeof lunTargetFacialExpressions !== "undefined" && lunTargetFacialExpressions) ? lunTargetFacialExpressions.size : 0;
+		setText(editsModalElements.facialTargetApplyBtn, targetCount > 0 ? `${baseTargetBtn} (${targetCount})` : baseTargetBtn);
+		editsModalElements.facialTargetApplyBtn.title = t("exprApplyTargetTooltip") || "Apply selected expression to this character";
+		editsModalElements.facialTargetApplyBtn.style.borderColor = targetCount > 0 ? "var(--spkmod-accent, #ffd54a)" : "";
 	}
 	if (editsModalElements.exprBtnConfident) editsModalElements.exprBtnConfident.title = t("exprConfident") || "Confident / Smug 😏";
 	if (editsModalElements.exprBtnCurious) editsModalElements.exprBtnCurious.title = t("exprCurious") || "Curious 🥺";
@@ -14175,8 +14317,8 @@ document.body.appendChild(
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 10px; font-size: 11px; text-align: center;",
 						innerText: t("exprResetBtn") || "↺ Reset",
-						title: t("exprResetTooltip") || "Reset / Unlock Expression",
-						onclick: () => applyLockedFacialExpression("none")
+						title: t("exprResetTooltip") || "Reset all other players' expressions",
+						onclick: () => resetRemoteFacialExpressions()
 					})
 				]),
 				buildElement("div", { style: "display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px;" }, [
@@ -14235,6 +14377,54 @@ document.body.appendChild(
 						innerText: "😨",
 						title: t("exprWorried") || "Worried Tongue 😨",
 						onclick: () => applyLockedFacialExpression("open_worried_tongue")
+					})
+				]),
+				editsModalElements.facialApplyAllBtn = buildElement("button", {
+					className: "spkmod-panel-btn",
+					style: "width: 100%; padding: 5px 6px; font-size: 11px; text-align: center;",
+					innerText: t("exprApplyAllBtn") || "🌍 Apply to All Players",
+					title: t("exprApplyAllTooltip") || "Apply selected expression to all other players on the map",
+					onclick: () => applyAllPlayersFacialExpression()
+				}),
+				buildElement("div", { style: "display: flex; gap: 4px;" }, [
+					editsModalElements.facialTargetInput = buildElement("input", {
+						type: "text",
+						placeholder: t("exprTargetPlaceholder") || "Character Name...",
+						style: "flex: 1; min-width: 0; box-sizing: border-box; padding: 4px 6px; font-size: 11px; border-radius: 4px; border: 1px solid #555; background: #111; color: #fff;",
+						onkeydown: (e) => {
+							e.stopPropagation();
+							if (e.key === "Enter") {
+								e.preventDefault();
+								if (editsModalElements.facialTargetApplyBtn) editsModalElements.facialTargetApplyBtn.click();
+							}
+						},
+						onkeyup: (e) => e.stopPropagation(),
+						onkeypress: (e) => e.stopPropagation()
+					}),
+					editsModalElements.facialTargetApplyBtn = buildElement("button", {
+						className: "spkmod-panel-btn",
+						style: "padding: 4px 12px; font-size: 11px; text-align: center; flex-shrink: 0;",
+						innerText: t("exprApplyTargetBtn") || "Apply",
+						title: t("exprApplyTargetTooltip") || "Apply selected expression to this character",
+						onclick: () => {
+							const nameVal = editsModalElements.facialTargetInput ? editsModalElements.facialTargetInput.value : "";
+							if (!nameVal || !nameVal.trim()) {
+								if (editsModalElements.facialTargetInput) {
+									editsModalElements.facialTargetInput.style.borderColor = "#ff5555";
+									setTimeout(() => {
+										if (editsModalElements.facialTargetInput) editsModalElements.facialTargetInput.style.borderColor = "#555";
+									}, 700);
+								}
+								return;
+							}
+							applyTargetPlayerFacialExpression(nameVal);
+							if (editsModalElements.facialTargetApplyBtn) {
+								editsModalElements.facialTargetApplyBtn.style.borderColor = "#55ff55";
+								setTimeout(() => {
+									if (typeof updateLocalEditsUI === "function") updateLocalEditsUI();
+								}, 600);
+							}
+						}
 					})
 				])
 			]),
@@ -19844,7 +20034,7 @@ function hookAvatarLabel(entity, explicitContainer) {
 			maintainChromaKeyColor();
 		}
 	}
-	if (typeof lunLockedFacialExpression !== "undefined" && lunLockedFacialExpression !== "none" && typeof maintainLockedFacialExpression === "function") {
+	if (typeof maintainLockedFacialExpression === "function") {
 		maintainLockedFacialExpression();
 	}
 
