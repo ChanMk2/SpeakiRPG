@@ -1614,6 +1614,7 @@ var lunPanelElements = {
 	gamepadSettingsBtn: null,
 	patchNotesBtn: null,
 	eventBtn: null,
+	minigameBtn: null,
 	statsBtn: null,
 	minigameTrackerLabel: null,
 	minigameTrackerToggleInput: null,
@@ -2482,7 +2483,11 @@ function updateMuteButtonUI() {
 	const tip = muted ? (t("unmuteBtnTooltip") || "Unmute Game") : (t("muteBtnTooltip") || "Mute Game");
 	if (typeof lunPanelElements !== "undefined" && lunPanelElements.muteBtn) {
 		lunPanelElements.muteBtn.innerText = icon;
-		lunPanelElements.muteBtn.title = tip;
+		if (typeof setSpkmodRichTooltip === "function") {
+			setSpkmodRichTooltip(lunPanelElements.muteBtn, icon + " " + tip);
+		} else {
+			lunPanelElements.muteBtn.title = tip;
+		}
 	}
 	const mobileBtn = document.getElementById("spkmod-mobile-mute-toggle");
 	if (mobileBtn) {
@@ -6419,7 +6424,6 @@ document.body.appendChild(
 					className: "spkmod-panel-btn",
 					style: "flex: 1; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 12pt; cursor: pointer;",
 					innerText: (typeof isGameMuted === "function" && isGameMuted()) ? "🔇" : "🔊",
-					title: (typeof isGameMuted === "function" && isGameMuted()) ? (t("unmuteBtnTooltip") || "Unmute Game") : (t("muteBtnTooltip") || "Mute Game"),
 					onclick: _ => {
 						if (typeof toggleGameMute === "function") toggleGameMute();
 					}
@@ -6429,7 +6433,6 @@ document.body.appendChild(
 					className: "spkmod-panel-btn",
 					style: "flex: 1; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 12pt; cursor: pointer;" + (window.lunInvisibilityActive ? " background: #5a2e2e !important;" : ""),
 					innerText: "👻",
-					title: t("invisibleBtn") || "Invisible Self",
 					onclick: _ => {
 						if (window.spkmodToggleInvisibility) window.spkmodToggleInvisibility();
 					}
@@ -6439,7 +6442,6 @@ document.body.appendChild(
 					className: "spkmod-panel-btn",
 					style: "flex: 1; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 12pt; cursor: pointer;",
 					innerText: "⚙️",
-					title: t("settingsBtnTooltip"),
 					onclick: _ => {
 						toggleSettingsModal();
 					}
@@ -6449,7 +6451,6 @@ document.body.appendChild(
 					className: "spkmod-panel-btn",
 					style: "flex: 1; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 12pt; cursor: pointer;",
 					innerText: "⌨️",
-					title: t("hotkeysModalTitle") || "Hotkeys",
 					onclick: _ => {
 						toggleHotkeysModal();
 					}
@@ -6459,7 +6460,6 @@ document.body.appendChild(
 					className: "spkmod-panel-btn",
 					style: "flex: 1; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 12pt; cursor: pointer;",
 					innerText: "📰",
-					title: t("patchNotesBtnTooltip"),
 					onclick: _ => {
 						togglePatchNotesModal();
 					}
@@ -6477,16 +6477,12 @@ document.body.appendChild(
 						style: "display: inline-flex; align-items: center; justify-content: center; pointer-events: none;",
 						innerHTML: renderSpkmodInlineEmojis(":t_280:", "height: 20px; width: 20px; object-fit: contain; display: block; pointer-events: none; user-select: none;")
 					})
-				], btn => {
-					const rawTip = t("bbsBtnTooltip");
-					setSpkmodRichTooltip(btn, (!rawTip || rawTip === "bbsBtnTooltip") ? ":t_280: DarkNet" : rawTip);
-				}),
+				]),
 				lunPanelElements.infoBtn = buildElement("button", {
 					id: "spkmod-info-btn",
 					className: "spkmod-panel-btn",
 					style: "flex: 1; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 12pt; cursor: pointer;",
 					innerText: "ℹ️",
-					title: t("infoBtnTooltip") === "infoBtnTooltip" ? "Info & News" : t("infoBtnTooltip"),
 					onclick: _ => {
 						toggleInfoModal();
 					}
@@ -6495,12 +6491,11 @@ document.body.appendChild(
 			buildElement("div", {
 				className: "spkmod-panel-cat"
 			}, [
-				buildElement("button", {
+				lunPanelElements.minigameBtn = buildElement("button", {
 					id: "spkmod-minigame-btn",
 					className: "spkmod-panel-btn",
 					style: "flex: 1; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 12pt; cursor: pointer;",
 					innerText: "🎮",
-					title: t("eventInfoBtnTooltip"),
 					onclick: () => {
 						lunHudElements.eventModal.classList.add("hidden");
 						window.gameState.onNpcInteract("minigame")
@@ -6511,7 +6506,6 @@ document.body.appendChild(
 					className: "spkmod-panel-btn",
 					style: "flex: 1; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 12pt; cursor: pointer;",
 					innerText: "🎉",
-					title: t("eventInfoBtnTooltip"),
 					onclick: _ => {
 						toggleEventModal();
 					}
@@ -6521,7 +6515,6 @@ document.body.appendChild(
 					className: "spkmod-panel-btn",
 					style: "flex: 1; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 12pt; cursor: pointer;",
 					innerText: "🗺️",
-					title: t("mapModalTitle"),
 					onclick: _ => {
 						toggleMapModal();
 					}
@@ -6531,7 +6524,6 @@ document.body.appendChild(
 					className: "spkmod-panel-btn",
 					style: "flex: 1; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 12pt; cursor: pointer;",
 					innerText: "⏱️",
-					title: t("statsBtnTooltip"),
 					onclick: _ => {
 						toggleStatsModal();
 					}
@@ -6541,7 +6533,6 @@ document.body.appendChild(
 					className: "spkmod-panel-btn",
 					style: "flex: 1; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 12pt; cursor: pointer; position: relative;",
 					innerText: "📋",
-					title: t("questsBtnTooltip") || "Quests Checklist",
 					onclick: _ => {
 						if (typeof toggleQuestsModal === "function") toggleQuestsModal();
 					}
@@ -6551,7 +6542,6 @@ document.body.appendChild(
 					className: "spkmod-panel-btn",
 					style: "flex: 1; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 12pt; cursor: grab;",
 					innerText: "⚓",
-					title: t("dragMenuTooltip"),
 					ondblclick: (e) => {
 						const isLocked = lunHudElements.hud.dataset.spkmodLocked === "true";
 						if (isLocked) {
@@ -6565,12 +6555,18 @@ document.body.appendChild(
 							e.target.style.cursor = "not-allowed";
 							if (window.localStorage) localStorage.setItem("spkmod-hud-locked", "true");
 						}
+						if (typeof updateHudIconTooltips === "function") {
+							updateHudIconTooltips();
+						}
 					}
 				})
 			])
 		])
 	])
 );
+if (typeof updateHudIconTooltips === "function") {
+	updateHudIconTooltips();
+}
 
 
 let lastPinnedQuestTap = 0;
@@ -7432,6 +7428,87 @@ function setSpkmodRichTooltip(elem, rawText) {
     }
 }
 window.setSpkmodRichTooltip = setSpkmodRichTooltip;
+
+function updateHudIconTooltips() {
+    if (typeof setSpkmodRichTooltip !== "function" || typeof lunPanelElements === "undefined" || !lunPanelElements) return;
+
+    // 1. Mute button
+    if (lunPanelElements.muteBtn) {
+        const muted = typeof isGameMuted === "function" && isGameMuted();
+        const icon = muted ? "🔇" : "🔊";
+        const tip = muted ? (t("unmuteBtnTooltip") || "Unmute Game") : (t("muteBtnTooltip") || "Mute Game");
+        setSpkmodRichTooltip(lunPanelElements.muteBtn, icon + " " + tip);
+    }
+
+    // 2. Invisible button
+    if (lunPanelElements.invisibleBtn) {
+        const raw = t("invisibleBtn") || "Invisible Self";
+        const clean = raw.replace(/^👻\s*/, '');
+        setSpkmodRichTooltip(lunPanelElements.invisibleBtn, "👻 " + clean);
+    }
+
+    // 3. Settings button
+    if (lunPanelElements.settingsBtn) {
+        setSpkmodRichTooltip(lunPanelElements.settingsBtn, "⚙️ " + (t("settingsBtnTooltip") || "Settings (F2)"));
+    }
+
+    // 4. Hotkeys button
+    if (lunPanelElements.hotkeysBtn) {
+        setSpkmodRichTooltip(lunPanelElements.hotkeysBtn, "⌨️ " + (t("hotkeysModalTitle") || "Hotkeys"));
+    }
+
+    // 5. Patch Notes button
+    if (lunPanelElements.patchNotesBtn) {
+        setSpkmodRichTooltip(lunPanelElements.patchNotesBtn, "📰 " + (t("patchNotesBtnTooltip") || "Game Patch Notes"));
+    }
+
+    // 6. BBS / DarkNet button
+    if (lunPanelElements.bbsBtn) {
+        const rawTip = t("bbsBtnTooltip");
+        const tipStr = (!rawTip || rawTip === "bbsBtnTooltip") ? ":t_280: DarkNet" : (rawTip.includes(":t_280:") ? rawTip : ":t_280: " + rawTip);
+        setSpkmodRichTooltip(lunPanelElements.bbsBtn, tipStr);
+    }
+
+    // 7. Info button
+    if (lunPanelElements.infoBtn) {
+        const tip = t("infoBtnTooltip");
+        const clean = (!tip || tip === "infoBtnTooltip") ? "Info & News" : tip;
+        setSpkmodRichTooltip(lunPanelElements.infoBtn, "ℹ️ " + clean.replace(/^ℹ️\s*/, ''));
+    }
+
+    // 8. Minigame button
+    if (lunPanelElements.minigameBtn) {
+        setSpkmodRichTooltip(lunPanelElements.minigameBtn, "🎮 " + (t("eventMinigameTitle") || "Minigame"));
+    }
+
+    // 9. Event button
+    if (lunPanelElements.eventBtn) {
+        setSpkmodRichTooltip(lunPanelElements.eventBtn, "🎉 " + (t("eventInfoBtnTooltip") || "Event Info"));
+    }
+
+    // 10. Map button
+    if (lunPanelElements.mapBtn) {
+        setSpkmodRichTooltip(lunPanelElements.mapBtn, "🗺️ " + (t("mapModalTitle") || "World Map"));
+    }
+
+    // 11. Stats button
+    if (lunPanelElements.statsBtn) {
+        setSpkmodRichTooltip(lunPanelElements.statsBtn, "⏱️ " + (t("statsBtnTooltip") || "Session Stats & Tracker"));
+    }
+
+    // 12. Quests button
+    if (lunPanelElements.questsBtn) {
+        setSpkmodRichTooltip(lunPanelElements.questsBtn, "📋 " + (t("questsBtnTooltip") || "Quests Checklist"));
+    }
+
+    // 13. Drag / Lock button
+    if (lunPanelElements.dragBtn) {
+        const isLocked = lunHudElements && lunHudElements.hud && lunHudElements.hud.dataset.spkmodLocked === "true";
+        const tip = t("dragMenuTooltip") || "Drag Menu";
+        setSpkmodRichTooltip(lunPanelElements.dragBtn, (isLocked ? "🔒 " : "⚓ ") + tip);
+    }
+}
+window.updateHudIconTooltips = updateHudIconTooltips;
 
 function parseCustomEmojisToHtml(html) {
     if (!html || typeof html !== "string") return html;
@@ -18721,16 +18798,9 @@ spkmodI18nRenderers.push(() => {
 	if (lunPanelElements.minigameTrackerLabel) setText(lunPanelElements.minigameTrackerLabel, t("minigameTrackerToggleLabel"));
 	if (lunPanelElements.settingsCatGeneral) setText(lunPanelElements.settingsCatGeneral, "💬 " + t("settingsCatGeneral"));
 	if (lunPanelElements.settingsCatHUD) setText(lunPanelElements.settingsCatHUD, "📊 " + t("settingsCatHUD"));
-	if (lunPanelElements.eventBtn) lunPanelElements.eventBtn.title = t("eventInfoBtnTooltip");
-	if (lunPanelElements.patchNotesBtn) lunPanelElements.patchNotesBtn.title = t("patchNotesBtnTooltip");
-	if (lunPanelElements.bbsBtn) {
-		const rawTip = t("bbsBtnTooltip");
-		const tipStr = (!rawTip || rawTip === "bbsBtnTooltip") ? ":t_280: DarkNet" : (rawTip.includes(":t_280:") ? rawTip : ":t_280: " + rawTip);
-		if (typeof setSpkmodRichTooltip === "function") setSpkmodRichTooltip(lunPanelElements.bbsBtn, tipStr);
-		else lunPanelElements.bbsBtn.title = tipStr;
+	if (typeof updateHudIconTooltips === "function") {
+		updateHudIconTooltips();
 	}
-	if (lunPanelElements.mapBtn) lunPanelElements.mapBtn.title = t("mapModalTitle");
-	if (lunPanelElements.questsBtn) lunPanelElements.questsBtn.title = t("questsBtnTooltip") || "Quests Checklist";
 	if (typeof mapModalElements !== "undefined" && mapModalElements.titleLabel) mapModalElements.titleLabel.innerText = t("mapModalTitle");
 	if (window.questsModalElements && window.questsModalElements.headerTitle) {
 		window.questsModalElements.headerTitle.innerText = "📋 " + (t("questsModalTitle") || "Quests Checklist");
