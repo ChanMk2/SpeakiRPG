@@ -6419,11 +6419,18 @@ document.body.appendChild(
 					id: "spkmod-bbs-btn",
 					className: "spkmod-panel-btn",
 					style: "flex: 1; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 12pt; cursor: pointer; position: relative;",
-					innerText: "💬",
-					title: t("bbsBtnTooltip") || "SpeakiBBS",
 					onclick: _ => {
 						if (typeof toggleBbsModal === "function") toggleBbsModal();
 					}
+				}, [
+					buildElement("span", {
+						id: "spkmod-bbs-btn-icon",
+						style: "display: inline-flex; align-items: center; justify-content: center; pointer-events: none;",
+						innerHTML: renderSpkmodInlineEmojis(":t_280:", "height: 20px; width: 20px; object-fit: contain; display: block; pointer-events: none; user-select: none;")
+					})
+				], btn => {
+					const rawTip = t("bbsBtnTooltip");
+					setSpkmodRichTooltip(btn, (!rawTip || rawTip === "bbsBtnTooltip") ? ":t_280: DarkNet" : rawTip);
 				}),
 				lunPanelElements.infoBtn = buildElement("button", {
 					id: "spkmod-info-btn",
@@ -7249,6 +7256,11 @@ function loadEmojiCatalogFile(url, targetObj) {
         if (typeof renderBbsPosts === "function" && typeof lunHudElements !== "undefined" && lunHudElements && lunHudElements.bbsModal && !lunHudElements.bbsModal.classList.contains("hidden")) {
             renderBbsPosts();
         }
+        if (typeof updateBbsI18n === "function") updateBbsI18n();
+        const bbsIconSpan = document.getElementById("spkmod-bbs-btn-icon");
+        if (bbsIconSpan && typeof renderSpkmodInlineEmojis === "function") {
+            bbsIconSpan.innerHTML = renderSpkmodInlineEmojis(":t_280:", "height: 20px; width: 20px; object-fit: contain; display: block; pointer-events: none; user-select: none;");
+        }
     };
     fetch(url).then(res => {
         if (!res.ok) throw new Error("HTTP " + res.status);
@@ -7272,6 +7284,78 @@ loadEmojiCatalogFile("https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/main/
 
 var lunTrickcal3Emojis = {};
 loadEmojiCatalogFile("https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/main/emojis4.txt", lunTrickcal3Emojis);
+
+function renderSpkmodInlineEmojis(text, imgStyle) {
+    if (!text || typeof text !== "string") return "";
+    const escaped = text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    const spkmodAllEmojis = {
+        t_280: "https://i.imgur.com/tCrOOr5.png",
+        ...(typeof lunCustomEmojis !== "undefined" ? lunCustomEmojis : {}),
+        ...(typeof lunTrickcalEmojis !== "undefined" ? lunTrickcalEmojis : {}),
+        ...(typeof lunTrickcal2Emojis !== "undefined" ? lunTrickcal2Emojis : {}),
+        ...(typeof lunTrickcal3Emojis !== "undefined" ? lunTrickcal3Emojis : {})
+    };
+    const styleAttr = imgStyle || "height: 1.35em; width: 1.35em; object-fit: contain; vertical-align: middle; margin-right: 2px; display: inline-block; pointer-events: none; user-select: none;";
+    return escaped.replace(/:([a-zA-Z0-9_+-]+):/g, (match, ename) => {
+        const eurl = spkmodAllEmojis[ename];
+        if (!eurl) return match;
+        return `<img src="${eurl}" alt=":${ename}:" draggable="false" style="${styleAttr}" onerror="this.onerror=null; this.style.opacity='0.4';">`;
+    });
+}
+window.renderSpkmodInlineEmojis = renderSpkmodInlineEmojis;
+
+function ensureSpkmodRichTooltipEl() {
+    let el = document.getElementById("spkmod-rich-tooltip");
+    if (!el && document.body) {
+        el = document.createElement("div");
+        el.id = "spkmod-rich-tooltip";
+        el.style.cssText = "position: fixed; z-index: 2147483647; pointer-events: none; display: none; align-items: center; gap: 5px; background: rgba(15, 23, 42, 0.96); color: #f8fafc; border: 1px solid var(--spkmod-accent, #ffd54a); border-radius: 6px; padding: 4px 8px; font-size: 11px; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.65); white-space: nowrap; transform: translate(-50%, -100%);";
+        document.body.appendChild(el);
+    }
+    return el;
+}
+
+function setSpkmodRichTooltip(elem, rawText) {
+    if (!elem) return;
+    elem.removeAttribute("title");
+    elem.dataset.spkRichTooltip = rawText || "";
+    if (!elem.__spkRichTooltipBound) {
+        elem.__spkRichTooltipBound = true;
+        const showTip = () => {
+            const txt = elem.dataset.spkRichTooltip;
+            if (!txt) return;
+            const tip = ensureSpkmodRichTooltipEl();
+            if (!tip) return;
+            tip.innerHTML = renderSpkmodInlineEmojis(txt, "height: 16px; width: 16px; object-fit: contain; vertical-align: middle; display: inline-block; pointer-events: none; user-select: none;");
+            tip.style.display = "inline-flex";
+            const rect = elem.getBoundingClientRect();
+            let left = rect.left + rect.width / 2;
+            let top = rect.top - 6;
+            tip.style.transform = "translate(-50%, -100%)";
+            if (top < 30) {
+                top = rect.bottom + 6;
+                tip.style.transform = "translate(-50%, 0)";
+            }
+            const tipWidth = tip.offsetWidth || 80;
+            left = Math.max(tipWidth / 2 + 6, Math.min(window.innerWidth - tipWidth / 2 - 6, left));
+            tip.style.left = left + "px";
+            tip.style.top = top + "px";
+        };
+        const hideTip = () => {
+            const tip = document.getElementById("spkmod-rich-tooltip");
+            if (tip) tip.style.display = "none";
+        };
+        elem.addEventListener("mouseenter", showTip);
+        elem.addEventListener("mouseleave", hideTip);
+        elem.addEventListener("pointerdown", hideTip);
+        elem.addEventListener("blur", hideTip);
+    }
+}
+window.setSpkmodRichTooltip = setSpkmodRichTooltip;
 
 function parseCustomEmojisToHtml(html) {
     if (!html || typeof html !== "string") return html;
@@ -12258,9 +12342,14 @@ window.spkmodPlayGather = function() {
 // STEP PARTICLE TRAIL (Stars, Rainbow, Hearts)
 // ============================================================================
 
+const _spkSavedTrailEnabled = (typeof window !== 'undefined' && window.localStorage)
+	? localStorage.getItem('spkmod-step-trail-enabled') === 'true'
+	: false;
+const _spkSavedTrailType = (typeof window !== 'undefined' && window.localStorage && localStorage.getItem('spkmod-step-trail-type')) || 'stars';
+
 window.spkmodStepTrail = {
-	enabled: false,
-	type: 'stars',
+	enabled: _spkSavedTrailEnabled,
+	type: ['stars', 'rainbow', 'hearts'].includes(_spkSavedTrailType) ? _spkSavedTrailType : 'stars',
 	distAccum: 0,
 	lastPos: null,
 	animId: null
@@ -12339,6 +12428,13 @@ window.spkmodToggleStepTrail = function(enabled, type) {
 		window.spkmodStepTrail.enabled = !window.spkmodStepTrail.enabled;
 	}
 
+	if (window.localStorage) {
+		try {
+			localStorage.setItem('spkmod-step-trail-enabled', window.spkmodStepTrail.enabled ? 'true' : 'false');
+			localStorage.setItem('spkmod-step-trail-type', window.spkmodStepTrail.type || 'stars');
+		} catch (_) {}
+	}
+
 	if (window.spkmodStepTrail.animId) {
 		cancelAnimationFrame(window.spkmodStepTrail.animId);
 		window.spkmodStepTrail.animId = null;
@@ -12357,6 +12453,11 @@ window.spkmodToggleStepTrail = function(enabled, type) {
 
 window.spkmodSetTrailType = function(type) {
 	window.spkmodStepTrail.type = type;
+	if (window.localStorage) {
+		try {
+			localStorage.setItem('spkmod-step-trail-type', type);
+		} catch (_) {}
+	}
 	if (!window.spkmodStepTrail.enabled) {
 		window.spkmodToggleStepTrail(true, type);
 	} else {
@@ -12364,6 +12465,10 @@ window.spkmodSetTrailType = function(type) {
 		if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
 	}
 };
+
+if (window.spkmodStepTrail.enabled && !window.spkmodStepTrail.animId) {
+	window.spkmodStepTrail.animId = requestAnimationFrame(spkmodStepTrailLoop);
+}
 
 window.spkmodBurstSpamActive = false;
 window.spkmodBurstSpamInterval = null;
@@ -12967,10 +13072,10 @@ const SPKMOD_DYE_COLORS = [
 	{ id: "Gold", key: "dyeColorGold", name: "Gold", hex: "#facc15", emoji: "🟡" },
 	{ id: "Purple", key: "dyeColorPurple", name: "Purple", hex: "#8b5cf6", emoji: "🟣" },
 	{ id: "HotPink", key: "dyeColorHotPink", name: "Hot Pink", hex: "#ec4899", emoji: "🌸" },
-	{ id: "Cyan", key: "dyeColorCyan", name: "Cyan", hex: "#06b6d4", emoji: "🩵" },
+	{ id: "Cyan", key: "dyeColorCyan", name: "Cyan", hex: "#06b6d4", emoji: "💎" },
 	{ id: "Orange", key: "dyeColorOrange", name: "Orange", hex: "#f97316", emoji: "🧡" },
 	{ id: "Mint", key: "dyeColorMint", name: "Mint", hex: "#14b8a6", emoji: "🌿" },
-	{ id: "Amber", key: "dyeColorAmber", name: "Amber", hex: "#d97706", emoji: "🟣" },
+	{ id: "Amber", key: "dyeColorAmber", name: "Amber", hex: "#d97706", emoji: "🔶" },
 	{ id: "Pearl", key: "dyeColorPearl", name: "Pearl", hex: "#ffffff", emoji: "⚪" },
 	{ id: "Obsidian", key: "dyeColorObsidian", name: "Obsidian", hex: "#18181b", emoji: "⚫" },
 	{ id: "Magenta", key: "dyeColorMagenta", name: "Magenta", hex: "#f43f5e", emoji: "🍇" },
@@ -12978,7 +13083,7 @@ const SPKMOD_DYE_COLORS = [
 	{ id: "Sepia", key: "dyeColorSepia", name: "Sepia", hex: "#b45309", emoji: "☕" },
 	{ id: "Lavender", key: "dyeColorLavender", name: "Lavender", hex: "#a78bfa", emoji: "🔮" },
 	{ id: "Lime", key: "dyeColorLime", name: "Lime", hex: "#84cc16", emoji: "🍀" },
-	{ id: "Indigo", key: "dyeColorIndigo", name: "Indigo", hex: "#4f46e5", emoji: "🫐" }
+	{ id: "Indigo", key: "dyeColorIndigo", name: "Indigo", hex: "#4f46e5", emoji: "🌌" }
 ];
 
 document.body.appendChild(
@@ -13556,12 +13661,12 @@ function updateLocalEditsUI() {
 	if (editsModalElements.chromaBtnYellow) setText(editsModalElements.chromaBtnYellow, "🟡 " + (t("skyColorYellow") || "Neon Yellow"));
 	if (editsModalElements.chromaBtnOrange) setText(editsModalElements.chromaBtnOrange, "🧡 " + (t("skyColorOrange") || "Vivid Orange"));
 	if (editsModalElements.chromaBtnPink) setText(editsModalElements.chromaBtnPink, "🌸 " + (t("skyColorPink") || "Soft Pink"));
-	if (editsModalElements.chromaBtnCyan) setText(editsModalElements.chromaBtnCyan, "🩵 " + (t("skyColorCyan") || "Electric Cyan"));
+	if (editsModalElements.chromaBtnCyan) setText(editsModalElements.chromaBtnCyan, "💎 " + (t("skyColorCyan") || "Electric Cyan"));
 	if (editsModalElements.chromaBtnMint) setText(editsModalElements.chromaBtnMint, "🌿 " + (t("skyColorMint") || "Mint Green"));
 	if (editsModalElements.chromaBtnPurple) setText(editsModalElements.chromaBtnPurple, "💜 " + (t("skyColorPurple") || "Deep Purple"));
-	if (editsModalElements.chromaBtnAmber) setText(editsModalElements.chromaBtnAmber, "🟣 " + (t("skyColorAmber") || "Warm Amber"));
+	if (editsModalElements.chromaBtnAmber) setText(editsModalElements.chromaBtnAmber, "🔶 " + (t("skyColorAmber") || "Warm Amber"));
 	if (editsModalElements.chromaBtnCrimson) setText(editsModalElements.chromaBtnCrimson, "🍷 " + (t("skyColorCrimson") || "Crimson Wine"));
-	if (editsModalElements.chromaBtnSlate) setText(editsModalElements.chromaBtnSlate, "🩶 " + (t("skyColorSlate") || "Studio Slate"));
+	if (editsModalElements.chromaBtnSlate) setText(editsModalElements.chromaBtnSlate, "🔘 " + (t("skyColorSlate") || "Studio Slate"));
 	if (editsModalElements.chromaBtnSepia) setText(editsModalElements.chromaBtnSepia, "☕ " + (t("skyColorSepia") || "Warm Sepia"));
 
 	const chromaBtns = {
@@ -13749,7 +13854,7 @@ function updateLocalEditsUI() {
 	if (editsModalElements.camBtnGameboy) setText(editsModalElements.camBtnGameboy, "👾 " + (t("effectGameboy") || "Monatium Boy"));
 	if (editsModalElements.camBtnBloodMoon) setText(editsModalElements.camBtnBloodMoon, "🩸 " + (t("effectBloodMoon") || "Blood Moon"));
 	if (editsModalElements.camBtnSynthwave) setText(editsModalElements.camBtnSynthwave, "🔮 " + (t("effectSynthwave") || "Synthwave"));
-	if (editsModalElements.camBtnUnderwater) setText(editsModalElements.camBtnUnderwater, "🫧 " + (t("effectUnderwater") || "Aqua Fantasy"));
+	if (editsModalElements.camBtnUnderwater) setText(editsModalElements.camBtnUnderwater, "🌊 " + (t("effectUnderwater") || "Aqua Fantasy"));
 	if (editsModalElements.camBtnGoldenHour) setText(editsModalElements.camBtnGoldenHour, "☀️ " + (t("effectGoldenHour") || "Golden Hour"));
 	if (editsModalElements.camBtnComicBook) setText(editsModalElements.camBtnComicBook, "💥 " + (t("effectComicBook") || "Comic Book"));
 	if (editsModalElements.camBtnArctic) setText(editsModalElements.camBtnArctic, "❄️ " + (t("effectArctic") || "Arctic Frost"));
@@ -14171,7 +14276,7 @@ document.body.appendChild(
 					editsModalElements.chromaBtnCyan = buildElement("button", {
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 2px; font-size: 9.5px; text-align: center; color: #38bdf8;",
-						innerText: "🩵 " + (t("skyColorCyan") || "Electric Cyan"),
+						innerText: "💎 " + (t("skyColorCyan") || "Electric Cyan"),
 						onclick: () => { applyChromaKeyColor("cyan", true); updateLocalEditsUI(); }
 					}),
 					editsModalElements.chromaBtnMint = buildElement("button", {
@@ -14189,7 +14294,7 @@ document.body.appendChild(
 					editsModalElements.chromaBtnAmber = buildElement("button", {
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 2px; font-size: 9.5px; text-align: center; color: #fbbf24;",
-						innerText: "🟣 " + (t("skyColorAmber") || "Warm Amber"),
+						innerText: "🔶 " + (t("skyColorAmber") || "Warm Amber"),
 						onclick: () => { applyChromaKeyColor("amber", true); updateLocalEditsUI(); }
 					}),
 					editsModalElements.chromaBtnCrimson = buildElement("button", {
@@ -14201,7 +14306,7 @@ document.body.appendChild(
 					editsModalElements.chromaBtnSlate = buildElement("button", {
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 2px; font-size: 9.5px; text-align: center; color: #94a3b8;",
-						innerText: "🩶 " + (t("skyColorSlate") || "Studio Slate"),
+						innerText: "🔘 " + (t("skyColorSlate") || "Studio Slate"),
 						onclick: () => { applyChromaKeyColor("slate", true); updateLocalEditsUI(); }
 					}),
 					editsModalElements.chromaBtnSepia = buildElement("button", {
@@ -14566,7 +14671,7 @@ document.body.appendChild(
 					editsModalElements.camBtnUnderwater = buildElement("button", {
 						className: "spkmod-panel-btn",
 						style: "padding: 6px 4px; font-size: 10px; text-align: center; color: #22d3ee;",
-						innerText: "🫧 " + (t("effectUnderwater") || "Aqua Fantasy"),
+						innerText: "🌊 " + (t("effectUnderwater") || "Aqua Fantasy"),
 						onclick: () => setCameraEffectLocal("underwater")
 					}),
 					editsModalElements.camBtnGoldenHour = buildElement("button", {
@@ -16221,8 +16326,14 @@ document.body.appendChild(
 		}, [
 			buildElement("div", { style: "display: flex; align-items: center; gap: 6px; cursor: move; user-select: none;" }, [
 				bbsModalElements.headerTitle = buildElement("span", {
-					innerText: "💬 " + (t("bbsTitle") || "SpeakiBBS"),
-					style: "font-weight: bold; font-size: 12px; cursor: move; user-select: none;"
+					innerHTML: (function() {
+						const raw = t("bbsTitle");
+						const titleStr = (!raw || raw === "bbsTitle") ? ":t_280: DarkNet" : (raw.includes(":t_280:") ? raw : ":t_280: " + raw);
+						return typeof renderSpkmodInlineEmojis === "function"
+							? renderSpkmodInlineEmojis(titleStr, "height: 18px; width: 18px; object-fit: contain; vertical-align: middle; margin-right: 4px; display: inline-block; pointer-events: none; user-select: none;")
+							: titleStr;
+					})(),
+					style: "font-weight: bold; font-size: 12px; cursor: move; user-select: none; display: inline-flex; align-items: center;"
 				}),
 				bbsModalElements.countBadge = buildElement("span", {
 					innerText: "0",
@@ -16509,7 +16620,13 @@ updateBbsComposerState();
 applyBbsThemeVisuals();
 function updateBbsI18n() {
 	if (bbsModalElements.headerTitle) {
-		bbsModalElements.headerTitle.innerText = "💬 " + (t("bbsTitle") || "SpeakiBBS");
+		const raw = t("bbsTitle");
+		const titleStr = (!raw || raw === "bbsTitle") ? ":t_280: DarkNet" : (raw.includes(":t_280:") ? raw : ":t_280: " + raw);
+		if (typeof renderSpkmodInlineEmojis === "function") {
+			bbsModalElements.headerTitle.innerHTML = renderSpkmodInlineEmojis(titleStr, "height: 18px; width: 18px; object-fit: contain; vertical-align: middle; margin-right: 4px; display: inline-block; pointer-events: none; user-select: none;");
+		} else {
+			bbsModalElements.headerTitle.innerText = titleStr;
+		}
 	}
 	if (bbsModalElements.emojiBtn) {
 		bbsModalElements.emojiBtn.title = t("bbsEmojiBtnTooltip") || "Insert emoji";
@@ -16519,7 +16636,13 @@ function updateBbsI18n() {
 		bbsModalElements.submitBtn.innerText = "📤 " + (t("bbsPostBtn") || "Post");
 	}
 	if (typeof lunPanelElements !== "undefined" && lunPanelElements.bbsBtn) {
-		lunPanelElements.bbsBtn.title = t("bbsBtnTooltip") || "SpeakiBBS";
+		const rawTip = t("bbsBtnTooltip");
+		const tipStr = (!rawTip || rawTip === "bbsBtnTooltip") ? ":t_280: DarkNet" : (rawTip.includes(":t_280:") ? rawTip : ":t_280: " + rawTip);
+		if (typeof setSpkmodRichTooltip === "function") {
+			setSpkmodRichTooltip(lunPanelElements.bbsBtn, tipStr);
+		} else {
+			lunPanelElements.bbsBtn.title = tipStr;
+		}
 	}
 	if (bbsModalElements.iconOnlyLabel) {
 		bbsModalElements.iconOnlyLabel.innerText = t("bbsIconOnlyLabel") || "Icons only";
@@ -17988,7 +18111,12 @@ spkmodI18nRenderers.push(() => {
 	if (lunPanelElements.settingsCatHUD) setText(lunPanelElements.settingsCatHUD, "📊 " + t("settingsCatHUD"));
 	if (lunPanelElements.eventBtn) lunPanelElements.eventBtn.title = t("eventInfoBtnTooltip");
 	if (lunPanelElements.patchNotesBtn) lunPanelElements.patchNotesBtn.title = t("patchNotesBtnTooltip");
-	if (lunPanelElements.bbsBtn) lunPanelElements.bbsBtn.title = t("bbsBtnTooltip");
+	if (lunPanelElements.bbsBtn) {
+		const rawTip = t("bbsBtnTooltip");
+		const tipStr = (!rawTip || rawTip === "bbsBtnTooltip") ? ":t_280: DarkNet" : (rawTip.includes(":t_280:") ? rawTip : ":t_280: " + rawTip);
+		if (typeof setSpkmodRichTooltip === "function") setSpkmodRichTooltip(lunPanelElements.bbsBtn, tipStr);
+		else lunPanelElements.bbsBtn.title = tipStr;
+	}
 	if (lunPanelElements.mapBtn) lunPanelElements.mapBtn.title = t("mapModalTitle");
 	if (lunPanelElements.questsBtn) lunPanelElements.questsBtn.title = t("questsBtnTooltip") || "Quests Checklist";
 	if (typeof mapModalElements !== "undefined" && mapModalElements.titleLabel) mapModalElements.titleLabel.innerText = t("mapModalTitle");
