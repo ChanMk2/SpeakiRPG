@@ -1616,6 +1616,16 @@ var lunPanelElements = {
 	resolutionOverrideInput: null,
 	discordRpcLabel: null,
 	discordRpcToggleInput: null,
+	muteMinimizedLabel: null,
+	muteMinimizedToggleInput: null,
+	separatePanelLabel: null,
+	separatePanelToggleInput: null,
+	hidePlayerLevelsLabel: null,
+	hidePlayerLevelsToggleInput: null,
+	channelTrackerToggleLabel: null,
+	channelTrackerToggleInput: null,
+	telemetryToggleLabel: null,
+	telemetryToggleInput: null,
 	settingsCatGeneral: null,
 	settingsCatHUD: null,
 	localEffectsBtn: null,
@@ -6792,16 +6802,6 @@ document.body.appendChild(
 						if (window.localStorage) localStorage.setItem("spkmod-channel-tracker", lunChannelTrackerEnabled);
 						if (lunHudElements.channelTracker) lunHudElements.channelTracker.style.display = lunChannelTrackerEnabled ? "" : "none";
 						if (typeof lunChannelTrackerNextTicks !== 'undefined') lunChannelTrackerNextTicks = 0;
-					} })
-				]),
-				buildElement("div", { className: "spkmod-panel-cat" }, [
-					lunPanelElements.telemetryToggleLabel = buildElement("span", { style: "color: #fff; font-size: 11px; font-weight: bold; flex: 1;", innerText: t("telemetrySettingLabel") }),
-					lunPanelElements.telemetryToggleInput = buildElement("input", { type: "checkbox", checked: (window.localStorage && localStorage.getItem("spkmod-telemetry-consent") === "granted"), onchange: e => {
-						const granted = e.target.checked;
-						if (window.localStorage) localStorage.setItem("spkmod-telemetry-consent", granted ? "granted" : "denied");
-						if (granted && typeof window.spkmodSendTelemetryPing === "function") {
-							window.spkmodSendTelemetryPing();
-						}
 					} })
 				]),
 				buildElement("div", { className: "spkmod-panel-cat" }, [
@@ -17821,6 +17821,14 @@ spkmodI18nRenderers.push(() => {
 		renderPatchNotesUI();
 	}
 	if (lunPanelElements.gamepadRumbleLabel) setText(lunPanelElements.gamepadRumbleLabel, t("gamepadRumbleToggleLabel"));
+	if (lunPanelElements.separatePanelLabel) setText(lunPanelElements.separatePanelLabel, t("separatePanel") || "Separate Action Panel (Mobile)");
+	if (lunPanelElements.hidePlayerLevelsLabel) setText(lunPanelElements.hidePlayerLevelsLabel, t("hidePlayerLevelsLabel"));
+	if (lunPanelElements.channelTrackerToggleLabel) setText(lunPanelElements.channelTrackerToggleLabel, t("channelTrackerToggleLabel"));
+	if (lunPanelElements.telemetryToggleLabel) setText(lunPanelElements.telemetryToggleLabel, t("telemetrySettingLabel"));
+	if (lunPanelElements.muteMinimizedLabel) setText(lunPanelElements.muteMinimizedLabel, t("muteMinimizedToggleLabel") || "Mute Game when Minimized");
+	if (lunPanelElements.outgoingTranslateSelect && lunPanelElements.outgoingTranslateSelect.options && lunPanelElements.outgoingTranslateSelect.options[0]) {
+		lunPanelElements.outgoingTranslateSelect.options[0].innerText = t("outgoingTranslateAuto");
+	}
 	if (lunPanelElements.disableRightClickPinningLabel) setText(lunPanelElements.disableRightClickPinningLabel, t("disableRightClickPinningLabel") || "Disable Double Right-Click Pinning");
 	if (lunPanelElements.discordRpcLabel) setText(lunPanelElements.discordRpcLabel, t("discordRpcToggleLabel") || "Discord Activity (RPC)");
 	if (lunPanelElements.uiScaleLabel) setText(lunPanelElements.uiScaleLabel, t("uiScaleLabel"));
