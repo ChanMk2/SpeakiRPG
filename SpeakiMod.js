@@ -4948,10 +4948,13 @@ document.head.appendChild(buildElement(
 			flex-direction: column;
 			position: fixed;
 			z-index: 600000;
-			width: 480px;
-			max-width: 95vw;
-			max-height: 85vh;
-			overflow-y: auto;
+			width: max-content;
+			min-width: 520px;
+			max-width: none;
+			height: max-content;
+			max-height: none;
+			overflow: visible;
+			box-sizing: border-box;
 			color: #FFF;
 			background: #000C;
 			border: ${spkmodBorderWidth} solid #DDD;
@@ -4963,12 +4966,12 @@ document.head.appendChild(buildElement(
 		}
 		.spkmod-settings-grid {
 			display: grid;
-			grid-template-columns: 1fr 1fr;
+			grid-template-columns: max-content max-content;
 			gap: 10px;
 		}
 		@media (max-width: 500px) {
 			.spkmod-settings-grid {
-				grid-template-columns: 1fr;
+				grid-template-columns: max-content;
 			}
 		}
 		.spkmod-settings-col {
@@ -4979,6 +4982,13 @@ document.head.appendChild(buildElement(
 			border: 1px solid rgba(255, 255, 255, 0.08);
 			border-radius: 6px;
 			padding: 8px;
+		}
+		.spkmod-settings-col .spkmod-panel-cat {
+			gap: 8px;
+			justify-content: space-between;
+		}
+		.spkmod-settings-col .spkmod-panel-cat > span {
+			white-space: nowrap;
 		}
 		.spkmod-settings-section-title {
 			color: #ffd54a;
@@ -6638,7 +6648,7 @@ document.body.appendChild(
 				]),
 				lunPanelElements.translateEmailInfo = buildElement("div", {
 					className: "hidden",
-					style: "color: #aaa; font-size: 10px; line-height: 1.4; padding: 2px 4px 6px;",
+					style: "contain: inline-size; width: 100%; box-sizing: border-box; color: #aaa; font-size: 10px; line-height: 1.4; padding: 2px 4px 6px;",
 					innerText: t("translateEmailTooltip")
 				}),
 				buildElement("div", { className: "spkmod-panel-cat" }, [
@@ -6921,7 +6931,6 @@ document.body.appendChild(
 					lunPanelElements.fontPresetLabel = buildElement("span", { style: "color: #fff; font-size: 11px; font-weight: bold; flex: 1;", innerText: t("fontPresetLabel") || "Game Font" }),
 					lunPanelElements.fontPresetSelect = buildElement("select", {
 						className: "spkmod-panel-combo",
-						style: "max-width: 125px;",
 						value: lunFontPreset,
 						onchange: e => {
 							const val = e.target.value;
@@ -7049,7 +7058,7 @@ document.body.appendChild(
 		]),
 
 		lunPanelElements.creditsLabel = buildElement("div", {
-			style: "color: #aaa; font-size: 10px; margin-top: 4px; white-space: pre-wrap; line-height: 1.4; border-top: 1px solid #555; padding-top: 4px; user-select: none; cursor: pointer;",
+			style: "contain: inline-size; width: 100%; box-sizing: border-box; color: #aaa; font-size: 10px; margin-top: 4px; white-space: pre-wrap; line-height: 1.4; border-top: 1px solid #555; padding-top: 4px; user-select: none; cursor: pointer;",
 			innerText: t("credits"),
 			onclick: _ => {
 				const now = Date.now();
@@ -22101,7 +22110,7 @@ function injectQuickLoginIntoSettingsModal() {
 
 	const section = document.createElement("div");
 	section.id = "spkmod-settings-ql-section";
-	section.style.cssText = "display: none; margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;";
+	section.style.cssText = "display: none; contain: inline-size; width: 100%; box-sizing: border-box; margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;";
 
 	const title = document.createElement("span");
 	title.className = "spkmod-settings-section-title";
