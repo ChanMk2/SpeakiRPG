@@ -692,7 +692,9 @@
         "chromaFloorShort": "Short",
         "chromaFloorCircle": "Circle",
         "chromaFloorStar": "Star",
-        "chromaFloorScale": "Size"
+        "chromaFloorScale": "Size",
+        "emojiSizeIncreaseTooltip": "Increase emoji size (+)",
+        "emojiSizeDecreaseTooltip": "Decrease emoji size (−)"
     },
     "ja": {
         "langName": "日本語",
@@ -1417,7 +1419,9 @@
         "hidePlayerLevelsLabel": "プレイヤーレベルを非表示",
         "for_memo_jp_27": "🔽🔽",
         "for_memo_jp_28": "🔽🔽",
-        "for_memo_jp_29": "⏩コンマ要確認⏩"
+        "for_memo_jp_29": "⏩コンマ要確認⏩",
+        "emojiSizeIncreaseTooltip": "絵文字サイズ拡大 (+)",
+        "emojiSizeDecreaseTooltip": "絵文字サイズ縮小 (−)"
     },
     "ko": {
         "langName": "한국어",
@@ -2112,7 +2116,9 @@
         "chromaFloorShort": "컴팩트",
         "chromaFloorCircle": "원형",
         "chromaFloorStar": "별모양",
-        "chromaFloorScale": "크기"
+        "chromaFloorScale": "크기",
+        "emojiSizeIncreaseTooltip": "이모지 크기 확대 (+)",
+        "emojiSizeDecreaseTooltip": "이모지 크기 축소 (−)"
     },
     "zh-TW": {
         "langName": "繁體中文",
@@ -2807,7 +2813,9 @@
         "chromaFloorShort": "窄矩形",
         "chromaFloorCircle": "圓形",
         "chromaFloorStar": "星形",
-        "chromaFloorScale": "尺寸"
+        "chromaFloorScale": "尺寸",
+        "emojiSizeIncreaseTooltip": "放大表情符號 (+)",
+        "emojiSizeDecreaseTooltip": "縮小表情符號 (−)"
     },
     "zh-CN": {
         "langName": "简体中文",
@@ -3502,7 +3510,9 @@
         "chromaFloorShort": "窄矩形",
         "chromaFloorCircle": "圆形",
         "chromaFloorStar": "星形",
-        "chromaFloorScale": "尺寸"
+        "chromaFloorScale": "尺寸",
+        "emojiSizeIncreaseTooltip": "放大表情符号 (+)",
+        "emojiSizeDecreaseTooltip": "缩小表情符号 (−)"
     },
     "es-419": {
         "langName": "Español",
@@ -4197,6 +4207,8 @@
         "chromaFloorShort": "Corto",
         "chromaFloorCircle": "Círculo",
         "chromaFloorStar": "Estrella",
-        "chromaFloorScale": "Tamaño"
+        "chromaFloorScale": "Tamaño",
+        "emojiSizeIncreaseTooltip": "Aumentar tamaño de emoji (+)",
+        "emojiSizeDecreaseTooltip": "Reducir tamaño de emoji (−)"
     }
 }

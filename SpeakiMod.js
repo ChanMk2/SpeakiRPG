@@ -3404,6 +3404,7 @@ const SPKMOD_SETTINGS_KEYS = new Set([
 	"spkmod-disable-right-click-pinning",
 	"spkmod-discord-rpc",
 	"spkmod-drone-speed",
+	"spkmod-emoji-size",
 	"spkmod-exp-interval-minutes",
 	"spkmod-exp-per-hour",
 	"spkmod-filter-enabled",
@@ -7293,6 +7294,8 @@ let lunEmojiTab = "standard";
 const LUN_EMOJIS = ["👍","👎","👋","🙏","👏","🙌","🤝","😊","😂","🤣","😍","😎","🤔","😅","😭","🥺","🔥","💯","❤️","✨","🎉","💀","👀","🗣️","💰","💎","🟣","⭐","❌","✅", "💪", "🤷", "🤦", "🎈", "🎂", "🥳", "🙄", "🤐", "🥵", "🥶", "🤯", "😴", "🤮", "🤡", "👻", "👽", "💩", "🤖", "🎃"];
 let lunEmojiFreq = JSON.parse((window.localStorage && localStorage.getItem("spkmod-emoji-freq")) || "{}");
 let lunEmojiFavorites = JSON.parse((window.localStorage && localStorage.getItem("spkmod-emoji-fav")) || "[]");
+let lunEmojiSize = parseInt((window.localStorage && localStorage.getItem("spkmod-emoji-size")) || "35", 10);
+if (isNaN(lunEmojiSize) || lunEmojiSize < 20 || lunEmojiSize > 80) lunEmojiSize = 35;
 
 function toggleFavoriteEmoji(id) {
     if (lunEmojiFavorites.includes(id)) {
@@ -7578,7 +7581,7 @@ function createSpeakiAvatarController({ document, store, getPlayer, getCatalog, 
 		.sr-player-card__portrait-wrap > .sr-player-card__class-badge { z-index:2; }
 		.spkmod-avatar-button:focus-visible { outline:3px solid #ffd54a; outline-offset:3px; }
 		.spkmod-avatar-button img, .spkmod-avatar-preview img, .spkmod-avatar-choice img { display:block; width:100%; height:100%; object-fit:cover; object-position:center; border-radius:50%; }
-		.spkmod-avatar-dialog { box-sizing:border-box; width:min(480px, calc(100vw - 28px)); max-height:85vh; padding:20px; color:#f8fafc; background:#172033; border:1px solid #475569; border-radius:16px; font:14px/1.5 sans-serif; box-shadow:0 20px 60px #0008; }
+		.spkmod-avatar-dialog { box-sizing:border-box; width:min(480px, calc(100vw - 28px)); max-height:85vh; padding:20px; color:#f8fafc; background:#172033; border:1px solid #475569; border-radius:16px; font:14px/1.5 sans-serif; box-shadow:0 20px 60px #0008; overscroll-behavior:contain; overflow-y:auto; }
 		.spkmod-avatar-dialog::backdrop { background:#0008; }
 		.spkmod-avatar-dialog h2 { margin:0; font-size:20px; }
 		.spkmod-avatar-dialog p { color:#bac6d8; margin:8px 0 16px; }
@@ -7590,7 +7593,7 @@ function createSpeakiAvatarController({ document, store, getPlayer, getCatalog, 
 		.spkmod-avatar-tabs, .spkmod-avatar-actions { display:flex; gap:8px; flex-wrap:wrap; margin:12px 0; }
 		.spkmod-avatar-dialog button[aria-pressed="true"] { border-color:#ffd54a; background:#51462b; }
 		.spkmod-avatar-search { box-sizing:border-box; width:100%; padding:9px 12px; border-radius:8px; border:1px solid #52627b; background:#0f172a; color:inherit; }
-		.spkmod-avatar-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(56px,1fr)); gap:10px; max-height:240px; overflow-y:auto; padding:6px; margin-top:12px; }
+		.spkmod-avatar-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(56px,1fr)); gap:10px; max-height:240px; overflow-y:auto; padding:6px; margin-top:12px; overscroll-behavior:contain; }
 		.spkmod-avatar-grid .spkmod-avatar-choice { padding:0; width:56px; height:56px; border-radius:50%; overflow:hidden; border:2px solid transparent; background:#334155; }
 		.spkmod-avatar-status { min-height:1.5em; color:#fcd34d; margin-top:8px; }
 		.spkmod-avatar-actions { justify-content:flex-end; margin-bottom:0; }
@@ -7730,6 +7733,20 @@ function createSpeakiAvatarController({ document, store, getPlayer, getCatalog, 
 			}
 		};
 		modal.addEventListener("cancel", e => { e.preventDefault(); close(); });
+		// Prevent wheel/touch inside the avatar dialog from zooming the game camera
+		const scrollDelta = (e) => (e.deltaMode === 1 ? e.deltaY * 33 : (e.deltaMode === 2 ? e.deltaY * window.innerHeight : e.deltaY));
+		modal.addEventListener("wheel", (e) => {
+			e.stopPropagation();
+			if (grid && e.target !== grid && !grid.contains(e.target)) {
+				grid.scrollTop += scrollDelta(e);
+			}
+		}, { passive: true });
+		modal.addEventListener("touchmove", (e) => e.stopPropagation(), { passive: true });
+		modal.addEventListener("mousedown", (e) => e.stopPropagation());
+		modal.addEventListener("pointerdown", (e) => e.stopPropagation());
+		grid.addEventListener("wheel", (e) => e.stopPropagation(), { passive: true });
+		grid.addEventListener("touchmove", (e) => e.stopPropagation(), { passive: true });
+
 		// Keep typing and Escape inside the dialog rather than triggering game/mod shortcuts.
 		modal.addEventListener("keydown", e => {
 			e.stopPropagation();
@@ -7979,7 +7996,41 @@ function renderEmojiGrid() {
     btnFav.onclick = (e) => { lunEmojiTab = 'fav'; renderEmojiGrid(); };
     header.appendChild(btnFav);
 
+    const btnSizePlus = document.createElement("button");
+    btnSizePlus.innerText = "+";
+    btnSizePlus.title = t("emojiSizeIncreaseTooltip") || "Increase emoji size (+)";
+    btnSizePlus.style.cssText = `flex: 0 0 22px; width: 22px; padding: 2px 0; cursor: ${lunEmojiSize >= 80 ? 'default' : 'pointer'}; border-radius: 4px; background: rgba(255,255,255,0.08); border: 1px solid #555; color: #fff; font-size: 13px; font-weight: bold; display: inline-flex; align-items: center; justify-content: center; line-height: 1; user-select: none; opacity: ${lunEmojiSize >= 80 ? '0.4' : '1'};`;
+    btnSizePlus.onmouseenter = () => { if (lunEmojiSize < 80) btnSizePlus.style.background = "rgba(255,255,255,0.2)"; };
+    btnSizePlus.onmouseleave = () => { if (lunEmojiSize < 80) btnSizePlus.style.background = "rgba(255,255,255,0.08)"; };
+    btnSizePlus.onclick = (e) => {
+        e.stopPropagation();
+        if (lunEmojiSize >= 80) return;
+        lunEmojiSize = Math.min(80, (lunEmojiSize || 35) + 5);
+        if (window.localStorage) localStorage.setItem("spkmod-emoji-size", String(lunEmojiSize));
+        renderEmojiGrid();
+    };
+
+    const btnSizeMinus = document.createElement("button");
+    btnSizeMinus.innerText = "−";
+    btnSizeMinus.title = t("emojiSizeDecreaseTooltip") || "Decrease emoji size (−)";
+    btnSizeMinus.style.cssText = `flex: 0 0 22px; width: 22px; padding: 2px 0; cursor: ${lunEmojiSize <= 20 ? 'default' : 'pointer'}; border-radius: 4px; background: rgba(255,255,255,0.08); border: 1px solid #555; color: #fff; font-size: 13px; font-weight: bold; display: inline-flex; align-items: center; justify-content: center; line-height: 1; user-select: none; opacity: ${lunEmojiSize <= 20 ? '0.4' : '1'};`;
+    btnSizeMinus.onmouseenter = () => { if (lunEmojiSize > 20) btnSizeMinus.style.background = "rgba(255,255,255,0.2)"; };
+    btnSizeMinus.onmouseleave = () => { if (lunEmojiSize > 20) btnSizeMinus.style.background = "rgba(255,255,255,0.08)"; };
+    btnSizeMinus.onclick = (e) => {
+        e.stopPropagation();
+        if (lunEmojiSize <= 20) return;
+        lunEmojiSize = Math.max(20, (lunEmojiSize || 35) - 5);
+        if (window.localStorage) localStorage.setItem("spkmod-emoji-size", String(lunEmojiSize));
+        renderEmojiGrid();
+    };
+
+    header.appendChild(btnSizePlus);
+    header.appendChild(btnSizeMinus);
+
     grid.innerHTML = "";
+    const curCustomSize = lunEmojiSize || 35;
+    const curStdSize = Math.max(16, curCustomSize - 4);
+    const curStdFontSize = Math.max(12, Math.round(curCustomSize * 0.55));
     
     if (lunEmojiTab === 'fav') {
         if (lunEmojiFavorites.length === 0) {
@@ -8002,7 +8053,7 @@ function renderEmojiGrid() {
                     btn.title = `:${name}:`;
                     btn.className = "spkmod-custom-emoji";
                     btn.setAttribute("data-url", url);
-                    btn.style.cssText = "width: 35px; height: 35px; background: rgba(255,255,255,0.1); border: 1px solid transparent; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.1s; padding: 2px;";
+                    btn.style.cssText = `width: ${curCustomSize}px; height: ${curCustomSize}px; background: rgba(255,255,255,0.1); border: 1px solid transparent; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.1s; padding: 2px;`;
                     btn.onmouseenter = () => btn.style.background = "rgba(255,255,255,0.2)";
                     btn.onmouseleave = () => btn.style.background = "rgba(255,255,255,0.1)";
                     const img = document.createElement("img");
@@ -8014,7 +8065,7 @@ function renderEmojiGrid() {
                     };
                 } else {
                     btn.innerText = id;
-                    btn.style.cssText = "width: 31px; height: 31px; background: rgba(255,255,255,0.1); border: 1px solid transparent; border-radius: 4px; cursor: pointer; font-size: 19px; display: flex; align-items: center; justify-content: center; transition: background 0.1s;";
+                    btn.style.cssText = `width: ${curStdSize}px; height: ${curStdSize}px; background: rgba(255,255,255,0.1); border: 1px solid transparent; border-radius: 4px; cursor: pointer; font-size: ${curStdFontSize}px; display: flex; align-items: center; justify-content: center; transition: background 0.1s;`;
                     btn.onmouseenter = () => btn.style.background = "rgba(255,255,255,0.2)";
                     btn.onmouseleave = () => btn.style.background = "rgba(255,255,255,0.1)";
                     btn.onclick = (e) => {
@@ -8035,7 +8086,7 @@ function renderEmojiGrid() {
         sorted.forEach(emoji => {
             const btn = document.createElement("button");
             btn.innerText = emoji;
-            btn.style.cssText = "width: 31px; height: 31px; background: rgba(255,255,255,0.1); border: 1px solid transparent; border-radius: 4px; cursor: pointer; font-size: 19px; display: flex; align-items: center; justify-content: center; transition: background 0.1s;";
+            btn.style.cssText = `width: ${curStdSize}px; height: ${curStdSize}px; background: rgba(255,255,255,0.1); border: 1px solid transparent; border-radius: 4px; cursor: pointer; font-size: ${curStdFontSize}px; display: flex; align-items: center; justify-content: center; transition: background 0.1s;`;
             btn.onmouseenter = () => btn.style.background = "rgba(255,255,255,0.2)";
             btn.onmouseleave = () => btn.style.background = "rgba(255,255,255,0.1)";
             btn.onclick = (e) => {
@@ -8057,7 +8108,7 @@ function renderEmojiGrid() {
             btn.title = `:${name}:`;
             btn.className = "spkmod-custom-emoji";
             btn.setAttribute("data-url", url);
-            btn.style.cssText = "width: 35px; height: 35px; background: rgba(255,255,255,0.1); border: 1px solid transparent; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.1s; padding: 2px;";
+            btn.style.cssText = `width: ${curCustomSize}px; height: ${curCustomSize}px; background: rgba(255,255,255,0.1); border: 1px solid transparent; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.1s; padding: 2px;`;
             btn.onmouseenter = () => btn.style.background = "rgba(255,255,255,0.2)";
             btn.onmouseleave = () => btn.style.background = "rgba(255,255,255,0.1)";
             
