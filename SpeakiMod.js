@@ -1579,6 +1579,9 @@ var lunPanelElements = {
 	superShakeBtn: null,
 	hyperShakeBtn: null,
 	pumpkinCartTexBtn: null,
+	pumpkinCartTexBtn1: null,
+	pumpkinCartTexBtn2: null,
+	pumpkinCartTexBtn3: null,
 	pinnedQuestHeader: null,
 	langSelect: null,
 	settingsHeader: null,
@@ -11732,13 +11735,26 @@ window.spkmodResetAvatarColors = function() {
 };
 
 // ============================================================================
-// PUMPKIN CART TEXTURE REPLACEMENT TEST (:SPK_88:)
+// PUMPKIN CART TEXTURE REPLACEMENT SKINS (:SPK_88:, 1, 2, 3)
 // ============================================================================
 const SPKMOD_PUMPKIN_CART_ORIG_TEX = "https://speakirpg.overture.io.kr/models/mount_pumpkin_cart_halloween/HW_Map_Body.png";
-const SPKMOD_PUMPKIN_CART_REPLACE_TEX = "https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/refs/heads/main/test.png";
 
+const SPKMOD_PUMPKIN_CART_SKINS = {
+	uifi: { id: "uifi", label: ":SPK_88:", file: "test.png", url: "https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/refs/heads/main/test.png" },
+	1: { id: "1", label: "1️⃣", file: "test2.png", url: "https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/refs/heads/main/test2.png" },
+	2: { id: "2", label: "2️⃣", file: "test3.png", url: "https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/refs/heads/main/test3.png" },
+	3: { id: "3", label: "3️⃣", file: "test4.png", url: "https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/refs/heads/main/test4.png" }
+};
+
+window.spkmodActivePumpkinSkin = null;
 window.spkmodPumpkinCartTexReplaced = false;
-let _spkmodReplacementCartTex = null;
+const _spkmodReplacementCartTexCache = new Map();
+
+function spkmodGetCurrentPumpkinSkinUrl() {
+	if (!window.spkmodActivePumpkinSkin) return null;
+	const skin = SPKMOD_PUMPKIN_CART_SKINS[window.spkmodActivePumpkinSkin];
+	return skin ? skin.url : null;
+}
 
 function spkmodEnsurePumpkinCartHooks() {
 	if (window.__spkmodPumpkinCartHooksInstalled) return;
@@ -11751,8 +11767,9 @@ function spkmodEnsurePumpkinCartHooks() {
 			const origSrcSet = desc.set;
 			Object.defineProperty(imgProto, "src", {
 				set: function (val) {
-					if (window.spkmodPumpkinCartTexReplaced && typeof val === "string" && val.includes("HW_Map_Body.png")) {
-						val = SPKMOD_PUMPKIN_CART_REPLACE_TEX;
+					const targetUrl = spkmodGetCurrentPumpkinSkinUrl();
+					if (targetUrl && typeof val === "string" && val.includes("HW_Map_Body.png")) {
+						val = targetUrl;
 					}
 					return origSrcSet.call(this, val);
 				},
@@ -11766,11 +11783,12 @@ function spkmodEnsurePumpkinCartHooks() {
 	if (typeof window.fetch === "function") {
 		const origFetch = window.fetch;
 		window.fetch = function (resource, config) {
-			if (window.spkmodPumpkinCartTexReplaced) {
+			const targetUrl = spkmodGetCurrentPumpkinSkinUrl();
+			if (targetUrl) {
 				if (typeof resource === "string" && resource.includes("HW_Map_Body.png")) {
-					resource = SPKMOD_PUMPKIN_CART_REPLACE_TEX;
+					resource = targetUrl;
 				} else if (resource && typeof resource.url === "string" && resource.url.includes("HW_Map_Body.png")) {
-					resource = new Request(SPKMOD_PUMPKIN_CART_REPLACE_TEX, resource);
+					resource = new Request(targetUrl, resource);
 				}
 			}
 			return origFetch.apply(this, arguments);
@@ -11780,26 +11798,27 @@ function spkmodEnsurePumpkinCartHooks() {
 	if (typeof XMLHttpRequest !== "undefined" && XMLHttpRequest.prototype && XMLHttpRequest.prototype.open) {
 		const origXhrOpen = XMLHttpRequest.prototype.open;
 		XMLHttpRequest.prototype.open = function (method, url, ...rest) {
-			if (window.spkmodPumpkinCartTexReplaced && typeof url === "string" && url.includes("HW_Map_Body.png")) {
-				url = SPKMOD_PUMPKIN_CART_REPLACE_TEX;
+			const targetUrl = spkmodGetCurrentPumpkinSkinUrl();
+			if (targetUrl && typeof url === "string" && url.includes("HW_Map_Body.png")) {
+				url = targetUrl;
 			}
 			return origXhrOpen.call(this, method, url, ...rest);
 		};
 	}
 }
 
-function spkmodGetReplacementCartTexture(callback) {
-	if (_spkmodReplacementCartTex) {
-		callback(_spkmodReplacementCartTex);
+function spkmodGetReplacementCartTexture(url, callback) {
+	if (_spkmodReplacementCartTexCache.has(url)) {
+		callback(_spkmodReplacementCartTexCache.get(url));
 		return;
 	}
 	if (window.THREE && window.THREE.TextureLoader) {
 		const loader = new window.THREE.TextureLoader();
 		loader.crossOrigin = "anonymous";
-		loader.load(SPKMOD_PUMPKIN_CART_REPLACE_TEX, tex => {
+		loader.load(url, tex => {
 			tex.flipY = false;
 			tex.needsUpdate = true;
-			_spkmodReplacementCartTex = tex;
+			_spkmodReplacementCartTexCache.set(url, tex);
 			callback(tex);
 		}, undefined, () => {
 			const img = new Image();
@@ -11808,10 +11827,10 @@ function spkmodGetReplacementCartTexture(callback) {
 				const fallbackTex = new window.THREE.Texture(img);
 				fallbackTex.flipY = false;
 				fallbackTex.needsUpdate = true;
-				_spkmodReplacementCartTex = fallbackTex;
+				_spkmodReplacementCartTexCache.set(url, fallbackTex);
 				callback(fallbackTex);
 			};
-			img.src = SPKMOD_PUMPKIN_CART_REPLACE_TEX;
+			img.src = url;
 		});
 	} else {
 		const img = new Image();
@@ -11823,10 +11842,10 @@ function spkmodGetReplacementCartTexture(callback) {
 				fallbackTex.flipY = false;
 				fallbackTex.needsUpdate = true;
 			}
-			_spkmodReplacementCartTex = fallbackTex;
+			_spkmodReplacementCartTexCache.set(url, fallbackTex);
 			callback(fallbackTex);
 		};
-		img.src = SPKMOD_PUMPKIN_CART_REPLACE_TEX;
+		img.src = url;
 	}
 }
 
@@ -11851,7 +11870,7 @@ function spkmodApplyPumpkinCartTextureToScene(enable, replacementTex) {
 					if (!m) continue;
 					const mName = (m.name || "").toLowerCase();
 					const imgSrc = (m.map && m.map.image && typeof m.map.image.src === "string") ? m.map.image.src : "";
-					if (mName.includes("hw_map") || mName.includes("pumpkin") || imgSrc.includes("HW_Map_Body") || imgSrc.includes("test.png") || imgSrc.includes("mount_pumpkin_cart")) {
+					if (mName.includes("hw_map") || mName.includes("pumpkin") || imgSrc.includes("HW_Map_Body") || imgSrc.includes("test") || imgSrc.includes("mount_pumpkin_cart")) {
 						isCart = true;
 						break;
 					}
@@ -11897,30 +11916,66 @@ function spkmodApplyPumpkinCartTextureToScene(enable, replacementTex) {
 	});
 }
 
-window.spkmodTogglePumpkinCartTexture = function (forcedState) {
-	spkmodEnsurePumpkinCartHooks();
-	const nextState = typeof forcedState === "boolean" ? forcedState : !window.spkmodPumpkinCartTexReplaced;
-	window.spkmodPumpkinCartTexReplaced = nextState;
+function spkmodUpdatePumpkinCartButtonStyles() {
+	if (typeof lunPanelElements === "undefined" || !lunPanelElements) return;
+	const btnMap = {
+		uifi: lunPanelElements.pumpkinCartTexBtn,
+		1: lunPanelElements.pumpkinCartTexBtn1,
+		2: lunPanelElements.pumpkinCartTexBtn2,
+		3: lunPanelElements.pumpkinCartTexBtn3
+	};
+	for (const [key, btn] of Object.entries(btnMap)) {
+		if (!btn) continue;
+		const isCurrent = window.spkmodActivePumpkinSkin === key;
+		btn.style.border = isCurrent ? "1px solid #4ade80" : "";
+		btn.style.boxShadow = isCurrent ? "0 0 8px rgba(74, 222, 128, 0.45)" : "";
+	}
+}
+window.spkmodUpdatePumpkinCartButtonStyles = spkmodUpdatePumpkinCartButtonStyles;
 
-	if (nextState) {
-		spkmodGetReplacementCartTexture(tex => {
-			spkmodApplyPumpkinCartTextureToScene(true, tex);
-		});
-	} else {
+window.spkmodSelectPumpkinCartSkin = function (skinKey) {
+	spkmodEnsurePumpkinCartHooks();
+
+	if (skinKey === null || skinKey === undefined || window.spkmodActivePumpkinSkin === skinKey) {
+		window.spkmodActivePumpkinSkin = null;
+		window.spkmodPumpkinCartTexReplaced = false;
 		spkmodApplyPumpkinCartTextureToScene(false);
 		if (window.THREE && window.THREE.Cache && window.THREE.Cache.files) {
 			delete window.THREE.Cache.files[SPKMOD_PUMPKIN_CART_ORIG_TEX];
-			delete window.THREE.Cache.files[SPKMOD_PUMPKIN_CART_REPLACE_TEX];
+			for (const s of Object.values(SPKMOD_PUMPKIN_CART_SKINS)) {
+				delete window.THREE.Cache.files[s.url];
+			}
 		}
+		spkmodUpdatePumpkinCartButtonStyles();
+		if (typeof chatLog === "function") {
+			chatLog("🎃 Pumpkin Cart Texture: RESTORED (Original)");
+		}
+		return;
 	}
 
-	if (lunPanelElements && lunPanelElements.pumpkinCartTexBtn) {
-		lunPanelElements.pumpkinCartTexBtn.style.border = nextState ? "1px solid #4ade80" : "";
-		lunPanelElements.pumpkinCartTexBtn.style.boxShadow = nextState ? "0 0 8px rgba(74, 222, 128, 0.45)" : "";
-	}
+	const skin = SPKMOD_PUMPKIN_CART_SKINS[skinKey];
+	if (!skin) return;
+
+	window.spkmodActivePumpkinSkin = skinKey;
+	window.spkmodPumpkinCartTexReplaced = true;
+
+	spkmodGetReplacementCartTexture(skin.url, tex => {
+		spkmodApplyPumpkinCartTextureToScene(true, tex);
+	});
+	spkmodUpdatePumpkinCartButtonStyles();
 
 	if (typeof chatLog === "function") {
-		chatLog("🎃 Pumpkin Cart Texture (:SPK_88:): " + (nextState ? "INJECTED (test.png)" : "RESTORED (Original)"));
+		chatLog(`🎃 Pumpkin Cart Texture (${skin.label}): INJECTED (${skin.file})`);
+	}
+};
+
+window.spkmodTogglePumpkinCartTexture = function (forcedState) {
+	if (forcedState === false) {
+		window.spkmodSelectPumpkinCartSkin(null);
+	} else if (forcedState === true) {
+		window.spkmodSelectPumpkinCartSkin("uifi");
+	} else {
+		window.spkmodSelectPumpkinCartSkin(window.spkmodActivePumpkinSkin ? null : "uifi");
 	}
 };
 
@@ -13403,15 +13458,44 @@ document.body.appendChild(
 					innerText: t("flyEveryoneBtn"),
 					onclick: () => window.spkmodTriggerFlyEveryone && window.spkmodTriggerFlyEveryone()
 				}),
-				lunPanelElements.pumpkinCartTexBtn = buildElement("button", {
-					className: "spkmod-panel-btn",
-					style: "padding: 5px 6px; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; gap: 4px;",
-					innerHTML: (typeof renderSpkmodInlineEmojis === "function" ? renderSpkmodInlineEmojis(":SPK_88:", "height: 20px; width: 20px; object-fit: contain; vertical-align: middle; display: inline-block; pointer-events: none;") : "🎃"),
-					title: "Pumpkin Cart Texture Replacement Test (:SPK_88:) (HW_Map_Body.png -> test.png)",
-					onclick: () => {
-						if (window.spkmodTogglePumpkinCartTexture) window.spkmodTogglePumpkinCartTexture();
-					}
-				}),
+				buildElement("div", { style: "display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px;" }, [
+					lunPanelElements.pumpkinCartTexBtn = buildElement("button", {
+						className: "spkmod-panel-btn",
+						style: "padding: 5px 2px; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; min-height: 28px;",
+						innerHTML: (typeof renderSpkmodInlineEmojis === "function" ? renderSpkmodInlineEmojis(":SPK_88:", "height: 20px; width: 20px; object-fit: contain; vertical-align: middle; display: inline-block; pointer-events: none;") : "🎃"),
+						title: "Pumpkin Cart Skin: Ui (:SPK_88:) (test.png)",
+						onclick: () => {
+							if (window.spkmodSelectPumpkinCartSkin) window.spkmodSelectPumpkinCartSkin("uifi");
+						}
+					}),
+					lunPanelElements.pumpkinCartTexBtn1 = buildElement("button", {
+						className: "spkmod-panel-btn",
+						style: "padding: 5px 2px; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; min-height: 28px;",
+						innerText: "1️⃣",
+						title: "Pumpkin Cart Skin: 1 (test2.png)",
+						onclick: () => {
+							if (window.spkmodSelectPumpkinCartSkin) window.spkmodSelectPumpkinCartSkin("1");
+						}
+					}),
+					lunPanelElements.pumpkinCartTexBtn2 = buildElement("button", {
+						className: "spkmod-panel-btn",
+						style: "padding: 5px 2px; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; min-height: 28px;",
+						innerText: "2️⃣",
+						title: "Pumpkin Cart Skin: 2 (test3.png)",
+						onclick: () => {
+							if (window.spkmodSelectPumpkinCartSkin) window.spkmodSelectPumpkinCartSkin("2");
+						}
+					}),
+					lunPanelElements.pumpkinCartTexBtn3 = buildElement("button", {
+						className: "spkmod-panel-btn",
+						style: "padding: 5px 2px; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; min-height: 28px;",
+						innerText: "3️⃣",
+						title: "Pumpkin Cart Skin: 3 (test4.png)",
+						onclick: () => {
+							if (window.spkmodSelectPumpkinCartSkin) window.spkmodSelectPumpkinCartSkin("3");
+						}
+					})
+				]),
 
 				// 🍳 Cooking & Kitchen Animations
 				buildElement("div", { style: "display: flex; flex-direction: column; gap: 4px; border-top: 1px solid #555; padding-top: 6px;" }, [
@@ -14431,6 +14515,7 @@ function updateLocalEditsUI() {
 	if (editsModalElements.stepTrailStarsBtn) setText(editsModalElements.stepTrailStarsBtn, t("stepTrailStars") || "⭐ Stars");
 	if (editsModalElements.stepTrailRainbowBtn) setText(editsModalElements.stepTrailRainbowBtn, t("stepTrailRainbow") || "🌈 Rainbow");
 	if (editsModalElements.stepTrailHeartsBtn) setText(editsModalElements.stepTrailHeartsBtn, t("stepTrailHearts") || "💖 Hearts");
+	if (window.spkmodUpdatePumpkinCartButtonStyles) window.spkmodUpdatePumpkinCartButtonStyles();
 }
 
 function toggleLocalEditsModal() {
