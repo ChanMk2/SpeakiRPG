@@ -13639,7 +13639,7 @@ document.body.appendChild(
 						innerText: "4️⃣",
 						title: "Pumpkin Cart Skin: 4 (dancing.webp)",
 						onclick: () => {
-							if (window.spkmodSelectPumpkinCartSkin) window.spkmodSelectPumpkinCartSkin("3");
+							if (window.spkmodSelectPumpkinCartSkin) window.spkmodSelectPumpkinCartSkin("4"); // lol im retarded
 						}
 					})
 				]),
