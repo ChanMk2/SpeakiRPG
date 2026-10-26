@@ -1476,6 +1476,9 @@ function setLanguage(lang) {
 		}
 	}
 	refreshI18n();
+	if (typeof applySpkmodFont === "function" && typeof lunFontPreset !== "undefined" && lunFontPreset !== "default") {
+		applySpkmodFont(lunFontPreset, undefined, false);
+	}
 }
 
 window.getZoneName = getZoneName;
@@ -1620,7 +1623,12 @@ var lunPanelElements = {
 	editsModalTitle: null,
 	exportSettingsBtn: null,
 	importSettingsBtn: null,
-	resetPositionsBtn: null
+	resetPositionsBtn: null,
+	fontPresetLabel: null,
+	fontPresetSelect: null,
+	customFontContainer: null,
+	customFontInputLabel: null,
+	customFontInput: null
 };
 var lunMenuFoldingLevel = 0;
 
@@ -3348,6 +3356,7 @@ const SPKMOD_SETTINGS_KEYS = new Set([
 	"spkmod-channel-tracker",
 	"spkmod-chat-timestamps",
 	"spkmod-currency-tracker",
+	"spkmod-custom-font",
 	"spkmod-custom-hud-bg",
 	"spkmod-custom-hud-unlocked",
 	"spkmod-disable-right-click-pinning",
@@ -3356,6 +3365,7 @@ const SPKMOD_SETTINGS_KEYS = new Set([
 	"spkmod-exp-interval-minutes",
 	"spkmod-exp-per-hour",
 	"spkmod-filter-enabled",
+	"spkmod-font-preset",
 	"spkmod-resolution-override",
 	"spkmod-fp-pitch",
 	"spkmod-fps-ping",
@@ -3767,6 +3777,303 @@ var lunViewClip = false;
 var lunBgOpacity = (window.localStorage && localStorage.getItem("spkmod-bg-opacity")) || "glass";
 var lunAccentColor = (window.localStorage && localStorage.getItem("spkmod-accent-color")) || "#ffd54a";
 var lunHudBackground = (window.localStorage && localStorage.getItem("spkmod-hud-bg")) || "none";
+
+const SPKMOD_REPO_FONTS_BASE = "https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/main/fonts/";
+const SPKMOD_EMOJI_FONT_FALLBACK = '"Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"';
+const SPKMOD_VALID_FONT_PRESETS = new Set([
+	"default",
+	"trickcalPop",
+	"oneMobilePop",
+	"dfpPop",
+	"mochiyPop",
+	"knBobohei",
+	"serif",
+	"rounded",
+	"pixel",
+	"monospace",
+	"custom"
+]);
+
+var lunFontPreset = (window.localStorage && localStorage.getItem("spkmod-font-preset")) || "default";
+if (!SPKMOD_VALID_FONT_PRESETS.has(lunFontPreset)) lunFontPreset = "default";
+var lunCustomFont = (window.localStorage && localStorage.getItem("spkmod-custom-font")) || "";
+var lunActiveFontStack = "";
+var __spkmodFontRedrawTimer = null;
+
+function sanitizeSpkmodCustomFont(raw) {
+	if (!raw || typeof raw !== "string") return "";
+	const cleaned = raw.slice(0, 200).replace(/[{};<>\\`\r\n]/g, "");
+	const generics = new Set([
+		"serif", "sans-serif", "monospace", "cursive", "fantasy",
+		"system-ui", "ui-serif", "ui-sans-serif", "ui-monospace", "ui-rounded"
+	]);
+	const parts = cleaned.split(",").map(part => {
+		const trimmed = part.trim().replace(/^['"]+|['"]+$/g, "").replace(/['"]/g, "").trim();
+		if (!trimmed) return "";
+		if (generics.has(trimmed.toLowerCase())) return trimmed.toLowerCase();
+		return `"${trimmed}"`;
+	}).filter(Boolean);
+	if (!parts.length) return "";
+	return parts.join(", ") + ", " + SPKMOD_EMOJI_FONT_FALLBACK + ", sans-serif";
+}
+
+function buildSpkmodFontStack(preset, customValue) {
+	const lang = typeof spkmodLang === "string" ? spkmodLang : "en";
+	switch (preset) {
+		case "trickcalPop": {
+			if (lang === "ja") {
+				return `"SpkDFPPop1W9", "SpkMochiyPop", "Mochiy Pop One", "SpkOneMobilePop", "SpkKNBobohei", ${SPKMOD_EMOJI_FONT_FALLBACK}, sans-serif`;
+			}
+			if (lang === "ko") {
+				return `"SpkOneMobilePop", "SpkDFPPop1W9", "SpkMochiyPop", "Mochiy Pop One", "SpkKNBobohei", ${SPKMOD_EMOJI_FONT_FALLBACK}, sans-serif`;
+			}
+			if (lang === "zh-TW" || lang === "zh-CN") {
+				return `"SpkKNBobohei", "SpkDFPPop1W9", "SpkMochiyPop", "Mochiy Pop One", "SpkOneMobilePop", ${SPKMOD_EMOJI_FONT_FALLBACK}, sans-serif`;
+			}
+			return `"SpkOneMobilePop", "SpkMochiyPop", "Mochiy Pop One", "SpkDFPPop1W9", "SpkKNBobohei", ${SPKMOD_EMOJI_FONT_FALLBACK}, sans-serif`;
+		}
+		case "oneMobilePop":
+			return `"SpkOneMobilePop", "SpkDFPPop1W9", "SpkMochiyPop", "Mochiy Pop One", "SpkKNBobohei", ${SPKMOD_EMOJI_FONT_FALLBACK}, sans-serif`;
+		case "dfpPop":
+			return `"SpkDFPPop1W9", "SpkMochiyPop", "Mochiy Pop One", "SpkOneMobilePop", "SpkKNBobohei", ${SPKMOD_EMOJI_FONT_FALLBACK}, sans-serif`;
+		case "mochiyPop":
+			return `"SpkMochiyPop", "Mochiy Pop One", "SpkDFPPop1W9", "SpkOneMobilePop", "SpkKNBobohei", ${SPKMOD_EMOJI_FONT_FALLBACK}, sans-serif`;
+		case "knBobohei":
+			return `"SpkKNBobohei", "SpkDFPPop1W9", "SpkMochiyPop", "Mochiy Pop One", "SpkOneMobilePop", ${SPKMOD_EMOJI_FONT_FALLBACK}, sans-serif`;
+		case "serif": {
+			let cjkOrder = `"Noto Serif JP", "Noto Serif KR", "Noto Serif SC", "Noto Serif TC", "Noto Serif HK", "Yu Mincho", "Hiragino Mincho ProN", "Batang", "PMingLiU", "SimSun"`;
+			if (lang === "ko") {
+				cjkOrder = `"Noto Serif KR", "Noto Serif JP", "Noto Serif TC", "Noto Serif SC", "Noto Serif HK", "Batang", "Yu Mincho", "Hiragino Mincho ProN", "PMingLiU", "SimSun"`;
+			} else if (lang === "zh-TW") {
+				cjkOrder = `"Noto Serif TC", "Noto Serif HK", "Noto Serif JP", "Noto Serif KR", "Noto Serif SC", "PMingLiU", "Songti TC", "Yu Mincho", "Batang", "SimSun"`;
+			} else if (lang === "zh-CN") {
+				cjkOrder = `"Noto Serif SC", "Noto Serif TC", "Noto Serif HK", "Noto Serif JP", "Noto Serif KR", "SimSun", "Songti SC", "PMingLiU", "Yu Mincho", "Batang"`;
+			}
+			return `${cjkOrder}, "Noto Serif", Georgia, ${SPKMOD_EMOJI_FONT_FALLBACK}, serif`;
+		}
+		case "rounded": {
+			let roundedOrder = `"M PLUS Rounded 1c", "Jua", "ZCOOL KuaiLe", "Hiragino Maru Gothic ProN", "Yu Gothic UI", "Malgun Gothic", "Microsoft JhengHei"`;
+			if (lang === "ko") {
+				roundedOrder = `"Jua", "M PLUS Rounded 1c", "ZCOOL KuaiLe", "Malgun Gothic", "Apple SD Gothic Neo", "Yu Gothic UI", "Microsoft JhengHei"`;
+			} else if (lang === "zh-TW" || lang === "zh-CN") {
+				roundedOrder = `"ZCOOL KuaiLe", "M PLUS Rounded 1c", "Jua", "Microsoft JhengHei", "PingFang TC", "PingFang SC", "Yu Gothic UI", "Malgun Gothic"`;
+			}
+			return `${roundedOrder}, ${SPKMOD_EMOJI_FONT_FALLBACK}, sans-serif`;
+		}
+		case "pixel": {
+			let pixelOrder = `"DotGothic16", "SpkDungGeunMo", "Silkscreen", "MS Gothic", "GulimChe"`;
+			if (lang === "ko") {
+				pixelOrder = `"SpkDungGeunMo", "DotGothic16", "Silkscreen", "GulimChe", "MS Gothic"`;
+			} else if (lang !== "ja" && lang !== "zh-TW" && lang !== "zh-CN") {
+				pixelOrder = `"Silkscreen", "SpkDungGeunMo", "DotGothic16", "Consolas", "MS Gothic"`;
+			}
+			return `${pixelOrder}, ${SPKMOD_EMOJI_FONT_FALLBACK}, monospace`;
+		}
+		case "monospace":
+			return `"JetBrains Mono", Consolas, "SFMono-Regular", "D2Coding", "MS Gothic", "PMingLiU", "SimSun", ${SPKMOD_EMOJI_FONT_FALLBACK}, monospace`;
+		case "custom":
+			return sanitizeSpkmodCustomFont(customValue);
+		default:
+			return "";
+	}
+}
+
+function getSpkmodGoogleFontUrl(preset) {
+	switch (preset) {
+		case "trickcalPop":
+		case "oneMobilePop":
+		case "dfpPop":
+		case "mochiyPop":
+		case "knBobohei":
+			return "https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&display=swap";
+		case "serif":
+			return "https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Noto+Serif+KR:wght@400;700&family=Noto+Serif+SC:wght@400;700&family=Noto+Serif+TC:wght@400;700&family=Noto+Serif+HK:wght@400;700&display=swap";
+		case "rounded":
+			return "https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&family=Jua&family=ZCOOL+KuaiLe&display=swap";
+		case "pixel":
+			return "https://fonts.googleapis.com/css2?family=DotGothic16&family=Silkscreen:wght@400;700&display=swap";
+		case "monospace":
+			return "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap";
+		default:
+			return "";
+	}
+}
+
+function ensureSpkmodFontResources(preset) {
+	if (typeof document === "undefined" || !document.head) return;
+
+	const needsPopFaces = (preset === "trickcalPop" || preset === "oneMobilePop" || preset === "dfpPop" || preset === "mochiyPop" || preset === "knBobohei");
+	const needsPixelFace = (preset === "pixel");
+	let faceStyle = document.getElementById("spkmod-font-faces");
+
+	if (!needsPopFaces && !needsPixelFace) {
+		if (faceStyle) faceStyle.remove();
+	} else {
+		if (!faceStyle) {
+			faceStyle = document.createElement("style");
+			faceStyle.id = "spkmod-font-faces";
+			document.head.appendChild(faceStyle);
+		}
+		let css = "";
+		if (needsPopFaces) {
+			css += `
+				@font-face {
+					font-family: "SpkOneMobilePop";
+					src: local("ONE Mobile POP"),
+					     local("ONE Mobile POP OTF"),
+					     local("ONEMobilePOP"),
+					     url("https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2105_2@1.0/ONE-Mobile-POP.woff") format("woff"),
+					     url("${SPKMOD_REPO_FONTS_BASE}ONE%20Mobile%20POP.ttf") format("truetype");
+					font-display: swap;
+				}
+				@font-face {
+					font-family: "SpkDFPPop1W9";
+					src: local("DFPop1-W9"),
+					     local("DFPPop1-W9"),
+					     local("DFP-Pop1-W9"),
+					     local("ＤＦＰ人気体W9"),
+					     local("DFP人気体W9"),
+					     url("${SPKMOD_REPO_FONTS_BASE}DFP-Pop1-W9.ttf") format("truetype");
+					font-display: swap;
+				}
+				@font-face {
+					font-family: "SpkMochiyPop";
+					src: local("MochiyPopOne-ExtraBold"),
+					     url("${SPKMOD_REPO_FONTS_BASE}MochiyPopOne-OTF-ExtraBold.otf") format("opentype"),
+					     local("Mochiy Pop One"),
+					     local("MochiyPopOne-Regular");
+					font-display: swap;
+				}
+				@font-face {
+					font-family: "SpkKNBobohei";
+					src: local("KNBobohei-Bold"),
+					     local("KNBobohei Bold"),
+					     local("KN波波黑-Bold"),
+					     local("KN波波黑 Bold"),
+					     url("${SPKMOD_REPO_FONTS_BASE}KNBobohei-Bold.ttf") format("truetype");
+					font-display: swap;
+				}
+			`;
+		}
+		if (needsPixelFace) {
+			css += `
+				@font-face {
+					font-family: "SpkDungGeunMo";
+					src: local("DungGeunMo"),
+					     local("둥근모꼴"),
+					     url("https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/DungGeunMo.woff") format("woff");
+					font-display: swap;
+				}
+			`;
+		}
+		if (faceStyle.textContent !== css) {
+			faceStyle.textContent = css;
+		}
+	}
+
+	const gFontUrl = getSpkmodGoogleFontUrl(preset);
+	let linkEl = document.getElementById("spkmod-google-font-link");
+	if (!gFontUrl) {
+		if (linkEl) linkEl.remove();
+	} else {
+		if (!linkEl) {
+			linkEl = document.createElement("link");
+			linkEl.id = "spkmod-google-font-link";
+			linkEl.rel = "stylesheet";
+			document.head.appendChild(linkEl);
+		}
+		if (linkEl.href !== gFontUrl) {
+			linkEl.href = gFontUrl;
+		}
+	}
+}
+
+function scheduleSpkmodCanvasFontRefresh() {
+	if (__spkmodFontRedrawTimer) clearTimeout(__spkmodFontRedrawTimer);
+	__spkmodFontRedrawTimer = setTimeout(() => {
+		__spkmodFontRedrawTimer = null;
+		if (typeof window.spkmodForceNametagRedraw === "function") {
+			window.spkmodForceNametagRedraw();
+		}
+		if (typeof drawZoneMap === "function" && typeof document !== "undefined") {
+			const mapModal = document.getElementById("spkmod-map-modal");
+			if (mapModal && !mapModal.classList.contains("hidden")) {
+				try { drawZoneMap(); } catch (_) {}
+			}
+		}
+	}, 120);
+}
+
+function hookSpkmodCanvasFontOnce() {
+	if (typeof window === "undefined" || window.__spkmodCanvasFontHooked) return;
+	if (typeof CanvasRenderingContext2D === "undefined" || !CanvasRenderingContext2D.prototype) return;
+	const desc = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, "font");
+	if (!desc || typeof desc.set !== "function" || typeof desc.get !== "function") return;
+
+	Object.defineProperty(CanvasRenderingContext2D.prototype, "font", {
+		configurable: true,
+		enumerable: desc.enumerable,
+		get: function () {
+			return desc.get.call(this);
+		},
+		set: function (value) {
+			if (lunActiveFontStack && typeof value === "string") {
+				const m = value.match(/^(.*?\b\d+(?:\.\d+)?px(?:\s*\/\s*[^\s]+)?)\s+(.+)$/i);
+				if (m) {
+					return desc.set.call(this, `${m[1]} ${lunActiveFontStack}`);
+				}
+			}
+			return desc.set.call(this, value);
+		}
+	});
+	window.__spkmodCanvasFontHooked = true;
+
+	if (typeof document !== "undefined" && document.fonts && typeof document.fonts.addEventListener === "function") {
+		document.fonts.addEventListener("loadingdone", () => {
+			if (lunActiveFontStack) {
+				scheduleSpkmodCanvasFontRefresh();
+			}
+		});
+	}
+}
+
+function getSpkmodActiveFontStack() {
+	return lunActiveFontStack;
+}
+
+function applySpkmodFont(preset, customValue, persist = true) {
+	if (preset !== undefined) {
+		lunFontPreset = SPKMOD_VALID_FONT_PRESETS.has(preset) ? preset : "default";
+	}
+	if (customValue !== undefined) {
+		lunCustomFont = String(customValue);
+	}
+	if (persist && typeof window !== "undefined" && window.localStorage) {
+		localStorage.setItem("spkmod-font-preset", lunFontPreset);
+		localStorage.setItem("spkmod-custom-font", lunCustomFont);
+	}
+
+	ensureSpkmodFontResources(lunFontPreset);
+	lunActiveFontStack = buildSpkmodFontStack(lunFontPreset, lunCustomFont);
+
+	if (typeof updateDynamicStyles === "function") {
+		updateDynamicStyles();
+	}
+	scheduleSpkmodCanvasFontRefresh();
+
+	if (lunActiveFontStack && typeof document !== "undefined" && document.fonts && typeof document.fonts.load === "function") {
+		try {
+			document.fonts.load(`bold 24px ${lunActiveFontStack}`, "Speaki 스피키 スピキ 測試 123").then(() => {
+				scheduleSpkmodCanvasFontRefresh();
+			}).catch(() => {});
+		} catch (_) {}
+	}
+}
+
+window.getSpkmodActiveFontStack = getSpkmodActiveFontStack;
+window.applySpkmodFont = applySpkmodFont;
+hookSpkmodCanvasFontOnce();
+applySpkmodFont(lunFontPreset, lunCustomFont, false);
 var lunChromaKeyColor = (window.localStorage && localStorage.getItem("spkmod-chroma-key")) || "none";
 var lunChromaFloorShape = (window.localStorage && localStorage.getItem("spkmod-chroma-floor-shape")) || "off";
 var lunChromaFloorScale = parseFloat((window.localStorage && localStorage.getItem("spkmod-chroma-floor-scale")) || "1.0") || 1.0;
@@ -4422,6 +4729,20 @@ function updateDynamicStyles() {
 		localStorage.setItem("spkmod-hud-bg", lunHudBackground);
 	}
 
+	const activeFontStack = (typeof getSpkmodActiveFontStack === "function") ? getSpkmodActiveFontStack() : "";
+	const customFontRules = activeFontStack ? `
+		:root {
+			--sr-font: ${activeFontStack} !important;
+		}
+		body, #app,
+		input, button, textarea, select, .sr-input, .sr-btn,
+		#spkmod-hud, #spkmod-drag-btn,
+		[id^="spkmod-"], [id^="spkmod-"] *:not(code):not(pre):not(.spkmod-ql-masked),
+		.spkmod-avatar-dialog, .spkmod-avatar-dialog * {
+			font-family: ${activeFontStack} !important;
+		}
+	` : "";
+
 	const styleTag = document.getElementById("spkmod-dynamic-styles") || document.createElement("style");
 	styleTag.id = "spkmod-dynamic-styles";
 	styleTag.innerHTML = `
@@ -4431,6 +4752,7 @@ function updateDynamicStyles() {
 			--spkmod-blur: ${blurRule};
 			--spkmod-accent: ${lunAccentColor};
 		}
+		${customFontRules}
 				#app { filter: ${filterRule}; }
 		#app > *:not(:has(canvas)):not(canvas):not(.sr-click-ripple-layer) { zoom: ${lunGameUiScale} !important; }
 		#spkmod-hud, #spkmod-settings-modal, #spkmod-event-modal, #spkmod-patchnotes-modal, #spkmod-bbs-modal, #spkmod-info-modal, #spkmod-effects-modal, #spkmod-stats-modal, #spkmod-edits-modal, #spkmod-quests-modal { transform: scale(var(--spkmod-scale)); transform-origin: top left; }
@@ -6592,6 +6914,59 @@ document.body.appendChild(
 						oninput: e => {
 							if (window.localStorage) localStorage.setItem("spkmod-custom-hud-bg", e.target.value);
 							updateDynamicStyles();
+						}
+					})
+				]),
+				buildElement("div", { className: "spkmod-panel-cat" }, [
+					lunPanelElements.fontPresetLabel = buildElement("span", { style: "color: #fff; font-size: 11px; font-weight: bold; flex: 1;", innerText: t("fontPresetLabel") || "Game Font" }),
+					lunPanelElements.fontPresetSelect = buildElement("select", {
+						className: "spkmod-panel-combo",
+						style: "max-width: 125px;",
+						value: lunFontPreset,
+						onchange: e => {
+							const val = e.target.value;
+							if (lunPanelElements.customFontContainer) {
+								if (val === "custom") lunPanelElements.customFontContainer.classList.remove("hidden");
+								else lunPanelElements.customFontContainer.classList.add("hidden");
+							}
+							if (typeof applySpkmodFont === "function") {
+								applySpkmodFont(val, lunPanelElements.customFontInput ? lunPanelElements.customFontInput.value : lunCustomFont, true);
+							}
+						}
+					}, [
+						buildElement("option", { value: "default", innerText: t("fontPresetDefault") || "Default", selected: lunFontPreset === "default" }),
+						buildElement("option", { value: "trickcalPop", innerText: t("fontPresetTrickcalPop") || "Pop (Auto CJK)", selected: lunFontPreset === "trickcalPop" }),
+						buildElement("option", { value: "oneMobilePop", innerText: "ONE Mobile POP", selected: lunFontPreset === "oneMobilePop" }),
+						buildElement("option", { value: "dfpPop", innerText: "DFP-Pop1-W9", selected: lunFontPreset === "dfpPop" }),
+						buildElement("option", { value: "mochiyPop", innerText: "Mochiy Pop One", selected: lunFontPreset === "mochiyPop" }),
+						buildElement("option", { value: "knBobohei", innerText: "KNBobohei Bold", selected: lunFontPreset === "knBobohei" }),
+						buildElement("option", { value: "serif", innerText: t("fontPresetSerif") || "Serif (Mincho)", selected: lunFontPreset === "serif" }),
+						buildElement("option", { value: "rounded", innerText: t("fontPresetRounded") || "Rounded (Maru)", selected: lunFontPreset === "rounded" }),
+						buildElement("option", { value: "pixel", innerText: t("fontPresetPixel") || "Pixel / Retro", selected: lunFontPreset === "pixel" }),
+						buildElement("option", { value: "monospace", innerText: t("fontPresetMonospace") || "Monospace", selected: lunFontPreset === "monospace" }),
+						buildElement("option", { value: "custom", innerText: t("fontPresetCustom") || "Custom OS Font...", selected: lunFontPreset === "custom" })
+					])
+				]),
+				lunPanelElements.customFontContainer = buildElement("div", {
+					className: "spkmod-panel-cat" + (lunFontPreset === "custom" ? "" : " hidden"),
+					style: "margin-top: 2px;"
+				}, [
+					lunPanelElements.customFontInputLabel = buildElement("span", { style: "color: #aaa; font-size: 10px; flex: 1;", innerText: t("customFontInputLabel") || "Font:" }),
+					lunPanelElements.customFontInput = buildElement("input", {
+						type: "text",
+						value: lunCustomFont,
+						placeholder: t("customFontPlaceholder") || "Meiryo, Yu Mincho...",
+						style: "width: 115px; background: #222; color: #fff; border: 1px solid #444; border-radius: 3px; font-size: 10px; padding: 2px;",
+						oninput: e => {
+							const v = e.target.value;
+							lunCustomFont = v;
+							if (window.localStorage) localStorage.setItem("spkmod-custom-font", v);
+							if (window.__spkmodCustomFontInputDebounce) clearTimeout(window.__spkmodCustomFontInputDebounce);
+							window.__spkmodCustomFontInputDebounce = setTimeout(() => {
+								if (typeof applySpkmodFont === "function") {
+									applySpkmodFont("custom", v, true);
+								}
+							}, 250);
 						}
 					})
 				]),
@@ -17502,6 +17877,19 @@ spkmodI18nRenderers.push(() => {
 		if (lunPanelElements.bgOpacitySelect.options[5]) lunPanelElements.bgOpacitySelect.options[5].innerText = t("bgOpacityHeavyGlass") || "Heavy Glass";
 	}
 	if (lunPanelElements.hudBgLabel) setText(lunPanelElements.hudBgLabel, t("hudBackgroundLabel"));
+	if (lunPanelElements.fontPresetLabel) setText(lunPanelElements.fontPresetLabel, t("fontPresetLabel") || "Game Font");
+	if (lunPanelElements.fontPresetSelect && lunPanelElements.fontPresetSelect.options) {
+		const opts = lunPanelElements.fontPresetSelect.options;
+		if (opts[0]) opts[0].innerText = t("fontPresetDefault") || "Default";
+		if (opts[1]) opts[1].innerText = t("fontPresetTrickcalPop") || "Pop (Auto CJK)";
+		if (opts[6]) opts[6].innerText = t("fontPresetSerif") || "Serif (Mincho)";
+		if (opts[7]) opts[7].innerText = t("fontPresetRounded") || "Rounded (Maru)";
+		if (opts[8]) opts[8].innerText = t("fontPresetPixel") || "Pixel / Retro";
+		if (opts[9]) opts[9].innerText = t("fontPresetMonospace") || "Monospace";
+		if (opts[10]) opts[10].innerText = t("fontPresetCustom") || "Custom OS Font...";
+	}
+	if (lunPanelElements.customFontInputLabel) setText(lunPanelElements.customFontInputLabel, t("customFontInputLabel") || "Font:");
+	if (lunPanelElements.customFontInput) lunPanelElements.customFontInput.placeholder = t("customFontPlaceholder") || "Meiryo, Yu Mincho...";
 	if (lunPanelElements.accentColorLabel) setText(lunPanelElements.accentColorLabel, t("accentColorLabel"));
 	if (lunPanelElements.exportSettingsBtn) setText(lunPanelElements.exportSettingsBtn, t("exportSettingsBtn"));
 	if (lunPanelElements.importSettingsBtn) setText(lunPanelElements.importSettingsBtn, t("importSettingsBtn"));
@@ -19280,48 +19668,68 @@ function tick() {
 
 
 window.spkmodForceNametagRedraw = function() {
-    if (typeof gameState === 'undefined' || !gameState) return;
-    
-    const redrawAvatar = (entity) => {
-        if (entity && entity.avatar && typeof entity.avatar.setLabel === 'function' && entity.info) {
+	if (typeof gameState === 'undefined' || !gameState) return;
+
+	const redrawAvatar = (entity) => {
+		if (!entity || !entity.avatar || typeof entity.avatar.setLabel !== 'function') return;
+		hookAvatarLabel(entity);
+		if (entity.info && entity.info.name) {
 			const lvl = entity.info.__spkmodOrigLevel || entity.info.level || 1;
-            entity.avatar.setLabel("LV" + lvl + " " + (entity.info.name || ""));
-        }
-    };
-    
-    if (gameState.remotePlayers && gameState.remotePlayers.remotePlayers) {
-        gameState.remotePlayers.remotePlayers.forEach(redrawAvatar);
-    }
-    if (gameState.playerContainer) {
-        const lvl = (gameState.myStat && gameState.myStat.level) ? gameState.myStat.level : 1;
-        const name = (gameState.myPlayerName || (gameState.myStat && gameState.myStat.name)) || "";
-        if (gameState.playerContainer.avatar && typeof gameState.playerContainer.avatar.setLabel === 'function') {
-            gameState.playerContainer.avatar.setLabel("LV" + lvl + " " + name);
-        }
-    }
+			entity.avatar.setLabel("LV" + lvl + " " + entity.info.name);
+		} else if (typeof entity.avatar.__spkmodLastRawLabel === "string" && entity.avatar.__spkmodLastRawLabel) {
+			entity.avatar.setLabel(entity.avatar.__spkmodLastRawLabel);
+		}
+	};
+
+	if (gameState.remotePlayers && gameState.remotePlayers.remotePlayers) {
+		gameState.remotePlayers.remotePlayers.forEach(redrawAvatar);
+	}
+	if (gameState.remotePetRegistry && gameState.remotePetRegistry.pets) {
+		gameState.remotePetRegistry.pets.forEach(redrawAvatar);
+	}
+	if (gameState.remoteDroneCoreRegistry && gameState.remoteDroneCoreRegistry.droneCores) {
+		gameState.remoteDroneCoreRegistry.droneCores.forEach(redrawAvatar);
+	}
+
+	const lvl = (gameState.myStat && gameState.myStat.level) ? gameState.myStat.level : 1;
+	const name = (gameState.myPlayerName || (gameState.myStat && gameState.myStat.name)) || "";
+	if (gameState.playerContainer && gameState.playerContainer.avatar && typeof gameState.playerContainer.avatar.setLabel === 'function') {
+		hookAvatarLabel(gameState.playerContainer, gameState.playerContainer);
+		if (name) gameState.playerContainer.avatar.setLabel("LV" + lvl + " " + name);
+	}
+	if (gameState.localAvatar && typeof gameState.localAvatar.setLabel === 'function') {
+		hookAvatarLabel({ avatar: gameState.localAvatar, container: gameState.playerContainer, isLocalPlayer: true }, gameState.playerContainer);
+		if (name) gameState.localAvatar.setLabel("LV" + lvl + " " + name);
+	}
 };
 
-function hookAvatarLabel(entity) {
+function hookAvatarLabel(entity, explicitContainer) {
 	if (!entity || !entity.avatar) return;
 	const avatar = entity.avatar;
 	if (typeof avatar.setLabel !== 'function' || avatar.__spkmodLabelPatched) return;
-	
+
+	const resolveContainer = () => explicitContainer || entity.container || entity.root || avatar.root || (typeof entity.traverse === 'function' ? entity : null);
+
 	const origSetLabel = avatar.setLabel;
 	avatar.setLabel = function(text, ...args) {
+		if (typeof text === 'string' && text.length > 0 && (!lunHidePlayerLevels || text.startsWith("LV"))) {
+			avatar.__spkmodLastRawLabel = text;
+		}
 		if (lunHidePlayerLevels && typeof text === 'string' && text.startsWith("LV")) {
 			const spaceIdx = text.indexOf(" ");
 			if (spaceIdx !== -1) {
 				text = text.substring(spaceIdx + 1); // remove "LVxxx "
 			}
 		}
-		
+
 		try {
-			if (entity && entity.container && typeof entity.container.traverse === 'function') {
-				entity.container.traverse(obj => {
+			const targetContainer = resolveContainer();
+			if (targetContainer && typeof targetContainer.traverse === 'function') {
+				targetContainer.traverse(obj => {
 					// Position check ensures we only hit the floating nametag sprite above the player
 					if (obj && obj.isSprite && obj.material && obj.material.map && obj.position && obj.position.y > 1.0) {
 						obj.material.map.dispose();
-						
+
 						if (obj.material.map.image && typeof obj.material.map.image.getContext === 'function') {
 							const ctx = obj.material.map.image.getContext('2d');
 							ctx.clearRect(0, 0, obj.material.map.image.width, obj.material.map.image.height);
@@ -19334,13 +19742,13 @@ function hookAvatarLabel(entity) {
 		return origSetLabel.call(this, text, ...args);
 	};
 	avatar.__spkmodLabelPatched = true;
-	
-	// Force redraw with current text if setting is on to apply immediately
-	if (lunHidePlayerLevels) {
+
+	// Force redraw with current text if level-hiding or a custom font is active
+	if (lunHidePlayerLevels || (typeof lunFontPreset !== "undefined" && lunFontPreset !== "default")) {
 		if (entity.info && entity.info.name) {
 			const lvl = entity.info.__spkmodOrigLevel || entity.info.level || 1;
 			avatar.setLabel("LV" + lvl + " " + entity.info.name);
-		} else if (entity === gameState.playerContainer) {
+		} else if (entity === gameState.playerContainer || entity.isLocalPlayer) {
 			const lvl = (gameState.myStat && gameState.myStat.level) ? gameState.myStat.level : 1;
 			const name = (gameState.myPlayerName || (gameState.myStat && gameState.myStat.name)) || "";
 			if (name) avatar.setLabel("LV" + lvl + " " + name);
@@ -19366,7 +19774,10 @@ function hookAvatarLabel(entity) {
 	}
 
 	if (gameState.playerContainer && gameState.playerContainer.avatar) {
-		hookAvatarLabel(gameState.playerContainer);
+		hookAvatarLabel(gameState.playerContainer, gameState.playerContainer);
+	}
+	if (gameState.localAvatar && typeof gameState.localAvatar.setLabel === 'function') {
+		hookAvatarLabel({ avatar: gameState.localAvatar, container: gameState.playerContainer, isLocalPlayer: true }, gameState.playerContainer);
 	}
 
 	let partyNames = null;
@@ -21823,6 +22234,11 @@ function onInGameReady() {
 
 	injectQuickLoginIntoSettingsModal();
 	initQuickLoginInGamePrompt();
+	if (typeof lunFontPreset !== "undefined" && lunFontPreset !== "default" && typeof window.spkmodForceNametagRedraw === "function") {
+		setTimeout(() => {
+			if (typeof window.spkmodForceNametagRedraw === "function") window.spkmodForceNametagRedraw();
+		}, 400);
+	}
 	if (typeof checkAndShowNewsPopup === "function") {
 		setTimeout(() => {
 			checkAndShowNewsPopup();
