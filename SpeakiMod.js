@@ -11743,7 +11743,8 @@ const SPKMOD_PUMPKIN_CART_SKINS = {
 	uifi: { id: "uifi", label: ":SPK_88:", file: "test.png", url: "https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/refs/heads/main/test.png" },
 	1: { id: "1", label: "1️⃣", file: "test2.png", url: "https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/refs/heads/main/test2.png" },
 	2: { id: "2", label: "2️⃣", file: "test3.png", url: "https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/refs/heads/main/test3.png" },
-	3: { id: "3", label: "3️⃣", file: "test4.png", url: "https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/refs/heads/main/test4.png" }
+	3: { id: "3", label: "3️⃣", file: "test4.png", url: "https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/refs/heads/main/test4.png" },
+	4: { id: "4", label: "4️⃣ ", file: "dancing.webp", url: "https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/refs/heads/main/dancing.webp" }
 };
 
 window.spkmodActivePumpkinSkin = null;
@@ -13628,6 +13629,15 @@ document.body.appendChild(
 						style: "padding: 5px 2px; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; min-height: 28px;",
 						innerText: "3️⃣",
 						title: "Pumpkin Cart Skin: 3 (test4.png)",
+						onclick: () => {
+							if (window.spkmodSelectPumpkinCartSkin) window.spkmodSelectPumpkinCartSkin("3");
+						}
+					}),
+					lunPanelElements.pumpkinCartTexBtn3 = buildElement("button", {
+						className: "spkmod-panel-btn",
+						style: "padding: 5px 2px; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; min-height: 28px;",
+						innerText: "4️⃣",
+						title: "Pumpkin Cart Skin: 4 (dancing.webp)",
 						onclick: () => {
 							if (window.spkmodSelectPumpkinCartSkin) window.spkmodSelectPumpkinCartSkin("3");
 						}
