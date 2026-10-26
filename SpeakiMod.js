@@ -11750,6 +11750,139 @@ window.spkmodActivePumpkinSkin = null;
 window.spkmodPumpkinCartTexReplaced = false;
 const _spkmodCartImages = {};
 let _spkmodOriginalCartImage = null;
+let _spkmodCartAnimationLoopId = null;
+let _spkmodCartAnimFrames = null;
+let _spkmodCartAnimCanvas = null;
+let _spkmodCartAnimCurrentIndex = 0;
+
+function spkmodStopCartAnimation() {
+	if (_spkmodCartAnimationLoopId) {
+		clearTimeout(_spkmodCartAnimationLoopId);
+		_spkmodCartAnimationLoopId = null;
+	}
+	if (Array.isArray(_spkmodCartAnimFrames)) {
+		for (const frame of _spkmodCartAnimFrames) {
+			if (frame && frame.bitmap && typeof frame.bitmap.close === "function") {
+				try { frame.bitmap.close(); } catch (_) {}
+			}
+		}
+		_spkmodCartAnimFrames = null;
+	}
+	_spkmodCartAnimCurrentIndex = 0;
+}
+
+function spkmodIsAnimatedUrl(url) {
+	if (typeof url !== "string") return false;
+	const clean = url.split("?")[0].toLowerCase();
+	return clean.endsWith(".webp") || clean.endsWith(".gif") || clean.endsWith(".apng");
+}
+
+async function spkmodDecodeAnimatedImage(url) {
+	if (typeof window.ImageDecoder === "undefined") {
+		throw new Error("ImageDecoder not supported in this environment");
+	}
+	const res = await fetch(url, { mode: "cors" });
+	if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+	const data = await res.arrayBuffer();
+	const clean = url.split("?")[0].toLowerCase();
+	let type = "image/webp";
+	if (clean.endsWith(".gif")) type = "image/gif";
+	else if (clean.endsWith(".apng")) type = "image/png";
+
+	const decoder = new window.ImageDecoder({ data, type });
+	await decoder.tracks.ready;
+	const track = decoder.tracks.selectedTrack;
+	const frameCount = (track && track.frameCount) ? track.frameCount : 1;
+
+	const frames = [];
+	for (let i = 0; i < frameCount; i++) {
+		const frameResult = await decoder.decode({ frameIndex: i });
+		const durationMicro = frameResult.image.duration;
+		const durationMs = (typeof durationMicro === "number" && durationMicro > 0)
+			? Math.max(16, Math.round(durationMicro / 1000))
+			: 83; // default ~12 fps (83ms)
+		frames.push({
+			bitmap: frameResult.image,
+			duration: durationMs,
+			width: frameResult.image.displayWidth || 512,
+			height: frameResult.image.displayHeight || 512
+		});
+	}
+	return frames;
+}
+
+function spkmodStartCartAnimation(frames, skinKey) {
+	spkmodStopCartAnimation();
+	if (!frames || frames.length === 0) return;
+
+	_spkmodCartAnimFrames = frames;
+	const width = frames[0].width || 512;
+	const height = frames[0].height || 512;
+
+	if (!_spkmodCartAnimCanvas) {
+		_spkmodCartAnimCanvas = document.createElement("canvas");
+	}
+	_spkmodCartAnimCanvas.width = width;
+	_spkmodCartAnimCanvas.height = height;
+	const ctx = _spkmodCartAnimCanvas.getContext("2d");
+
+	ctx.clearRect(0, 0, width, height);
+	ctx.drawImage(frames[0].bitmap, 0, 0, width, height);
+	spkmodApplyPumpkinCartTextureToScene(true, _spkmodCartAnimCanvas);
+
+	if (frames.length <= 1) return;
+
+	_spkmodCartAnimCurrentIndex = 0;
+	function tick() {
+		if (window.spkmodActivePumpkinSkin !== skinKey) {
+			spkmodStopCartAnimation();
+			return;
+		}
+		_spkmodCartAnimCurrentIndex = (_spkmodCartAnimCurrentIndex + 1) % _spkmodCartAnimFrames.length;
+		const curFrame = _spkmodCartAnimFrames[_spkmodCartAnimCurrentIndex];
+		ctx.clearRect(0, 0, width, height);
+		ctx.drawImage(curFrame.bitmap, 0, 0, width, height);
+
+		if (typeof gameState !== "undefined" && gameState && gameState.scene) {
+			gameState.scene.traverse(child => {
+				if (child.isMesh && child.material) {
+					const mats = Array.isArray(child.material) ? child.material : [child.material];
+					for (const m of mats) {
+						if (m && m.map && m.map.image === _spkmodCartAnimCanvas) {
+							m.map.needsUpdate = true;
+						}
+					}
+				}
+			});
+		}
+
+		_spkmodCartAnimationLoopId = setTimeout(tick, curFrame.duration);
+	}
+
+	_spkmodCartAnimationLoopId = setTimeout(tick, frames[0].duration);
+}
+
+window.spkmodPlayAnimatedCartTexture = function (url, skinKey = "custom_anim") {
+	spkmodEnsurePumpkinCartHooks();
+	window.spkmodActivePumpkinSkin = skinKey;
+	window.spkmodPumpkinCartTexReplaced = true;
+	spkmodDecodeAnimatedImage(url).then(frames => {
+		if (window.spkmodActivePumpkinSkin === skinKey) {
+			spkmodStartCartAnimation(frames, skinKey);
+		}
+	}).catch(err => {
+		console.warn("[SpeakiMod] Animated texture error:", err);
+		const img = new Image();
+		img.crossOrigin = "anonymous";
+		img.onload = () => {
+			if (window.spkmodActivePumpkinSkin === skinKey) {
+				spkmodApplyPumpkinCartTextureToScene(true, img);
+			}
+		};
+		img.src = url;
+	});
+	spkmodUpdatePumpkinCartButtonStyles();
+};
 
 function spkmodGetCurrentPumpkinSkinUrl() {
 	if (!window.spkmodActivePumpkinSkin) return null;
@@ -11924,6 +12057,7 @@ window.spkmodSelectPumpkinCartSkin = function (skinKey) {
 	if (skinKey === null || skinKey === undefined || window.spkmodActivePumpkinSkin === skinKey) {
 		window.spkmodActivePumpkinSkin = null;
 		window.spkmodPumpkinCartTexReplaced = false;
+		spkmodStopCartAnimation();
 		if (!_spkmodOriginalCartImage) {
 			spkmodGetOriginalCartImage(() => {
 				spkmodApplyPumpkinCartTextureToScene(false);
@@ -11944,11 +12078,27 @@ window.spkmodSelectPumpkinCartSkin = function (skinKey) {
 	window.spkmodActivePumpkinSkin = skinKey;
 	window.spkmodPumpkinCartTexReplaced = true;
 
-	spkmodGetCartSkinImage(skinKey, img => {
-		if (window.spkmodActivePumpkinSkin === skinKey) {
-			spkmodApplyPumpkinCartTextureToScene(true, img);
-		}
-	});
+	if (spkmodIsAnimatedUrl(skin.url)) {
+		spkmodDecodeAnimatedImage(skin.url).then(frames => {
+			if (window.spkmodActivePumpkinSkin === skinKey) {
+				spkmodStartCartAnimation(frames, skinKey);
+			}
+		}).catch(err => {
+			console.warn("[SpeakiMod] Animated texture decode error, falling back to static:", err);
+			spkmodGetCartSkinImage(skinKey, img => {
+				if (window.spkmodActivePumpkinSkin === skinKey) {
+					spkmodApplyPumpkinCartTextureToScene(true, img);
+				}
+			});
+		});
+	} else {
+		spkmodStopCartAnimation();
+		spkmodGetCartSkinImage(skinKey, img => {
+			if (window.spkmodActivePumpkinSkin === skinKey) {
+				spkmodApplyPumpkinCartTextureToScene(true, img);
+			}
+		});
+	}
 	spkmodUpdatePumpkinCartButtonStyles();
 
 	if (typeof chatLog === "function") {
