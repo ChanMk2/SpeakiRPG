@@ -1585,6 +1585,8 @@ var lunPanelElements = {
 	filterToggleInput: null,
 	gmChatToggleLabel: null,
 	gmChatToggleInput: null,
+	chatRandomColorsLabel: null,
+	chatRandomColorsToggleInput: null,
 	mentionAlertToggleLabel: null,
 	mentionAlertToggleInput: null,
 	translateToggleLabel: null,
@@ -2319,6 +2321,15 @@ var lunChatTimestampsEnabled = (window.localStorage && localStorage.getItem("spk
 function setChatTimestampsEnabled(enabled) {
 	lunChatTimestampsEnabled = !!enabled;
 	if (window.localStorage) localStorage.setItem("spkmod-chat-timestamps", lunChatTimestampsEnabled ? "true" : "false");
+}
+
+var lunChatRandomColorsEnabled = (window.localStorage && localStorage.getItem("spkmod-chat-random-colors")) === "true";
+function setChatRandomColorsEnabled(enabled) {
+	lunChatRandomColorsEnabled = !!enabled;
+	if (window.localStorage) localStorage.setItem("spkmod-chat-random-colors", lunChatRandomColorsEnabled ? "true" : "false");
+	if (typeof document !== "undefined" && document.body) {
+		document.body.classList.toggle("spkmod-chat-player-colors-on", lunChatRandomColorsEnabled);
+	}
 }
 
 var lunLowHpWarningEnabled = (window.localStorage && localStorage.getItem("spkmod-low-hp-warning")) === "true";
@@ -3364,6 +3375,7 @@ const SPKMOD_SETTINGS_KEYS = new Set([
 	"spkmod-bg-opacity",
 	"spkmod-camera-effect",
 	"spkmod-channel-tracker",
+	"spkmod-chat-random-colors",
 	"spkmod-chat-timestamps",
 	"spkmod-currency-tracker",
 	"spkmod-custom-font",
@@ -4992,13 +5004,24 @@ document.head.appendChild(buildElement(
 			pointer-events: auto;
 		}
 		.sr-chatbox__body-text.spkmod-translated-line { color: #ffd54a !important; -webkit-text-fill-color: #ffd54a !important;  }
+		body.spkmod-chat-player-colors-on .sr-chatbox__sender.spkmod-colored-msg-el,
+		body.spkmod-chat-player-colors-on .sr-chatbox__body-text.spkmod-colored-msg-el:not(.spkmod-gmdt-line),
+		body.spkmod-chat-player-colors-on .sr-chatbox__body-text.spkmod-translated-line.spkmod-colored-msg-el {
+			color: var(--spkmod-msg-color) !important;
+			-webkit-text-fill-color: var(--spkmod-msg-color) !important;
+			text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85) !important;
+		}
+		body.spkmod-chat-player-colors-on .sr-chatbox__sender.spkmod-friend-sender.spkmod-colored-msg-el {
+			text-shadow: 0 0 6px rgba(77, 208, 225, 0.45), 0 1px 2px rgba(0, 0, 0, 0.85) !important;
+		}
 		.sr-chatbox__row.spkmod-mention-line {
 			background: rgba(255, 200, 0, 0.15) !important;
 			border-left: 3px solid #ffcc00 !important;
 		}
-		.sr-chatbox__row.spkmod-mention-line .sr-chatbox__body-text {
+		body .sr-chatbox__row.spkmod-mention-line .sr-chatbox__body-text {
 			font-weight: bold !important;
 			color: #fffacd !important;
+			-webkit-text-fill-color: #fffacd !important;
 			text-shadow: 1px 1px 2px #000, 0 0 4px #ffaa00 !important;
 		}
 		.sr-chatbox__body-text.spkmod-gmdt-line { font-weight: 800 !important; color: #ffa726 !important; -webkit-text-fill-color: #ffa726 !important; text-shadow: 0 0 6px rgba(255, 167, 38, 0.45) !important; }
@@ -6700,6 +6723,19 @@ document.body.appendChild(
 						onchange: e => {
 							setFriendChatHighlightEnabled(e.target.checked);
 							if (e.target.checked) fetchFriendsList(true);
+						}
+					})
+				]),
+				buildElement("div", { className: "spkmod-panel-cat" }, [
+					lunPanelElements.chatRandomColorsLabel = buildElement("span", {
+						style: "color: #fff; font-size: 11px; font-weight: bold; user-select: none; flex: 1;",
+						innerText: (function() { const s = t("chatRandomColorsToggleLabel"); return (!s || s === "chatRandomColorsToggleLabel") ? "Colorize Player Messages" : s; })()
+					}),
+					lunPanelElements.chatRandomColorsToggleInput = buildElement("input", {
+						type: "checkbox",
+						checked: lunChatRandomColorsEnabled,
+						onchange: e => {
+							setChatRandomColorsEnabled(e.target.checked);
 						}
 					})
 				]),
@@ -17719,7 +17755,62 @@ async function translateChatText(text, source, target) {
 	return run;
 }
 
-function maybeTranslateChatMessage(id, name, msg) {
+const LUN_CHAT_PLAYER_PALETTE = [
+	"#ff9eaa", // Soft Rose
+	"#ffd54a", // Warm Gold
+	"#a5d6a7", // Mint Green
+	"#ce93d8", // Light Orchid
+	"#ffab91", // Peach Apricot
+	"#fff59d", // Lemon Cream
+	"#9fa8da", // Soft Periwinkle
+	"#f48fb1", // Bubblegum Pink
+	"#c5e1a5", // Pastel Lime
+	"#ffcc80"  // Warm Amber
+];
+const LUN_CHAT_FRIEND_COLOR = "#4dd0e1";
+const lunChatPlayerColorMap = new Map();
+let lunLastChatSpeaker = null;
+let lunLastChatColor = null;
+
+function resolveChatMessageColor(id, name) {
+	if (id === -1337 || id === -1338) return null;
+	const cleanName = typeof name === "string" ? name.trim() : "";
+	if (!cleanName) return null;
+	const lowerKey = cleanName.toLowerCase();
+
+	if (typeof lunGmChatHighlightEnabled !== "undefined" && lunGmChatHighlightEnabled && cleanName.toUpperCase() === "GMDT") {
+		lunLastChatSpeaker = lowerKey;
+		lunLastChatColor = "#ffa726";
+		return "#ffa726";
+	}
+
+	if (typeof lunFriendChatHighlightEnabled !== "undefined" && lunFriendChatHighlightEnabled && typeof lunFriendNicknames !== "undefined" && lunFriendNicknames.has(lowerKey)) {
+		lunLastChatSpeaker = lowerKey;
+		lunLastChatColor = LUN_CHAT_FRIEND_COLOR;
+		return LUN_CHAT_FRIEND_COLOR;
+	}
+
+	if (lunLastChatSpeaker === lowerKey && lunLastChatColor && lunLastChatColor !== LUN_CHAT_FRIEND_COLOR && lunLastChatColor !== "#ffa726") {
+		return lunLastChatColor;
+	}
+
+	let color = lunChatPlayerColorMap.get(lowerKey);
+	if (!color || color === lunLastChatColor) {
+		const candidates = LUN_CHAT_PLAYER_PALETTE.filter(c => c !== lunLastChatColor);
+		color = candidates[Math.floor(Math.random() * candidates.length)];
+		lunChatPlayerColorMap.set(lowerKey, color);
+	}
+
+	lunLastChatSpeaker = lowerKey;
+	lunLastChatColor = color;
+	return color;
+}
+
+if (typeof lunChatRandomColorsEnabled !== "undefined" && lunChatRandomColorsEnabled && typeof document !== "undefined" && document.body) {
+	document.body.classList.add("spkmod-chat-player-colors-on");
+}
+
+function maybeTranslateChatMessage(id, name, msg, assignedColor) {
 	if (!lunTranslateEnabled) return;
 	if (id === -1337 || id === -1338) return; // skip SpeakiMod's own system/translation lines
 	if (typeof msg !== "string" || !msg.trim()) return;
@@ -17728,7 +17819,7 @@ function maybeTranslateChatMessage(id, name, msg) {
 	const source = guessSourceLang(msg);
 	translateChatText(msg, source, lunTranslateTarget).then(translated => {
 		if (!translated) return;
-		appendColoredChatLine(-1338, `↳ ${name}`, translated);
+		appendColoredChatLine(-1338, `↳ ${name}`, translated, assignedColor);
 	});
 }	
 
@@ -18081,6 +18172,10 @@ spkmodI18nRenderers.push(() => {
 	if (lunPanelElements.resolutionOverrideLabel && typeof lunResolutionOverrideLabel === "function") setText(lunPanelElements.resolutionOverrideLabel, lunResolutionOverrideLabel());
 	if (lunPanelElements.gmChatToggleLabel) setText(lunPanelElements.gmChatToggleLabel, t("gmChatToggleLabel"));
 	if (lunPanelElements.friendChatToggleLabel) setText(lunPanelElements.friendChatToggleLabel, t("friendChatToggleLabel"));
+	if (lunPanelElements.chatRandomColorsLabel) {
+		const s = t("chatRandomColorsToggleLabel");
+		setText(lunPanelElements.chatRandomColorsLabel, (!s || s === "chatRandomColorsToggleLabel") ? "Colorize Player Messages" : s);
+	}
 	if (lunPanelElements.mentionAlertToggleLabel) setText(lunPanelElements.mentionAlertToggleLabel, t("mentionAlertToggleLabel"));
 	if (lunPanelElements.mentionPingToggleLabel) setText(lunPanelElements.mentionPingToggleLabel, t("mentionPingToggleLabel"));
 	if (lunPanelElements.hideKnownBotsLabel) setText(lunPanelElements.hideKnownBotsLabel, t("hideKnownBotsToggleLabel"));
@@ -20900,6 +20995,10 @@ function hookGameStateOnce() {
 				}
 			}
 
+			const assignedMsgColor = (id !== -1337 && id !== -1338 && filteredMsg && filteredMsg.trim())
+				? resolveChatMessageColor(id, name)
+				: null;
+
 			if (filteredMsg && filteredMsg.trim()) {
 				observeNextChatNode(filteredMsg, (bodyText, rowNode) => {
 					if (isMention) {
@@ -20925,6 +21024,10 @@ function hookGameStateOnce() {
 					}
 
 					if (id !== -1337 && id !== -1338) {
+						if (assignedMsgColor) {
+							bodyText.style.setProperty("--spkmod-msg-color", assignedMsgColor);
+							bodyText.classList.add("spkmod-colored-msg-el");
+						}
 						bodyText.classList.add("spkmod-clickable-line");
 						bodyText.title = t("clickToTranslateTooltip");
 						bodyText.addEventListener("click", (e) => {
@@ -20937,14 +21040,19 @@ function hookGameStateOnce() {
 									insertEmojiIntoChat(tag);
 								}
 							} else {
-								forceTranslateMessage(name, filteredMsg);
+								forceTranslateMessage(name, filteredMsg, assignedMsgColor);
 							}
 						});
 						
-						const senderEl = rowNode.classList?.contains("sr-chatbox__sender") ? rowNode : rowNode.querySelector?.(".sr-chatbox__sender");
+						const rowEl = (rowNode && rowNode.closest?.(".sr-chatbox__row")) || bodyText.closest?.(".sr-chatbox__row") || rowNode;
+						const senderEl = rowEl?.classList?.contains("sr-chatbox__sender") ? rowEl : rowEl?.querySelector?.(".sr-chatbox__sender");
 						if (senderEl) {
 							if (lunFriendChatHighlightEnabled && name && lunFriendNicknames.has(name.trim().toLowerCase())) {
 								senderEl.classList.add("spkmod-friend-sender");
+							}
+							if (assignedMsgColor) {
+								senderEl.style.setProperty("--spkmod-msg-color", assignedMsgColor);
+								senderEl.classList.add("spkmod-colored-msg-el");
 							}
 							let currentText = senderEl.innerText;
 							
@@ -20973,7 +21081,7 @@ function hookGameStateOnce() {
 				});
 			}
 
-			maybeTranslateChatMessage(id, name, filteredMsg);
+			maybeTranslateChatMessage(id, name, filteredMsg, assignedMsgColor);
 			return result;
 		};
 		gameState.chatBox.__speakiAppendHooked = true;
@@ -20991,12 +21099,22 @@ function hookGameStateOnce() {
 window.hookGameStateOnce = hookGameStateOnce;
 hookGameStateOnce();
 
-function appendColoredChatLine(id, name, text) {
+function appendColoredChatLine(id, name, text, customColor) {
 	const scrollEl = updateChatScrollTracking();
 	const wasAtBottom = !lunChatUserScrolledUp && (!scrollEl || (scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight <= 45));
 
-	observeNextChatNode(text, (bodyText) => {
+	observeNextChatNode(text, (bodyText, rowNode) => {
 		bodyText.classList.add("spkmod-translated-line");
+		if (customColor) {
+			bodyText.style.setProperty("--spkmod-msg-color", customColor);
+			bodyText.classList.add("spkmod-colored-msg-el");
+			const rowEl = (rowNode && rowNode.closest?.(".sr-chatbox__row")) || bodyText.closest?.(".sr-chatbox__row") || rowNode;
+			const senderEl = rowEl?.classList?.contains("sr-chatbox__sender") ? rowEl : rowEl?.querySelector?.(".sr-chatbox__sender");
+			if (senderEl) {
+				senderEl.style.setProperty("--spkmod-msg-color", customColor);
+				senderEl.classList.add("spkmod-colored-msg-el");
+			}
+		}
 
 		const spkmodAllEmojis = {...(typeof lunCustomEmojis !== "undefined" ? lunCustomEmojis : {}), ...(typeof lunTrickcalEmojis !== "undefined" ? lunTrickcalEmojis : {}), ...(typeof lunTrickcal2Emojis !== "undefined" ? lunTrickcal2Emojis : {}), ...(typeof lunTrickcal3Emojis !== "undefined" ? lunTrickcal3Emojis : {})};
 		if (Object.keys(spkmodAllEmojis).length > 0) {
@@ -21069,7 +21187,7 @@ function showTranslateSourcePicker(guess, onPick) {
 	document.body.appendChild(picker);
 }
 
-function forceTranslateMessage(name, msg) {
+function forceTranslateMessage(name, msg, assignedColor) {
 	const guess = guessSourceLang(msg);
 	showTranslateSourcePicker(guess, source => {
 		translateChatText(msg, source, lunTranslateTarget).then(translated => {
@@ -21077,7 +21195,7 @@ function forceTranslateMessage(name, msg) {
 				chatLog(t("translateFailedMsg"));
 				return;
 			}
-			appendColoredChatLine(-1338, `↳ ${name}`, translated);
+			appendColoredChatLine(-1338, `↳ ${name}`, translated, assignedColor);
 		});
 	});
 }
