@@ -1578,6 +1578,7 @@ var lunPanelElements = {
 	shakeBtn: null,
 	superShakeBtn: null,
 	hyperShakeBtn: null,
+	pumpkinCartTexBtn: null,
 	pinnedQuestHeader: null,
 	langSelect: null,
 	settingsHeader: null,
@@ -1726,7 +1727,7 @@ function fetchFriendsList(force = false) {
 	lunFriendFetchInProgress = true;
 	const endpoint = (typeof lunActivePingEndpoint !== 'undefined' && lunActivePingEndpoint) || 
 	                 (typeof window.lunActiveApiEndpoint !== 'undefined' && window.lunActiveApiEndpoint) || 
-	                 "https://relay.overture.io.kr";
+	                 "https://sr1.overture.io.kr";
 	const targetUrl = endpoint + "/api/friend/list";
 	const headers = {};
 	if (token) headers["authorization"] = `Bearer ${token}`;
@@ -3433,9 +3434,11 @@ const SPKMOD_SETTINGS_KEYS = new Set([
 	"spkmod-pos-spkmod-map-modal",
 	"spkmod-pos-spkmod-panel",
 	"spkmod-pos-spkmod-patchnotes-modal",
+	"spkmod-pos-spkmod-quests-modal",
 	"spkmod-pos-spkmod-settings-modal",
 	"spkmod-pos-spkmod-stats-modal",
 	"spkmod-pumpkin-tracker",
+	"spkmod-quests-modal-open",
 	"spkmod-reset-timer",
 	"spkmod-separate-panel",
 	"spkmod-session-gold",
@@ -5029,6 +5032,9 @@ document.head.appendChild(buildElement(
 		body.spkmod-chat-player-colors-on .sr-chatbox__sender.spkmod-party-sender.spkmod-colored-msg-el {
 			text-shadow: 0 0 6px rgba(105, 240, 174, 0.45), 0 1px 2px rgba(0, 0, 0, 0.85) !important;
 		}
+		body.spkmod-chat-player-colors-on .sr-chatbox__sender.spkmod-gm-sender.spkmod-colored-msg-el {
+			text-shadow: 0 0 6px rgba(255, 167, 38, 0.45), 0 1px 2px rgba(0, 0, 0, 0.85) !important;
+		}
 		.sr-chatbox__row.spkmod-mention-line {
 			background: rgba(255, 200, 0, 0.15) !important;
 			border-left: 3px solid #ffcc00 !important;
@@ -5042,6 +5048,7 @@ document.head.appendChild(buildElement(
 		.sr-chatbox__body-text.spkmod-gmdt-line { font-weight: 800 !important; color: #ffa726 !important; -webkit-text-fill-color: #ffa726 !important; text-shadow: 0 0 6px rgba(255, 167, 38, 0.45) !important; }
 		.sr-chatbox__sender.spkmod-friend-sender { color: #4dd0e1 !important; -webkit-text-fill-color: #4dd0e1 !important; font-weight: bold !important; text-shadow: 0 0 6px rgba(77, 208, 225, 0.45) !important; }
 		.sr-chatbox__sender.spkmod-party-sender { color: #69f0ae !important; -webkit-text-fill-color: #69f0ae !important; font-weight: bold !important; text-shadow: 0 0 6px rgba(105, 240, 174, 0.45) !important; }
+		.sr-chatbox__sender.spkmod-gm-sender { color: #ffa726 !important; -webkit-text-fill-color: #ffa726 !important; font-weight: bold !important; text-shadow: 0 0 6px rgba(255, 167, 38, 0.45) !important; }
 		.sr-chatbox__body-text.spkmod-clickable-line { cursor: pointer !important; pointer-events: auto !important;}
 		#spkmod-footer {
 			border-top: 1px solid #DDD;
@@ -7359,6 +7366,7 @@ function renderSpkmodInlineEmojis(text, imgStyle) {
         .replace(/"/g, "&quot;");
     const spkmodAllEmojis = {
         t_280: "https://i.imgur.com/tCrOOr5.png",
+        SPK_88: "https://i.imgur.com/6H1r2Vz.gif",
         ...(typeof lunCustomEmojis !== "undefined" ? lunCustomEmojis : {}),
         ...(typeof lunTrickcalEmojis !== "undefined" ? lunTrickcalEmojis : {}),
         ...(typeof lunTrickcal2Emojis !== "undefined" ? lunTrickcal2Emojis : {}),
@@ -11721,6 +11729,130 @@ window.spkmodResetAvatarColors = function() {
 };
 
 // ============================================================================
+// PUMPKIN CART TEXTURE REPLACEMENT TEST (:SPK_88:)
+// ============================================================================
+const SPKMOD_PUMPKIN_CART_ORIG_TEX = "https://speakirpg.overture.io.kr/models/mount_pumpkin_cart_halloween/HW_Map_Body.png";
+const SPKMOD_PUMPKIN_CART_REPLACE_TEX = "https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/refs/heads/main/test.png";
+
+window.spkmodPumpkinCartTexReplaced = false;
+let _spkmodReplacementCartImage = null;
+
+function spkmodEnsurePumpkinCartHooks() {
+	if (window.__spkmodPumpkinCartHooksInstalled) return;
+	window.__spkmodPumpkinCartHooksInstalled = true;
+
+	const imgProto = typeof HTMLImageElement !== 'undefined' ? HTMLImageElement.prototype : null;
+	if (imgProto) {
+		const desc = Object.getOwnPropertyDescriptor(imgProto, "src");
+		if (desc && desc.set) {
+			const origSrcSet = desc.set;
+			Object.defineProperty(imgProto, "src", {
+				set: function (val) {
+					if (window.spkmodPumpkinCartTexReplaced && typeof val === "string" && val.includes("HW_Map_Body.png")) {
+						val = SPKMOD_PUMPKIN_CART_REPLACE_TEX;
+					}
+					return origSrcSet.call(this, val);
+				},
+				get: desc.get,
+				configurable: true,
+				enumerable: true
+			});
+		}
+	}
+
+	if (typeof window.fetch === "function") {
+		const origFetch = window.fetch;
+		window.fetch = function (resource, config) {
+			if (window.spkmodPumpkinCartTexReplaced) {
+				if (typeof resource === "string" && resource.includes("HW_Map_Body.png")) {
+					resource = SPKMOD_PUMPKIN_CART_REPLACE_TEX;
+				} else if (resource && typeof resource.url === "string" && resource.url.includes("HW_Map_Body.png")) {
+					resource = new Request(SPKMOD_PUMPKIN_CART_REPLACE_TEX, resource);
+				}
+			}
+			return origFetch.apply(this, arguments);
+		};
+	}
+}
+
+function spkmodApplyPumpkinCartTextureToScene(enable) {
+	if (typeof gameState === "undefined" || !gameState) return;
+	const scene = gameState.scene;
+	if (!scene || typeof scene.traverse !== "function") return;
+
+	const applyToMat = (mat) => {
+		if (!mat) return;
+		const mats = Array.isArray(mat) ? mat : [mat];
+		for (const m of mats) {
+			if (!m) continue;
+			const isCartMap = m.map && m.map.image && (
+				(typeof m.map.image.src === "string" && (m.map.image.src.includes("HW_Map_Body") || m.map.image.src.includes("test.png"))) ||
+				(m.name && (m.name.includes("HW_Map_Body") || m.name.includes("Pumpkin") || m.name.includes("pumpkin")))
+			);
+			if (isCartMap || (m.__spkmodOrigCartMap !== undefined)) {
+				if (enable) {
+					if (m.__spkmodOrigCartMap === undefined) {
+						m.__spkmodOrigCartMap = m.map;
+					}
+					if (_spkmodReplacementCartImage) {
+						if (m.map) {
+							m.map.image = _spkmodReplacementCartImage;
+							m.map.needsUpdate = true;
+						} else if (window.THREE && window.THREE.Texture) {
+							m.map = new window.THREE.Texture(_spkmodReplacementCartImage);
+							m.map.needsUpdate = true;
+						}
+					}
+					m.needsUpdate = true;
+				} else {
+					if (m.__spkmodOrigCartMap !== undefined) {
+						m.map = m.__spkmodOrigCartMap;
+						if (m.map) m.map.needsUpdate = true;
+						m.needsUpdate = true;
+					}
+				}
+			}
+		}
+	};
+
+	scene.traverse(child => {
+		if (child.isMesh && child.material) {
+			applyToMat(child.material);
+		}
+	});
+}
+
+window.spkmodTogglePumpkinCartTexture = function (forcedState) {
+	spkmodEnsurePumpkinCartHooks();
+	const nextState = typeof forcedState === "boolean" ? forcedState : !window.spkmodPumpkinCartTexReplaced;
+	window.spkmodPumpkinCartTexReplaced = nextState;
+
+	if (nextState) {
+		if (!_spkmodReplacementCartImage) {
+			_spkmodReplacementCartImage = new Image();
+			_spkmodReplacementCartImage.crossOrigin = "anonymous";
+			_spkmodReplacementCartImage.onload = () => {
+				spkmodApplyPumpkinCartTextureToScene(true);
+			};
+			_spkmodReplacementCartImage.src = SPKMOD_PUMPKIN_CART_REPLACE_TEX;
+		} else {
+			spkmodApplyPumpkinCartTextureToScene(true);
+		}
+	} else {
+		spkmodApplyPumpkinCartTextureToScene(false);
+	}
+
+	if (lunPanelElements && lunPanelElements.pumpkinCartTexBtn) {
+		lunPanelElements.pumpkinCartTexBtn.style.border = nextState ? "1px solid #4ade80" : "";
+		lunPanelElements.pumpkinCartTexBtn.style.boxShadow = nextState ? "0 0 8px rgba(74, 222, 128, 0.45)" : "";
+	}
+
+	if (typeof chatLog === "function") {
+		chatLog("🎃 Pumpkin Cart Texture (:SPK_88:): " + (nextState ? "INJECTED (test.png)" : "RESTORED (Original)"));
+	}
+};
+
+// ============================================================================
 // COOKING ANIMATIONS & PROPS (Chop, Stir, Plate, Serve, Carry)
 // ============================================================================
 
@@ -13198,6 +13330,15 @@ document.body.appendChild(
 					className: "spkmod-panel-btn", style: "padding: 6px; font-size: 11px;",
 					innerText: t("flyEveryoneBtn"),
 					onclick: () => window.spkmodTriggerFlyEveryone && window.spkmodTriggerFlyEveryone()
+				}),
+				lunPanelElements.pumpkinCartTexBtn = buildElement("button", {
+					className: "spkmod-panel-btn",
+					style: "padding: 5px 6px; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; gap: 4px;",
+					innerHTML: (typeof renderSpkmodInlineEmojis === "function" ? renderSpkmodInlineEmojis(":SPK_88:", "height: 20px; width: 20px; object-fit: contain; vertical-align: middle; display: inline-block; pointer-events: none;") : "🎃"),
+					title: "Pumpkin Cart Texture Replacement Test (:SPK_88:) (HW_Map_Body.png -> test.png)",
+					onclick: () => {
+						if (window.spkmodTogglePumpkinCartTexture) window.spkmodTogglePumpkinCartTexture();
+					}
 				}),
 
 				// 🍳 Cooking & Kitchen Animations
@@ -18911,9 +19052,11 @@ var questsModalElements = window.questsModalElements = window.questsModalElement
 function buildQuestsModal() {
 	if (lunHudElements.questsModal) return;
 
+	const shouldBeOpen = (window.localStorage && localStorage.getItem("spkmod-quests-modal-open")) === "true";
+
 	lunHudElements.questsModal = buildElement("div", {
 		id: "spkmod-quests-modal",
-		className: "hidden",
+		className: shouldBeOpen ? "" : "hidden",
 		style: `display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; box-sizing: border-box; min-width: 380px; max-width: 95vw; max-height: 80vh; background: #000C; border: ${spkmodBorderWidth} solid #DDD; border-radius: 8px; position: fixed; z-index: 600000; color: #FFF; user-select: none;`
 	}, [
 		// Header Row
@@ -18964,6 +19107,7 @@ function buildQuestsModal() {
 					onclick: (e) => {
 						e.stopPropagation();
 						lunHudElements.questsModal.classList.add("hidden");
+						if (window.localStorage) localStorage.setItem("spkmod-quests-modal-open", "false");
 					}
 				})
 			])
@@ -19251,14 +19395,24 @@ window.toggleQuestsModal = function() {
 		if (typeof bringToFront === "function") bringToFront(lunHudElements.questsModal);
 		if (typeof fetchAllQuests === "function") fetchAllQuests();
 		renderQuestChecklist();
+		if (window.localStorage) localStorage.setItem("spkmod-quests-modal-open", "true");
 	} else {
 		lunHudElements.questsModal.classList.add("hidden");
+		if (window.localStorage) localStorage.setItem("spkmod-quests-modal-open", "false");
 	}
 };
 
 // Initialize Quests Modal structure
 setTimeout(() => {
 	buildQuestsModal();
+	const shouldBeOpen = (window.localStorage && localStorage.getItem("spkmod-quests-modal-open")) === "true";
+	if (shouldBeOpen && lunHudElements.questsModal) {
+		if (typeof positionModalNicely === "function") positionModalNicely(lunHudElements.questsModal);
+		lunHudElements.questsModal.classList.remove("hidden");
+		if (typeof bringToFront === "function") bringToFront(lunHudElements.questsModal);
+		if (typeof fetchAllQuests === "function") fetchAllQuests();
+		if (typeof renderQuestChecklist === "function") renderQuestChecklist();
+	}
 }, 600);
 
 function matchQuestFromTitleText(titleText, item) {
@@ -21119,7 +21273,9 @@ function hookGameStateOnce() {
 						const rowEl = (rowNode && rowNode.closest?.(".sr-chatbox__row")) || bodyText.closest?.(".sr-chatbox__row") || rowNode;
 						const senderEl = rowEl?.classList?.contains("sr-chatbox__sender") ? rowEl : rowEl?.querySelector?.(".sr-chatbox__sender");
 						if (senderEl) {
-							if (typeof lunPartyChatHighlightEnabled !== "undefined" && lunPartyChatHighlightEnabled && isPartyMemberChatSpeaker(id, name)) {
+							if (lunGmChatHighlightEnabled && name && name.trim().toUpperCase() === "GMDT") {
+								senderEl.classList.add("spkmod-gm-sender");
+							} else if (typeof lunPartyChatHighlightEnabled !== "undefined" && lunPartyChatHighlightEnabled && isPartyMemberChatSpeaker(id, name)) {
 								senderEl.classList.add("spkmod-party-sender");
 							} else if (lunFriendChatHighlightEnabled && name && lunFriendNicknames.has(name.trim().toLowerCase())) {
 								senderEl.classList.add("spkmod-friend-sender");
