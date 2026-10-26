@@ -11724,7 +11724,7 @@ window.spkmodResetAvatarColors = function() {
 	}
 
 	window.spkmodSanitizeRemotePlayers();
-	if (window.spkmodPumpkinCartTexReplaced && typeof window.spkmodTogglePumpkinCartTexture === 'function') {
+	if (typeof window.spkmodTogglePumpkinCartTexture === 'function') {
 		window.spkmodTogglePumpkinCartTexture(false);
 	}
 	if (typeof chatLog === 'function') chatLog("[FX] Reset all avatar custom dyes and effects (Self + Other players).");
@@ -11738,8 +11738,7 @@ const SPKMOD_PUMPKIN_CART_ORIG_TEX = "https://speakirpg.overture.io.kr/models/mo
 const SPKMOD_PUMPKIN_CART_REPLACE_TEX = "https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/refs/heads/main/test.png";
 
 window.spkmodPumpkinCartTexReplaced = false;
-let _spkmodReplacementCartImage = null;
-let _spkmodOriginalCartImage = null;
+let _spkmodReplacementCartTex = null;
 
 function spkmodEnsurePumpkinCartHooks() {
 	if (window.__spkmodPumpkinCartHooksInstalled) return;
@@ -11777,66 +11776,123 @@ function spkmodEnsurePumpkinCartHooks() {
 			return origFetch.apply(this, arguments);
 		};
 	}
+
+	if (typeof XMLHttpRequest !== "undefined" && XMLHttpRequest.prototype && XMLHttpRequest.prototype.open) {
+		const origXhrOpen = XMLHttpRequest.prototype.open;
+		XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+			if (window.spkmodPumpkinCartTexReplaced && typeof url === "string" && url.includes("HW_Map_Body.png")) {
+				url = SPKMOD_PUMPKIN_CART_REPLACE_TEX;
+			}
+			return origXhrOpen.call(this, method, url, ...rest);
+		};
+	}
 }
 
-function spkmodApplyPumpkinCartTextureToScene(enable) {
+function spkmodGetReplacementCartTexture(callback) {
+	if (_spkmodReplacementCartTex) {
+		callback(_spkmodReplacementCartTex);
+		return;
+	}
+	if (window.THREE && window.THREE.TextureLoader) {
+		const loader = new window.THREE.TextureLoader();
+		loader.crossOrigin = "anonymous";
+		loader.load(SPKMOD_PUMPKIN_CART_REPLACE_TEX, tex => {
+			tex.flipY = false;
+			tex.needsUpdate = true;
+			_spkmodReplacementCartTex = tex;
+			callback(tex);
+		}, undefined, () => {
+			const img = new Image();
+			img.crossOrigin = "anonymous";
+			img.onload = () => {
+				const fallbackTex = new window.THREE.Texture(img);
+				fallbackTex.flipY = false;
+				fallbackTex.needsUpdate = true;
+				_spkmodReplacementCartTex = fallbackTex;
+				callback(fallbackTex);
+			};
+			img.src = SPKMOD_PUMPKIN_CART_REPLACE_TEX;
+		});
+	} else {
+		const img = new Image();
+		img.crossOrigin = "anonymous";
+		img.onload = () => {
+			let fallbackTex = null;
+			if (window.THREE && window.THREE.Texture) {
+				fallbackTex = new window.THREE.Texture(img);
+				fallbackTex.flipY = false;
+				fallbackTex.needsUpdate = true;
+			}
+			_spkmodReplacementCartTex = fallbackTex;
+			callback(fallbackTex);
+		};
+		img.src = SPKMOD_PUMPKIN_CART_REPLACE_TEX;
+	}
+}
+
+function spkmodApplyPumpkinCartTextureToScene(enable, replacementTex) {
 	if (typeof gameState === "undefined" || !gameState) return;
 	const scene = gameState.scene;
 	if (!scene || typeof scene.traverse !== "function") return;
 
-	const applyToMat = (mat, childName) => {
-		if (!mat) return;
-		const mats = Array.isArray(mat) ? mat : [mat];
-		for (const m of mats) {
-			if (!m) continue;
-			const cName = (childName || "").toLowerCase();
-			const mName = (m.name || "").toLowerCase();
-			const imgSrc = (m.map && m.map.image && typeof m.map.image.src === "string") ? m.map.image.src : "";
-			const isCartMap = imgSrc.includes("HW_Map_Body") || imgSrc.includes("test.png") ||
-				imgSrc.includes("mount_pumpkin_cart") ||
-				cName.includes("pumpkin_cart") || cName.includes("hw_map_body") ||
-				mName.includes("hw_map_body");
+	scene.traverse(child => {
+		if (!child.isMesh || !child.material) return;
 
-			if (isCartMap || (m.__spkmodOrigCartMap !== undefined) || (m.__spkmodOrigCartImage !== undefined)) {
-				if (enable) {
-					if (m.__spkmodOrigCartMap === undefined && m.map) {
-						m.__spkmodOrigCartMap = m.map;
+		const cName = (child.name || "").toLowerCase();
+		const pName = (child.parent && child.parent.name ? child.parent.name : "").toLowerCase();
+		const mats = Array.isArray(child.material) ? child.material : [child.material];
+
+		let isCart = child.userData.__spkmodOrigCartMat !== undefined || child.userData.__spkmodCartModified === true;
+		if (!isCart) {
+			if (cName.includes("pumpkin") || cName.includes("cart") || cName.includes("hw_map") || pName.includes("pumpkin") || pName.includes("cart")) {
+				isCart = true;
+			} else {
+				for (const m of mats) {
+					if (!m) continue;
+					const mName = (m.name || "").toLowerCase();
+					const imgSrc = (m.map && m.map.image && typeof m.map.image.src === "string") ? m.map.image.src : "";
+					if (mName.includes("hw_map") || mName.includes("pumpkin") || imgSrc.includes("HW_Map_Body") || imgSrc.includes("test.png") || imgSrc.includes("mount_pumpkin_cart")) {
+						isCart = true;
+						break;
 					}
-					if (m.__spkmodOrigCartImage === undefined && m.map && m.map.image) {
-						m.__spkmodOrigCartImage = m.map.image;
-					}
-					if (_spkmodReplacementCartImage) {
-						if (m.map) {
-							m.map.image = _spkmodReplacementCartImage;
-							m.map.needsUpdate = true;
-						} else if (window.THREE && window.THREE.Texture) {
-							m.map = new window.THREE.Texture(_spkmodReplacementCartImage);
-							m.map.needsUpdate = true;
-						}
-					}
-					m.needsUpdate = true;
-				} else {
-					const origImg = m.__spkmodOrigCartImage || _spkmodOriginalCartImage;
-					if (m.map && origImg) {
-						m.map.image = origImg;
-						m.map.needsUpdate = true;
-					}
-					if (m.__spkmodOrigCartMap) {
-						m.map = m.__spkmodOrigCartMap;
-						if (m.map) {
-							if (origImg) m.map.image = origImg;
-							m.map.needsUpdate = true;
-						}
-					}
-					m.needsUpdate = true;
 				}
 			}
 		}
-	};
 
-	scene.traverse(child => {
-		if (child.isMesh && child.material) {
-			applyToMat(child.material, child.name);
+		if (isCart) {
+			if (enable) {
+				if (!child.userData.__spkmodOrigCartMat) {
+					child.userData.__spkmodOrigCartMat = child.material;
+				}
+				child.material = Array.isArray(child.material)
+					? child.material.map(m => (m && typeof m.clone === 'function' ? m.clone() : m))
+					: (child.material && typeof child.material.clone === 'function' ? child.material.clone() : child.material);
+				child.userData.__spkmodCartModified = true;
+
+				const activeMats = Array.isArray(child.material) ? child.material : [child.material];
+				for (const m of activeMats) {
+					if (!m) continue;
+					if (replacementTex) {
+						m.map = replacementTex;
+						m.map.needsUpdate = true;
+					}
+					m.needsUpdate = true;
+				}
+			} else {
+				if (child.userData.__spkmodOrigCartMat) {
+					child.material = child.userData.__spkmodOrigCartMat;
+					delete child.userData.__spkmodOrigCartMat;
+					delete child.userData.__spkmodCartModified;
+					if (child.material) {
+						if (Array.isArray(child.material)) {
+							child.material.forEach(m => { if (m) { if (m.map) m.map.needsUpdate = true; m.needsUpdate = true; } });
+						} else {
+							if (child.material.map) child.material.map.needsUpdate = true;
+							child.material.needsUpdate = true;
+						}
+					}
+				}
+			}
 		}
 	});
 }
@@ -11847,26 +11903,14 @@ window.spkmodTogglePumpkinCartTexture = function (forcedState) {
 	window.spkmodPumpkinCartTexReplaced = nextState;
 
 	if (nextState) {
-		if (!_spkmodReplacementCartImage) {
-			_spkmodReplacementCartImage = new Image();
-			_spkmodReplacementCartImage.crossOrigin = "anonymous";
-			_spkmodReplacementCartImage.onload = () => {
-				spkmodApplyPumpkinCartTextureToScene(true);
-			};
-			_spkmodReplacementCartImage.src = SPKMOD_PUMPKIN_CART_REPLACE_TEX;
-		} else {
-			spkmodApplyPumpkinCartTextureToScene(true);
-		}
+		spkmodGetReplacementCartTexture(tex => {
+			spkmodApplyPumpkinCartTextureToScene(true, tex);
+		});
 	} else {
-		if (!_spkmodOriginalCartImage) {
-			_spkmodOriginalCartImage = new Image();
-			_spkmodOriginalCartImage.crossOrigin = "anonymous";
-			_spkmodOriginalCartImage.onload = () => {
-				spkmodApplyPumpkinCartTextureToScene(false);
-			};
-			_spkmodOriginalCartImage.src = SPKMOD_PUMPKIN_CART_ORIG_TEX;
-		} else {
-			spkmodApplyPumpkinCartTextureToScene(false);
+		spkmodApplyPumpkinCartTextureToScene(false);
+		if (window.THREE && window.THREE.Cache && window.THREE.Cache.files) {
+			delete window.THREE.Cache.files[SPKMOD_PUMPKIN_CART_ORIG_TEX];
+			delete window.THREE.Cache.files[SPKMOD_PUMPKIN_CART_REPLACE_TEX];
 		}
 	}
 
