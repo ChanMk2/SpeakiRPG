@@ -11748,7 +11748,8 @@ const SPKMOD_PUMPKIN_CART_SKINS = {
 
 window.spkmodActivePumpkinSkin = null;
 window.spkmodPumpkinCartTexReplaced = false;
-const _spkmodReplacementCartTexCache = new Map();
+const _spkmodCartImages = {};
+let _spkmodOriginalCartImage = null;
 
 function spkmodGetCurrentPumpkinSkinUrl() {
 	if (!window.spkmodActivePumpkinSkin) return null;
@@ -11807,111 +11808,95 @@ function spkmodEnsurePumpkinCartHooks() {
 	}
 }
 
-function spkmodGetReplacementCartTexture(url, callback) {
-	if (_spkmodReplacementCartTexCache.has(url)) {
-		callback(_spkmodReplacementCartTexCache.get(url));
+function spkmodGetCartSkinImage(skinKey, callback) {
+	const skin = SPKMOD_PUMPKIN_CART_SKINS[skinKey];
+	if (!skin) return;
+	if (_spkmodCartImages[skinKey] && _spkmodCartImages[skinKey].complete) {
+		callback(_spkmodCartImages[skinKey]);
 		return;
 	}
-	if (window.THREE && window.THREE.TextureLoader) {
-		const loader = new window.THREE.TextureLoader();
-		loader.crossOrigin = "anonymous";
-		loader.load(url, tex => {
-			tex.flipY = false;
-			tex.needsUpdate = true;
-			_spkmodReplacementCartTexCache.set(url, tex);
-			callback(tex);
-		}, undefined, () => {
-			const img = new Image();
-			img.crossOrigin = "anonymous";
-			img.onload = () => {
-				const fallbackTex = new window.THREE.Texture(img);
-				fallbackTex.flipY = false;
-				fallbackTex.needsUpdate = true;
-				_spkmodReplacementCartTexCache.set(url, fallbackTex);
-				callback(fallbackTex);
-			};
-			img.src = url;
-		});
-	} else {
-		const img = new Image();
-		img.crossOrigin = "anonymous";
-		img.onload = () => {
-			let fallbackTex = null;
-			if (window.THREE && window.THREE.Texture) {
-				fallbackTex = new window.THREE.Texture(img);
-				fallbackTex.flipY = false;
-				fallbackTex.needsUpdate = true;
-			}
-			_spkmodReplacementCartTexCache.set(url, fallbackTex);
-			callback(fallbackTex);
-		};
-		img.src = url;
-	}
+	const img = new Image();
+	img.crossOrigin = "anonymous";
+	img.onload = () => {
+		_spkmodCartImages[skinKey] = img;
+		callback(img);
+	};
+	img.src = skin.url;
 }
 
-function spkmodApplyPumpkinCartTextureToScene(enable, replacementTex) {
+function spkmodGetOriginalCartImage(callback) {
+	if (_spkmodOriginalCartImage && _spkmodOriginalCartImage.complete) {
+		callback(_spkmodOriginalCartImage);
+		return;
+	}
+	const img = new Image();
+	img.crossOrigin = "anonymous";
+	img.onload = () => {
+		_spkmodOriginalCartImage = img;
+		callback(img);
+	};
+	img.onerror = () => {
+		const img2 = new Image();
+		img2.onload = () => {
+			_spkmodOriginalCartImage = img2;
+			callback(img2);
+		};
+		img2.src = SPKMOD_PUMPKIN_CART_ORIG_TEX;
+	};
+	img.src = SPKMOD_PUMPKIN_CART_ORIG_TEX;
+}
+
+function spkmodApplyPumpkinCartTextureToScene(enable, targetImage) {
 	if (typeof gameState === "undefined" || !gameState) return;
 	const scene = gameState.scene;
 	if (!scene || typeof scene.traverse !== "function") return;
 
-	scene.traverse(child => {
-		if (!child.isMesh || !child.material) return;
+	const applyToMat = (mat, childName) => {
+		if (!mat) return;
+		const mats = Array.isArray(mat) ? mat : [mat];
+		for (const m of mats) {
+			if (!m) continue;
+			const cName = (childName || "").toLowerCase();
+			const mName = (m.name || "").toLowerCase();
+			const imgSrc = (m.map && m.map.image && typeof m.map.image.src === "string") ? m.map.image.src : "";
+			const isCartMap = (m.map && m.map.image && (
+				imgSrc.includes("HW_Map_Body") || imgSrc.includes("test") || imgSrc.includes("mount_pumpkin_cart") ||
+				mName.includes("hw_map_body") || mName.includes("pumpkin")
+			)) || cName.includes("pumpkin") || cName.includes("hw_map");
 
-		const cName = (child.name || "").toLowerCase();
-		const pName = (child.parent && child.parent.name ? child.parent.name : "").toLowerCase();
-		const mats = Array.isArray(child.material) ? child.material : [child.material];
-
-		let isCart = child.userData.__spkmodOrigCartMat !== undefined || child.userData.__spkmodCartModified === true;
-		if (!isCart) {
-			if (cName.includes("pumpkin") || cName.includes("cart") || cName.includes("hw_map") || pName.includes("pumpkin") || pName.includes("cart")) {
-				isCart = true;
-			} else {
-				for (const m of mats) {
-					if (!m) continue;
-					const mName = (m.name || "").toLowerCase();
-					const imgSrc = (m.map && m.map.image && typeof m.map.image.src === "string") ? m.map.image.src : "";
-					if (mName.includes("hw_map") || mName.includes("pumpkin") || imgSrc.includes("HW_Map_Body") || imgSrc.includes("test") || imgSrc.includes("mount_pumpkin_cart")) {
-						isCart = true;
-						break;
+			if (isCartMap || (m.__spkmodOrigCartImage !== undefined) || (m.__spkmodOrigCartMap !== undefined)) {
+				if (m.__spkmodOrigCartImage === undefined && m.map && m.map.image) {
+					m.__spkmodOrigCartImage = m.map.image;
+				}
+				if (m.__spkmodOrigCartMap === undefined && m.map) {
+					m.__spkmodOrigCartMap = m.map;
+				}
+				if (enable) {
+					if (targetImage) {
+						if (m.map) {
+							m.map.image = targetImage;
+							m.map.needsUpdate = true;
+						}
 					}
-				}
-			}
-		}
-
-		if (isCart) {
-			if (enable) {
-				if (!child.userData.__spkmodOrigCartMat) {
-					child.userData.__spkmodOrigCartMat = child.material;
-				}
-				child.material = Array.isArray(child.material)
-					? child.material.map(m => (m && typeof m.clone === 'function' ? m.clone() : m))
-					: (child.material && typeof child.material.clone === 'function' ? child.material.clone() : child.material);
-				child.userData.__spkmodCartModified = true;
-
-				const activeMats = Array.isArray(child.material) ? child.material : [child.material];
-				for (const m of activeMats) {
-					if (!m) continue;
-					if (replacementTex) {
-						m.map = replacementTex;
+					m.needsUpdate = true;
+				} else {
+					const origImg = m.__spkmodOrigCartImage || _spkmodOriginalCartImage;
+					if (origImg && m.map) {
+						m.map.image = origImg;
 						m.map.needsUpdate = true;
+					} else if (m.__spkmodOrigCartMap) {
+						m.map = m.__spkmodOrigCartMap;
+						if (m.map) m.map.needsUpdate = true;
 					}
 					m.needsUpdate = true;
 				}
-			} else {
-				if (child.userData.__spkmodOrigCartMat) {
-					child.material = child.userData.__spkmodOrigCartMat;
-					delete child.userData.__spkmodOrigCartMat;
-					delete child.userData.__spkmodCartModified;
-					if (child.material) {
-						if (Array.isArray(child.material)) {
-							child.material.forEach(m => { if (m) { if (m.map) m.map.needsUpdate = true; m.needsUpdate = true; } });
-						} else {
-							if (child.material.map) child.material.map.needsUpdate = true;
-							child.material.needsUpdate = true;
-						}
-					}
-				}
 			}
+		}
+	};
+
+	scene.traverse(child => {
+		if (child.isMesh && child.material) {
+			applyToMat(child.material, child.name);
 		}
 	});
 }
@@ -11939,12 +11924,12 @@ window.spkmodSelectPumpkinCartSkin = function (skinKey) {
 	if (skinKey === null || skinKey === undefined || window.spkmodActivePumpkinSkin === skinKey) {
 		window.spkmodActivePumpkinSkin = null;
 		window.spkmodPumpkinCartTexReplaced = false;
-		spkmodApplyPumpkinCartTextureToScene(false);
-		if (window.THREE && window.THREE.Cache && window.THREE.Cache.files) {
-			delete window.THREE.Cache.files[SPKMOD_PUMPKIN_CART_ORIG_TEX];
-			for (const s of Object.values(SPKMOD_PUMPKIN_CART_SKINS)) {
-				delete window.THREE.Cache.files[s.url];
-			}
+		if (!_spkmodOriginalCartImage) {
+			spkmodGetOriginalCartImage(() => {
+				spkmodApplyPumpkinCartTextureToScene(false);
+			});
+		} else {
+			spkmodApplyPumpkinCartTextureToScene(false);
 		}
 		spkmodUpdatePumpkinCartButtonStyles();
 		if (typeof chatLog === "function") {
@@ -11959,8 +11944,10 @@ window.spkmodSelectPumpkinCartSkin = function (skinKey) {
 	window.spkmodActivePumpkinSkin = skinKey;
 	window.spkmodPumpkinCartTexReplaced = true;
 
-	spkmodGetReplacementCartTexture(skin.url, tex => {
-		spkmodApplyPumpkinCartTextureToScene(true, tex);
+	spkmodGetCartSkinImage(skinKey, img => {
+		if (window.spkmodActivePumpkinSkin === skinKey) {
+			spkmodApplyPumpkinCartTextureToScene(true, img);
+		}
 	});
 	spkmodUpdatePumpkinCartButtonStyles();
 
