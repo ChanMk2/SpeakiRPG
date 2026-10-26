@@ -1585,6 +1585,10 @@ var lunPanelElements = {
 	filterToggleInput: null,
 	gmChatToggleLabel: null,
 	gmChatToggleInput: null,
+	friendChatToggleLabel: null,
+	friendChatToggleInput: null,
+	partyChatToggleLabel: null,
+	partyChatToggleInput: null,
 	chatRandomColorsLabel: null,
 	chatRandomColorsToggleInput: null,
 	mentionAlertToggleLabel: null,
@@ -1697,6 +1701,13 @@ var lunFriendChatHighlightEnabled = (window.localStorage && localStorage.getItem
 function setFriendChatHighlightEnabled(enabled) {
 	lunFriendChatHighlightEnabled = !!enabled;
 	if (window.localStorage) localStorage.setItem("spkmod-friend-highlight-enabled", lunFriendChatHighlightEnabled ? "true" : "false");
+}
+
+var lunPartyChatHighlightEnabled = (window.localStorage && localStorage.getItem("spkmod-party-highlight-enabled")) === "true";
+
+function setPartyChatHighlightEnabled(enabled) {
+	lunPartyChatHighlightEnabled = !!enabled;
+	if (window.localStorage) localStorage.setItem("spkmod-party-highlight-enabled", lunPartyChatHighlightEnabled ? "true" : "false");
 }
 
 var lunLastFriendFetchTime = 0;
@@ -3410,6 +3421,7 @@ const SPKMOD_SETTINGS_KEYS = new Set([
 	"spkmod-name-presets",
 	"spkmod-outgoing-source-lang",
 	"spkmod-panel-left",
+	"spkmod-party-highlight-enabled",
 	"spkmod-pos-spkmod-bbs-modal",
 	"spkmod-pos-spkmod-effects-modal",
 	"spkmod-pos-spkmod-edits-modal",
@@ -5014,6 +5026,9 @@ document.head.appendChild(buildElement(
 		body.spkmod-chat-player-colors-on .sr-chatbox__sender.spkmod-friend-sender.spkmod-colored-msg-el {
 			text-shadow: 0 0 6px rgba(77, 208, 225, 0.45), 0 1px 2px rgba(0, 0, 0, 0.85) !important;
 		}
+		body.spkmod-chat-player-colors-on .sr-chatbox__sender.spkmod-party-sender.spkmod-colored-msg-el {
+			text-shadow: 0 0 6px rgba(105, 240, 174, 0.45), 0 1px 2px rgba(0, 0, 0, 0.85) !important;
+		}
 		.sr-chatbox__row.spkmod-mention-line {
 			background: rgba(255, 200, 0, 0.15) !important;
 			border-left: 3px solid #ffcc00 !important;
@@ -5026,6 +5041,7 @@ document.head.appendChild(buildElement(
 		}
 		.sr-chatbox__body-text.spkmod-gmdt-line { font-weight: 800 !important; color: #ffa726 !important; -webkit-text-fill-color: #ffa726 !important; text-shadow: 0 0 6px rgba(255, 167, 38, 0.45) !important; }
 		.sr-chatbox__sender.spkmod-friend-sender { color: #4dd0e1 !important; -webkit-text-fill-color: #4dd0e1 !important; font-weight: bold !important; text-shadow: 0 0 6px rgba(77, 208, 225, 0.45) !important; }
+		.sr-chatbox__sender.spkmod-party-sender { color: #69f0ae !important; -webkit-text-fill-color: #69f0ae !important; font-weight: bold !important; text-shadow: 0 0 6px rgba(105, 240, 174, 0.45) !important; }
 		.sr-chatbox__body-text.spkmod-clickable-line { cursor: pointer !important; pointer-events: auto !important;}
 		#spkmod-footer {
 			border-top: 1px solid #DDD;
@@ -6723,6 +6739,19 @@ document.body.appendChild(
 						onchange: e => {
 							setFriendChatHighlightEnabled(e.target.checked);
 							if (e.target.checked) fetchFriendsList(true);
+						}
+					})
+				]),
+				buildElement("div", { className: "spkmod-panel-cat" }, [
+					lunPanelElements.partyChatToggleLabel = buildElement("span", {
+						style: "color: #fff; font-size: 11px; font-weight: bold; user-select: none; flex: 1;",
+						innerText: (function() { const s = t("partyChatToggleLabel"); return (!s || s === "partyChatToggleLabel") ? "Highlight Party Members in Chat" : s; })()
+					}),
+					lunPanelElements.partyChatToggleInput = buildElement("input", {
+						type: "checkbox",
+						checked: lunPartyChatHighlightEnabled,
+						onchange: e => {
+							setPartyChatHighlightEnabled(e.target.checked);
 						}
 					})
 				]),
@@ -17758,19 +17787,52 @@ async function translateChatText(text, source, target) {
 const LUN_CHAT_PLAYER_PALETTE = [
 	"#ff9eaa", // Soft Rose
 	"#ffd54a", // Warm Gold
-	"#a5d6a7", // Mint Green
+	"#90caf9", // Soft Sky Blue
 	"#ce93d8", // Light Orchid
 	"#ffab91", // Peach Apricot
 	"#fff59d", // Lemon Cream
 	"#9fa8da", // Soft Periwinkle
 	"#f48fb1", // Bubblegum Pink
-	"#c5e1a5", // Pastel Lime
+	"#d1c4e9", // Lavender Mist
 	"#ffcc80"  // Warm Amber
 ];
 const LUN_CHAT_FRIEND_COLOR = "#4dd0e1";
+const LUN_CHAT_PARTY_COLOR = "#69f0ae";
 const lunChatPlayerColorMap = new Map();
 let lunLastChatSpeaker = null;
 let lunLastChatColor = null;
+
+function isPartyMemberChatSpeaker(id, name) {
+	if (id === -1337 || id === -1338) return false;
+	const cleanName = typeof name === "string" ? name.trim() : "";
+	if (!cleanName) return false;
+	if (typeof gameState !== "undefined" && gameState?.myPlayerId != null && id != null && id === gameState.myPlayerId) {
+		return false;
+	}
+	const lowerKey = cleanName.toLowerCase();
+	const myName = ((typeof gameState !== "undefined" && (gameState.myPlayerName || gameState.myStat?.name)) || (typeof document !== "undefined" ? document.querySelector(".sr-player-card__name")?.innerText : "") || "").trim().toLowerCase();
+	if (myName && lowerKey === myName) return false;
+	if (typeof document === "undefined") return false;
+	const partyEls = document.querySelectorAll(".sr-party__name");
+	if (!partyEls || partyEls.length === 0) return false;
+
+	let altKey = "";
+	if (id != null && typeof gameState !== "undefined" && gameState?.remotePlayers?.remotePlayers?.get) {
+		const rp = gameState.remotePlayers.remotePlayers.get(id);
+		if (rp?.info) {
+			const rpName = (rp.info.name || "").trim().toLowerCase();
+			const rpOrig = (rp.info.__spkmodOrigName || "").trim().toLowerCase();
+			if (rpName && rpName !== lowerKey) altKey = rpName;
+			else if (rpOrig && rpOrig !== lowerKey) altKey = rpOrig;
+		}
+	}
+
+	for (let i = 0; i < partyEls.length; i++) {
+		const pName = (partyEls[i].innerText || partyEls[i].textContent || "").trim().toLowerCase();
+		if (pName && (pName === lowerKey || (altKey && pName === altKey))) return true;
+	}
+	return false;
+}
 
 function resolveChatMessageColor(id, name) {
 	if (id === -1337 || id === -1338) return null;
@@ -17784,13 +17846,19 @@ function resolveChatMessageColor(id, name) {
 		return "#ffa726";
 	}
 
+	if (typeof lunPartyChatHighlightEnabled !== "undefined" && lunPartyChatHighlightEnabled && isPartyMemberChatSpeaker(id, cleanName)) {
+		lunLastChatSpeaker = lowerKey;
+		lunLastChatColor = LUN_CHAT_PARTY_COLOR;
+		return LUN_CHAT_PARTY_COLOR;
+	}
+
 	if (typeof lunFriendChatHighlightEnabled !== "undefined" && lunFriendChatHighlightEnabled && typeof lunFriendNicknames !== "undefined" && lunFriendNicknames.has(lowerKey)) {
 		lunLastChatSpeaker = lowerKey;
 		lunLastChatColor = LUN_CHAT_FRIEND_COLOR;
 		return LUN_CHAT_FRIEND_COLOR;
 	}
 
-	if (lunLastChatSpeaker === lowerKey && lunLastChatColor && lunLastChatColor !== LUN_CHAT_FRIEND_COLOR && lunLastChatColor !== "#ffa726") {
+	if (lunLastChatSpeaker === lowerKey && lunLastChatColor && lunLastChatColor !== LUN_CHAT_PARTY_COLOR && lunLastChatColor !== LUN_CHAT_FRIEND_COLOR && lunLastChatColor !== "#ffa726") {
 		return lunLastChatColor;
 	}
 
@@ -18172,6 +18240,10 @@ spkmodI18nRenderers.push(() => {
 	if (lunPanelElements.resolutionOverrideLabel && typeof lunResolutionOverrideLabel === "function") setText(lunPanelElements.resolutionOverrideLabel, lunResolutionOverrideLabel());
 	if (lunPanelElements.gmChatToggleLabel) setText(lunPanelElements.gmChatToggleLabel, t("gmChatToggleLabel"));
 	if (lunPanelElements.friendChatToggleLabel) setText(lunPanelElements.friendChatToggleLabel, t("friendChatToggleLabel"));
+	if (lunPanelElements.partyChatToggleLabel) {
+		const s = t("partyChatToggleLabel");
+		setText(lunPanelElements.partyChatToggleLabel, (!s || s === "partyChatToggleLabel") ? "Highlight Party Members in Chat" : s);
+	}
 	if (lunPanelElements.chatRandomColorsLabel) {
 		const s = t("chatRandomColorsToggleLabel");
 		setText(lunPanelElements.chatRandomColorsLabel, (!s || s === "chatRandomColorsToggleLabel") ? "Colorize Player Messages" : s);
@@ -21047,7 +21119,9 @@ function hookGameStateOnce() {
 						const rowEl = (rowNode && rowNode.closest?.(".sr-chatbox__row")) || bodyText.closest?.(".sr-chatbox__row") || rowNode;
 						const senderEl = rowEl?.classList?.contains("sr-chatbox__sender") ? rowEl : rowEl?.querySelector?.(".sr-chatbox__sender");
 						if (senderEl) {
-							if (lunFriendChatHighlightEnabled && name && lunFriendNicknames.has(name.trim().toLowerCase())) {
+							if (typeof lunPartyChatHighlightEnabled !== "undefined" && lunPartyChatHighlightEnabled && isPartyMemberChatSpeaker(id, name)) {
+								senderEl.classList.add("spkmod-party-sender");
+							} else if (lunFriendChatHighlightEnabled && name && lunFriendNicknames.has(name.trim().toLowerCase())) {
 								senderEl.classList.add("spkmod-friend-sender");
 							}
 							if (assignedMsgColor) {
