@@ -4547,7 +4547,7 @@ function updateStatsModalLive() {
 	if (statsModalElements.currencyLabel) setText(statsModalElements.currencyLabel, "💰 " + t("statsCurrency"));
 	if (statsModalElements.goldGainedLabel) setText(statsModalElements.goldGainedLabel, "💰 " + t("statsGoldGained"));
 	if (statsModalElements.elifGainedLabel) setText(statsModalElements.elifGainedLabel, "💎 " + t("statsElifGained"));
-	if (statsModalElements.spkCoinGainedLabel) setText(statsModalElements.spkCoinGainedLabel, "🪙 " + (t("statsSpkCoinGained") || "Speaki Coin Gained"));
+	if (statsModalElements.spkCoinGainedLabel) setText(statsModalElements.spkCoinGainedLabel, "🟣 " + (t("statsSpkCoinGained") || "Speaki Coin Gained"));
 	if (statsModalElements.resetBtn) setText(statsModalElements.resetBtn, "🔄 " + t("statsResetBtn"));
 
 	if (!window._lunSessionStartTime) {
@@ -4669,7 +4669,7 @@ function updateStatsModalLive() {
 	const curGold = lunLastGold ?? 0;
 	const curElif = lunLastElif ?? 0;
 	const curSpkCoin = lunLastSpkCoin ?? 0;
-	// Deprecated as event is over | 🪙 ${curSpkCoin.toLocaleString()}
+	// Deprecated as event is over | 🟣 ${curSpkCoin.toLocaleString()}
 	if (statsModalElements.currencyBalancesVal) {
 		
 		statsModalElements.currencyBalancesVal.innerText = `💰 ${curGold.toLocaleString()} | 💎 ${curElif.toLocaleString()}`;
@@ -5516,7 +5516,7 @@ document.body.appendChild(
 			}),
 			lunHudElements.currencyTracker = buildElement("span", {
 				// innerText: t("currencyTracker", "--", "--", "--"),
-				innerText: t("currencyTracker", "--", "--", "--").replace(/ \| 🪙.*/, ""),
+				innerText: t("currencyTracker", "--", "--", "--").replace(/ \| 🟣.*/, ""),
 				style: lunCurrencyTrackerEnabled ? "" : "display: none;"
 			}),
 			lunHudElements.sessionGoldTracker = buildElement("span", {
@@ -7212,7 +7212,7 @@ setTimeout(() => {
 // --- EMOJI PICKER ---
 let lunEmojiPickerPanel = null;
 let lunEmojiTab = "standard";
-const LUN_EMOJIS = ["👍","👎","👋","🙏","👏","🙌","🤝","😊","😂","🤣","😍","😎","🤔","😅","😭","🥺","🔥","💯","❤️","✨","🎉","💀","👀","🗣️","💰","💎","🪙","⭐","❌","✅", "💪", "🤷", "🤦", "🎈", "🎂", "🥳", "🙄", "🤐", "🥵", "🥶", "🤯", "😴", "🤮", "🤡", "👻", "👽", "💩", "🤖", "🎃"];
+const LUN_EMOJIS = ["👍","👎","👋","🙏","👏","🙌","🤝","😊","😂","🤣","😍","😎","🤔","😅","😭","🥺","🔥","💯","❤️","✨","🎉","💀","👀","🗣️","💰","💎","🟣","⭐","❌","✅", "💪", "🤷", "🤦", "🎈", "🎂", "🥳", "🙄", "🤐", "🥵", "🥶", "🤯", "😴", "🤮", "🤡", "👻", "👽", "💩", "🤖", "🎃"];
 let lunEmojiFreq = JSON.parse((window.localStorage && localStorage.getItem("spkmod-emoji-freq")) || "{}");
 let lunEmojiFavorites = JSON.parse((window.localStorage && localStorage.getItem("spkmod-emoji-fav")) || "[]");
 
@@ -12970,7 +12970,7 @@ const SPKMOD_DYE_COLORS = [
 	{ id: "Cyan", key: "dyeColorCyan", name: "Cyan", hex: "#06b6d4", emoji: "🩵" },
 	{ id: "Orange", key: "dyeColorOrange", name: "Orange", hex: "#f97316", emoji: "🧡" },
 	{ id: "Mint", key: "dyeColorMint", name: "Mint", hex: "#14b8a6", emoji: "🌿" },
-	{ id: "Amber", key: "dyeColorAmber", name: "Amber", hex: "#d97706", emoji: "🪙" },
+	{ id: "Amber", key: "dyeColorAmber", name: "Amber", hex: "#d97706", emoji: "🟣" },
 	{ id: "Pearl", key: "dyeColorPearl", name: "Pearl", hex: "#ffffff", emoji: "⚪" },
 	{ id: "Obsidian", key: "dyeColorObsidian", name: "Obsidian", hex: "#18181b", emoji: "⚫" },
 	{ id: "Magenta", key: "dyeColorMagenta", name: "Magenta", hex: "#f43f5e", emoji: "🍇" },
@@ -13547,7 +13547,7 @@ function updateLocalEditsUI() {
 	if (editsModalElements.chromaBtnGreen) setText(editsModalElements.chromaBtnGreen, "🟢 " + (t("chromaKeyColorGreen") || "Green"));
 	if (editsModalElements.chromaBtnBlue) setText(editsModalElements.chromaBtnBlue, "🔵 " + (t("chromaKeyColorBlue") || "Blue"));
 	if (editsModalElements.chromaBtnRed) setText(editsModalElements.chromaBtnRed, "🔴 " + (t("chromaKeyColorRed") || "Red"));
-	if (editsModalElements.chromaBtnMagenta) setText(editsModalElements.chromaBtnMagenta, "🪙 " + (t("chromaKeyColorMagenta") || "Magenta"));
+	if (editsModalElements.chromaBtnMagenta) setText(editsModalElements.chromaBtnMagenta, "🟣 " + (t("chromaKeyColorMagenta") || "Magenta"));
 	if (editsModalElements.chromaBtnBlack) setText(editsModalElements.chromaBtnBlack, "⚫ " + (t("skyColorBlack") || "Black Void"));
 	if (editsModalElements.chromaBtnWhite) setText(editsModalElements.chromaBtnWhite, "⚪ " + (t("skyColorWhite") || "White Studio"));
 	if (editsModalElements.chromaBtnMidnight) setText(editsModalElements.chromaBtnMidnight, "🌌 " + (t("skyColorMidnight") || "Midnight Navy"));
@@ -13559,7 +13559,7 @@ function updateLocalEditsUI() {
 	if (editsModalElements.chromaBtnCyan) setText(editsModalElements.chromaBtnCyan, "🩵 " + (t("skyColorCyan") || "Electric Cyan"));
 	if (editsModalElements.chromaBtnMint) setText(editsModalElements.chromaBtnMint, "🌿 " + (t("skyColorMint") || "Mint Green"));
 	if (editsModalElements.chromaBtnPurple) setText(editsModalElements.chromaBtnPurple, "💜 " + (t("skyColorPurple") || "Deep Purple"));
-	if (editsModalElements.chromaBtnAmber) setText(editsModalElements.chromaBtnAmber, "🪙 " + (t("skyColorAmber") || "Warm Amber"));
+	if (editsModalElements.chromaBtnAmber) setText(editsModalElements.chromaBtnAmber, "🟣 " + (t("skyColorAmber") || "Warm Amber"));
 	if (editsModalElements.chromaBtnCrimson) setText(editsModalElements.chromaBtnCrimson, "🍷 " + (t("skyColorCrimson") || "Crimson Wine"));
 	if (editsModalElements.chromaBtnSlate) setText(editsModalElements.chromaBtnSlate, "🩶 " + (t("skyColorSlate") || "Studio Slate"));
 	if (editsModalElements.chromaBtnSepia) setText(editsModalElements.chromaBtnSepia, "☕ " + (t("skyColorSepia") || "Warm Sepia"));
@@ -14117,7 +14117,7 @@ document.body.appendChild(
 					editsModalElements.chromaBtnMagenta = buildElement("button", {
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 2px; font-size: 9.5px; text-align: center; color: #ff55ff;",
-						innerText: "🪙 " + (t("chromaKeyColorMagenta") || "Magenta"),
+						innerText: "🟣 " + (t("chromaKeyColorMagenta") || "Magenta"),
 						onclick: () => { applyChromaKeyColor("magenta", true); updateLocalEditsUI(); }
 					}),
 					editsModalElements.chromaBtnBlack = buildElement("button", {
@@ -14189,7 +14189,7 @@ document.body.appendChild(
 					editsModalElements.chromaBtnAmber = buildElement("button", {
 						className: "spkmod-panel-btn",
 						style: "padding: 5px 2px; font-size: 9.5px; text-align: center; color: #fbbf24;",
-						innerText: "🪙 " + (t("skyColorAmber") || "Warm Amber"),
+						innerText: "🟣 " + (t("skyColorAmber") || "Warm Amber"),
 						onclick: () => { applyChromaKeyColor("amber", true); updateLocalEditsUI(); }
 					}),
 					editsModalElements.chromaBtnCrimson = buildElement("button", {
@@ -16666,7 +16666,7 @@ document.body.appendChild(
 					statsModalElements.elifGainedVal = buildElement("span", { style: "font-weight: bold; color: #67e8f9;", innerText: "+0 (+0 / hr)" })
 				]),
 				buildElement("div", { style: "display: flex; justify-content: space-between; align-items: center;" }, [
-					statsModalElements.spkCoinGainedLabel = buildElement("span", { style: "color: #aaa;", innerText: "🪙 " + (t("statsSpkCoinGained") || "Speaki Coin Gained") }),
+					statsModalElements.spkCoinGainedLabel = buildElement("span", { style: "color: #aaa;", innerText: "🟣 " + (t("statsSpkCoinGained") || "Speaki Coin Gained") }),
 					statsModalElements.spkCoinGainedVal = buildElement("span", { style: "font-weight: bold; color: #a78bfa;", innerText: "+0 (+0 / hr)" })
 				])
 			]),
@@ -18114,8 +18114,8 @@ spkmodI18nRenderers.push(() => {
 		: t("currencyTracker", lunLastGold.toLocaleString(), lunLastElif.toLocaleString(), typeof lunLastSpkCoin !== 'undefined' && lunLastSpkCoin !== null ? lunLastSpkCoin.toLocaleString() : "--"));
 	
 	// setText(lunHudElements.currencyTracker, lunLastGold === null
-	// 	? t("currencyTracker", "--", "--", "--").replace(/ \| 🪙.*/, "")
-	// 	: t("currencyTracker", lunLastGold.toLocaleString(), lunLastElif.toLocaleString(), "").replace(/ \| 🪙.*/, ""));
+	// 	? t("currencyTracker", "--", "--", "--").replace(/ \| 🟣.*/, "")
+	// 	: t("currencyTracker", lunLastGold.toLocaleString(), lunLastElif.toLocaleString(), "").replace(/ \| 🟣.*/, ""));
 	setText(lunHudElements.sessionGoldTracker, t("sessionGoldText", "--", "--"));
 	if (!lunPinnedQuestId) setText(lunHudElements.pinnedQuest.content, t("pinnedQuestDefault"));
 
@@ -19804,7 +19804,7 @@ function tick() {
 			*/
 			setText(lunHudElements.currencyTracker, t("currencyTracker", formatCurrency(lunLastGold), formatCurrency(lunLastElif), formatCurrency(lunLastSpkCoin)));
 			// To disable
-			// setText(lunHudElements.currencyTracker, t("currencyTracker", formatCurrency(lunLastGold), formatCurrency(lunLastElif), "").replace(/ \| 🪙.*/, ""));
+			// setText(lunHudElements.currencyTracker, t("currencyTracker", formatCurrency(lunLastGold), formatCurrency(lunLastElif), "").replace(/ \| 🟣.*/, ""));
 
 			if (lunSessionStartGold === null) {
 				lunSessionStartGold = lunLastGold;
