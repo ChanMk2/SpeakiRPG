@@ -11724,6 +11724,9 @@ window.spkmodResetAvatarColors = function() {
 	}
 
 	window.spkmodSanitizeRemotePlayers();
+	if (window.spkmodPumpkinCartTexReplaced && typeof window.spkmodTogglePumpkinCartTexture === 'function') {
+		window.spkmodTogglePumpkinCartTexture(false);
+	}
 	if (typeof chatLog === 'function') chatLog("[FX] Reset all avatar custom dyes and effects (Self + Other players).");
 	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
 };
@@ -11736,6 +11739,7 @@ const SPKMOD_PUMPKIN_CART_REPLACE_TEX = "https://raw.githubusercontent.com/DJTOM
 
 window.spkmodPumpkinCartTexReplaced = false;
 let _spkmodReplacementCartImage = null;
+let _spkmodOriginalCartImage = null;
 
 function spkmodEnsurePumpkinCartHooks() {
 	if (window.__spkmodPumpkinCartHooksInstalled) return;
@@ -11780,19 +11784,26 @@ function spkmodApplyPumpkinCartTextureToScene(enable) {
 	const scene = gameState.scene;
 	if (!scene || typeof scene.traverse !== "function") return;
 
-	const applyToMat = (mat) => {
+	const applyToMat = (mat, childName) => {
 		if (!mat) return;
 		const mats = Array.isArray(mat) ? mat : [mat];
 		for (const m of mats) {
 			if (!m) continue;
-			const isCartMap = m.map && m.map.image && (
-				(typeof m.map.image.src === "string" && (m.map.image.src.includes("HW_Map_Body") || m.map.image.src.includes("test.png"))) ||
-				(m.name && (m.name.includes("HW_Map_Body") || m.name.includes("Pumpkin") || m.name.includes("pumpkin")))
-			);
-			if (isCartMap || (m.__spkmodOrigCartMap !== undefined)) {
+			const cName = (childName || "").toLowerCase();
+			const mName = (m.name || "").toLowerCase();
+			const imgSrc = (m.map && m.map.image && typeof m.map.image.src === "string") ? m.map.image.src : "";
+			const isCartMap = imgSrc.includes("HW_Map_Body") || imgSrc.includes("test.png") ||
+				imgSrc.includes("mount_pumpkin_cart") ||
+				cName.includes("pumpkin_cart") || cName.includes("hw_map_body") ||
+				mName.includes("hw_map_body");
+
+			if (isCartMap || (m.__spkmodOrigCartMap !== undefined) || (m.__spkmodOrigCartImage !== undefined)) {
 				if (enable) {
-					if (m.__spkmodOrigCartMap === undefined) {
+					if (m.__spkmodOrigCartMap === undefined && m.map) {
 						m.__spkmodOrigCartMap = m.map;
+					}
+					if (m.__spkmodOrigCartImage === undefined && m.map && m.map.image) {
+						m.__spkmodOrigCartImage = m.map.image;
 					}
 					if (_spkmodReplacementCartImage) {
 						if (m.map) {
@@ -11805,11 +11816,19 @@ function spkmodApplyPumpkinCartTextureToScene(enable) {
 					}
 					m.needsUpdate = true;
 				} else {
-					if (m.__spkmodOrigCartMap !== undefined) {
-						m.map = m.__spkmodOrigCartMap;
-						if (m.map) m.map.needsUpdate = true;
-						m.needsUpdate = true;
+					const origImg = m.__spkmodOrigCartImage || _spkmodOriginalCartImage;
+					if (m.map && origImg) {
+						m.map.image = origImg;
+						m.map.needsUpdate = true;
 					}
+					if (m.__spkmodOrigCartMap) {
+						m.map = m.__spkmodOrigCartMap;
+						if (m.map) {
+							if (origImg) m.map.image = origImg;
+							m.map.needsUpdate = true;
+						}
+					}
+					m.needsUpdate = true;
 				}
 			}
 		}
@@ -11817,7 +11836,7 @@ function spkmodApplyPumpkinCartTextureToScene(enable) {
 
 	scene.traverse(child => {
 		if (child.isMesh && child.material) {
-			applyToMat(child.material);
+			applyToMat(child.material, child.name);
 		}
 	});
 }
@@ -11839,7 +11858,16 @@ window.spkmodTogglePumpkinCartTexture = function (forcedState) {
 			spkmodApplyPumpkinCartTextureToScene(true);
 		}
 	} else {
-		spkmodApplyPumpkinCartTextureToScene(false);
+		if (!_spkmodOriginalCartImage) {
+			_spkmodOriginalCartImage = new Image();
+			_spkmodOriginalCartImage.crossOrigin = "anonymous";
+			_spkmodOriginalCartImage.onload = () => {
+				spkmodApplyPumpkinCartTextureToScene(false);
+			};
+			_spkmodOriginalCartImage.src = SPKMOD_PUMPKIN_CART_ORIG_TEX;
+		} else {
+			spkmodApplyPumpkinCartTextureToScene(false);
+		}
 	}
 
 	if (lunPanelElements && lunPanelElements.pumpkinCartTexBtn) {
