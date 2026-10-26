@@ -19,7 +19,7 @@ try {
 		try { localStorage.removeItem("spkmod-resolution-override"); } catch (_) {}
 	} else {
 		const v = parseFloat(localStorage.getItem("spkmod-resolution-override"));
-		window.spkmodResolutionOverride = (v >= 1 && v <= 3) ? v : 1;
+		window.spkmodResolutionOverride = (v >= 1 && v <= 3.5) ? v : 1;
 	}
 } catch (_) {
 	window.spkmodResolutionOverride = 1;
@@ -76,6 +76,13 @@ async function patchScript(og, src) {
 		/function (\w+)\(\)\{let (\w+);if\((\w+)\(\)\)(\w+)=(\w+)\(\)\.resolutionScale;else\{let (\w+)=window\.devicePixelRatio;/,
 		(_m, fn, e, isMobileLayout, e2, getSettings, dpr) =>
 			`function ${fn}(){if(window.spkmodResolutionOverride>1&&${isMobileLayout}())return Math.min(window.spkmodResolutionOverride,4);let ${e};if(${isMobileLayout}())${e2}=${getSettings}().resolutionScale;else{let ${dpr}=window.devicePixelRatio;`
+	);
+
+	// Frame limiter fix: keep the frame schedule instead of re-anchoring on every rendered frame
+	code = code.replace(
+		/shouldRender\((\w+),(\w+)\)\{if\(\2<=0\)return!0;let (\w+)=1e3\/\2\*(\w+);return \1-this\.lastFrameTimeMs<\3\?!1:\(this\.lastFrameTimeMs=\1,!0\)\}/,
+		(_m, e, t, n, k) =>
+			`shouldRender(${e},${t}){if(${t}<=0)return!0;const p=1e3/${t};const d=${e}-this.lastFrameTimeMs;if(d<p*${k})return!1;this.lastFrameTimeMs=d>p*2?${e}:this.lastFrameTimeMs+p;return!0}`
 	);
 
 	// 1. Rewrite relative asset imports to absolute URLs
