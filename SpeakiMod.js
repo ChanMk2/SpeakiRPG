@@ -2538,6 +2538,7 @@ function hookNativeMuteCheckbox() {
 	}
 }
 
+
 function findGameAudioListener() {
 	try {
 		if (typeof window.getAudioListener === "function") {
@@ -3826,6 +3827,8 @@ var lunHudBackground = (window.localStorage && localStorage.getItem("spkmod-hud-
 
 const SPKMOD_REPO_FONTS_BASE = "https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/main/fonts/";
 const SPKMOD_EMOJI_FONT_FALLBACK = '"Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"';
+
+
 const SPKMOD_VALID_FONT_PRESETS = new Set([
 	"default",
 	"trickcalPop",
@@ -4748,7 +4751,6 @@ function updateStatsModalLive() {
 		statsModalElements.spkCoinGainedVal.style.color = spkCoinDiff >= 0 ? "#a78bfa" : "#f87171";
 	}
 }
-
 
 
 function updateDynamicStyles() {
@@ -9140,6 +9142,8 @@ function renderInfoUI() {
 }
 
 // ============================================================================
+
+
 // FLOATING ACTION BUTTONS (Right-Click to Summon / Clean / LocalStorage Saved)
 // ============================================================================
 
@@ -9659,10 +9663,6 @@ document.addEventListener("contextmenu", (e) => {
         spkmodLastRightClickTime = now;
     }
 }, true);
-
-
-
-
 
 
 const lunJumpAnimMs = 500;
@@ -12019,6 +12019,7 @@ window.spkmodResetAvatarColors = function() {
 	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
 };
 
+
 // ============================================================================
 // PUMPKIN CART TEXTURE REPLACEMENT SKINS (:SPK_88:, 1, 2, 3)
 // ============================================================================
@@ -13271,7 +13272,6 @@ window.spkmodToggleBurstSpam = function(forceState) {
 
 	if (typeof updateLocalEditsUI === 'function') updateLocalEditsUI();
 };
-
 
 
 const mapModalElements = {};
@@ -15617,6 +15617,7 @@ setTimeout(() => {
 	}
 }, 500);
 
+
 // --- SPEAKI BBS (COMMUNITY BULLETIN BOARD) ---
 var bbsModalElements = {
 	headerTitle: null,
@@ -17628,6 +17629,7 @@ let gamepadModalElements = {
 
 window.__showGamepadDiagram = false;
 
+
 function openGamepadModal() {
 	if (lunHudElements.gamepadModal) {
 		lunHudElements.gamepadModal.classList.remove("hidden");
@@ -19161,6 +19163,7 @@ var lunPinnedQuestId = 0;
 var lunPinnedQuestContent = null;
 var lunPinnedQuestNextQueryTick = 0;
 
+
 function getQuestDisplayText(quest) {
 	if (!quest) return "";
 	let title = quest.title || "";
@@ -20371,6 +20374,8 @@ if (!window.__beyBladeLoopRunning) {
 
 	requestAnimationFrame(beyBladeRenderLoop);
 }
+
+
 // --- MOD PLAYERS TELEMETRY & HOURLY PING ---
 var lunModPlayersCounts = { count1h: null, count24h: null, count7d: null, countAllTime: null };
 var lunLastTelemetryPingTime = 0;
@@ -21208,6 +21213,7 @@ var hkChatBoxAppend = (id, name, msg) => {
 	if (window.__speakiOrigChatBoxAppend) return window.__speakiOrigChatBoxAppend(id, name, msg);
 	if (typeof gameState !== "undefined" && gameState?.chatBox?.append) return gameState.chatBox.append(id, name, msg);
 };
+
 
 function hookGameStateOnce() {
 	if (typeof gameState === "undefined" || !gameState) return false;
@@ -22860,10 +22866,6 @@ if (typeof spkmodI18nRenderers !== 'undefined') {
         }
     });
 }
-
-
-
-
 
 
 const SPKMOD_ACCOUNTS_KEY = "spkmod-saved-accounts";
