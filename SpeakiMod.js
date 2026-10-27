@@ -7383,6 +7383,13 @@ function renderSpkmodInlineEmojis(text, imgStyle) {
 }
 window.renderSpkmodInlineEmojis = renderSpkmodInlineEmojis;
 
+function spkmodIsTouchOrMobile() {
+    if (typeof spkmodIsMobile === "function" && spkmodIsMobile()) return true;
+    if (typeof window.speakiMobile !== "undefined") return true;
+    if (typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches && (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0)) return true;
+    return false;
+}
+
 function ensureSpkmodRichTooltipEl() {
     let el = document.getElementById("spkmod-rich-tooltip");
     if (!el && document.body) {
@@ -7400,7 +7407,11 @@ function setSpkmodRichTooltip(elem, rawText) {
     elem.dataset.spkRichTooltip = rawText || "";
     if (!elem.__spkRichTooltipBound) {
         elem.__spkRichTooltipBound = true;
-        const showTip = () => {
+        const showTip = (e) => {
+            // Never display hover tooltips on mobile or touch devices
+            if (spkmodIsTouchOrMobile()) return;
+            if (e && e.pointerType === "touch") return;
+
             const txt = elem.dataset.spkRichTooltip;
             if (!txt) return;
             const tip = ensureSpkmodRichTooltipEl();
@@ -7427,6 +7438,7 @@ function setSpkmodRichTooltip(elem, rawText) {
         elem.addEventListener("mouseenter", showTip);
         elem.addEventListener("mouseleave", hideTip);
         elem.addEventListener("pointerdown", hideTip);
+        elem.addEventListener("touchstart", hideTip, { passive: true });
         elem.addEventListener("blur", hideTip);
     }
 }
@@ -9312,7 +9324,14 @@ function spkmodSpawnFloatingButton(sourceBtn, initialX, initialY, isRestoring = 
 
     // Text Label Container
     const labelSpan = document.createElement("span");
-    labelSpan.innerText = (sourceBtn.innerText || sourceBtn.textContent || "Action").trim();
+    const rawLabelText = (sourceBtn.innerText || sourceBtn.textContent || "").trim();
+    if (rawLabelText) {
+        labelSpan.innerText = rawLabelText;
+    } else if (sourceBtn.innerHTML) {
+        labelSpan.innerHTML = sourceBtn.innerHTML;
+    } else {
+        labelSpan.innerText = "Action";
+    }
     floatingBtn.appendChild(labelSpan);
 
     // Subtle drag/pin badge
@@ -9324,7 +9343,12 @@ function spkmodSpawnFloatingButton(sourceBtn, initialX, initialY, isRestoring = 
     // Dynamic state synchronizer: keep label and style updated in real-time
     const observer = new MutationObserver(() => {
         if (sourceBtn) {
-            labelSpan.innerText = (sourceBtn.innerText || sourceBtn.textContent || "Action").trim();
+            const updatedText = (sourceBtn.innerText || sourceBtn.textContent || "").trim();
+            if (updatedText) {
+                labelSpan.innerText = updatedText;
+            } else if (sourceBtn.innerHTML) {
+                labelSpan.innerHTML = sourceBtn.innerHTML;
+            }
             if (sourceBtn.style.color) {
                 floatingBtn.style.color = sourceBtn.style.color;
             }
@@ -9386,6 +9410,9 @@ function spkmodSpawnFloatingButton(sourceBtn, initialX, initialY, isRestoring = 
         }
 
         if (!isDragging && e.button === 0) {
+            if (spkmodTouchPinTriggered || floatingBtn.__spkmodDismissed || !floatingBtn.parentNode) {
+                return;
+            }
             // Click animation
             floatingBtn.style.transform = "scale(0.92)";
             setTimeout(() => {
@@ -9434,6 +9461,7 @@ function spkmodSpawnFloatingButton(sourceBtn, initialX, initialY, isRestoring = 
 
 function spkmodRemoveFloatingButton(floatingBtn) {
     if (!floatingBtn) return;
+    floatingBtn.__spkmodDismissed = true;
     if (floatingBtn.__spkmodObserver) {
         floatingBtn.__spkmodObserver.disconnect();
         floatingBtn.__spkmodObserver = null;
@@ -9471,26 +9499,155 @@ setTimeout(spkmodRestoreFloatingButtons, 600);
 setTimeout(spkmodRestoreFloatingButtons, 1800);
 setTimeout(spkmodRestoreFloatingButtons, 3500);
 
-// Global Double Right-Click Delegate for summoning buttons outside HUD
+// Mobile Touch "Hold to Pin" (Long-Press) Detector & Desktop Double Right-Click Delegate
+let spkmodTouchHoldTimer = null;
+let spkmodTouchHoldTarget = null;
+let spkmodTouchStartX = 0;
+let spkmodTouchStartY = 0;
+let spkmodTouchPinTriggered = false;
+
+function spkmodTriggerTouchPin(btn, clientX, clientY) {
+    if (!btn) return;
+    if (typeof lunDisableRightClickPinning !== "undefined" && lunDisableRightClickPinning) return;
+
+    spkmodTouchPinTriggered = true;
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+        try { navigator.vibrate(40); } catch (_) {}
+    }
+
+    if (btn.dataset.spkmodFloating === "true" || btn.classList.contains("spkmod-floating-button")) {
+        spkmodRemoveFloatingButton(btn);
+    } else {
+        spkmodSpawnFloatingButton(btn, clientX, clientY);
+    }
+
+    setTimeout(() => {
+        spkmodTouchPinTriggered = false;
+    }, 450);
+}
+
+document.addEventListener("touchstart", (e) => {
+    // Dismiss rich tooltip on mobile touch
+    const tip = document.getElementById("spkmod-rich-tooltip");
+    if (tip) tip.style.display = "none";
+
+    if (!e.touches || e.touches.length !== 1) {
+        if (spkmodTouchHoldTimer) {
+            clearTimeout(spkmodTouchHoldTimer);
+            spkmodTouchHoldTimer = null;
+            spkmodTouchHoldTarget = null;
+        }
+        return;
+    }
+
+    const touch = e.touches[0];
+    const btn = touch.target && touch.target.closest ? touch.target.closest("button.spkmod-panel-btn, #spkmod-effects-modal button, #spkmod-hud button, #spkmod-panel button, .spkmod-quick-btn, .spkmod-floating-button") : null;
+    if (!btn) {
+        if (spkmodTouchHoldTimer) {
+            clearTimeout(spkmodTouchHoldTimer);
+            spkmodTouchHoldTimer = null;
+            spkmodTouchHoldTarget = null;
+        }
+        return;
+    }
+
+    // Ignore window close buttons, drag handles, or emoji picker items
+    if (btn.innerText === "✕" || btn.id === "spkmod-drag-btn" || btn.id === "spkmod-close-btn" || btn.closest("#spkmod-emoji-picker")) return;
+
+    if (typeof lunDisableRightClickPinning !== "undefined" && lunDisableRightClickPinning) return;
+
+    spkmodTouchHoldTarget = btn;
+    spkmodTouchStartX = touch.clientX;
+    spkmodTouchStartY = touch.clientY;
+    spkmodTouchPinTriggered = false;
+
+    if (spkmodTouchHoldTimer) clearTimeout(spkmodTouchHoldTimer);
+    spkmodTouchHoldTimer = setTimeout(() => {
+        spkmodTouchHoldTimer = null;
+        if (spkmodTouchHoldTarget) {
+            spkmodTriggerTouchPin(spkmodTouchHoldTarget, spkmodTouchStartX, spkmodTouchStartY);
+            spkmodTouchHoldTarget = null;
+        }
+    }, 500);
+}, { passive: true, capture: true });
+
+document.addEventListener("touchmove", (e) => {
+    if (!spkmodTouchHoldTimer || !e.touches || e.touches.length === 0) return;
+    const touch = e.touches[0];
+    const dist = Math.hypot(touch.clientX - spkmodTouchStartX, touch.clientY - spkmodTouchStartY);
+    if (dist > 12) {
+        clearTimeout(spkmodTouchHoldTimer);
+        spkmodTouchHoldTimer = null;
+        spkmodTouchHoldTarget = null;
+    }
+}, { passive: true, capture: true });
+
+document.addEventListener("touchend", (e) => {
+    if (spkmodTouchHoldTimer) {
+        clearTimeout(spkmodTouchHoldTimer);
+        spkmodTouchHoldTimer = null;
+        spkmodTouchHoldTarget = null;
+    }
+    if (spkmodTouchPinTriggered) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+}, { capture: true });
+
+document.addEventListener("touchcancel", () => {
+    if (spkmodTouchHoldTimer) {
+        clearTimeout(spkmodTouchHoldTimer);
+        spkmodTouchHoldTimer = null;
+        spkmodTouchHoldTarget = null;
+    }
+}, { passive: true, capture: true });
+
+// Prevent accidental clicks on button release after holding to pin
+document.addEventListener("click", (e) => {
+    if (spkmodTouchPinTriggered) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+    }
+}, true);
+
+// Global Double Right-Click Delegate for summoning buttons outside HUD (Desktop) & contextmenu handshake (Mobile)
 let spkmodLastRightClickBtn = null;
 let spkmodLastRightClickTime = 0;
 
 document.addEventListener("contextmenu", (e) => {
-    const btn = e.target.closest("button.spkmod-panel-btn, #spkmod-effects-modal button, #spkmod-hud button, .spkmod-quick-btn, .spkmod-floating-button");
+    if (spkmodTouchPinTriggered) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+    }
+
+    const btn = e.target.closest("button.spkmod-panel-btn, #spkmod-effects-modal button, #spkmod-hud button, #spkmod-panel button, .spkmod-quick-btn, .spkmod-floating-button");
     if (!btn) return;
     
     // Ignore window close buttons, drag handles, or emoji picker items
     if (btn.innerText === "✕" || btn.id === "spkmod-drag-btn" || btn.id === "spkmod-close-btn" || btn.closest("#spkmod-emoji-picker")) return;
 
-    // If right-clicked a floating button itself, handled by its own listener
+    if (typeof lunDisableRightClickPinning !== "undefined" && lunDisableRightClickPinning) {
+        return;
+    }
+
+    // Handshake: If mobile long-press dispatched a contextmenu while hold timer is active
+    if (spkmodTouchHoldTimer && spkmodTouchHoldTarget === btn) {
+        e.preventDefault();
+        e.stopPropagation();
+        clearTimeout(spkmodTouchHoldTimer);
+        spkmodTouchHoldTimer = null;
+        spkmodTouchHoldTarget = null;
+        spkmodTriggerTouchPin(btn, e.clientX, e.clientY);
+        return;
+    }
+
+    // If right-clicked a floating button itself on desktop, handled by its own listener
     if (btn.dataset.spkmodFloating === "true" || btn.classList.contains("spkmod-floating-button")) return;
 
     e.preventDefault();
     e.stopPropagation();
-
-    if (typeof lunDisableRightClickPinning !== "undefined" && lunDisableRightClickPinning) {
-        return;
-    }
 
     const now = Date.now();
     if (spkmodLastRightClickBtn === btn && (now - spkmodLastRightClickTime) <= 500) {
@@ -22507,6 +22664,10 @@ function ensureEmojiTooltip() {
 	};
 
 	document.addEventListener("mouseover", (e) => {
+		if (typeof spkmodIsMobile === "function" && spkmodIsMobile()) return;
+		if (typeof window.speakiMobile !== "undefined") return;
+		if (typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches && (typeof navigator !== "undefined" && navigator.maxTouchPoints > 0)) return;
+
 		const target = e.target.closest('.spkmod-custom-emoji');
 		if (target) {
 			const url = target.getAttribute("data-url");
@@ -22532,6 +22693,13 @@ function ensureEmojiTooltip() {
 			lunEmojiPreviewTooltip.style.display = "none";
 		}
 	});
+
+	window.addEventListener("touchstart", () => {
+		if (lunEmojiPreviewTooltip) {
+			lunEmojiPreviewCurrentTarget = null;
+			lunEmojiPreviewTooltip.style.display = "none";
+		}
+	}, { passive: true, capture: true });
 
 	window.addEventListener("scroll", () => {
 		if (lunEmojiPreviewTooltip) {
