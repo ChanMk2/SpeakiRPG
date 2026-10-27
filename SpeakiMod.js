@@ -7843,6 +7843,20 @@ function toggleEmojiPicker(anchorBtn) {
     const defaultW = isMobile ? "360px" : "420px";
     const defaultH = isMobile ? "320px" : "420px";
     lunEmojiPickerPanel.style.cssText = `position: fixed; width: ${defaultW}; height: ${defaultH}; max-width: 95vw; max-height: 80vh; min-width: 200px; min-height: 150px; resize: both; overflow: hidden; background: rgba(20, 20, 20, 0.95); border: 1px solid #555; border-radius: 6px; padding: 6px; display: flex; flex-direction: column; gap: 4px; z-index: 9999999; box-shadow: 0 4px 12px rgba(0,0,0,0.5); pointer-events: auto;`;
+    const emojiSizeKey = "spkmod-size-spkmod-emoji-picker-v2";
+
+    try {
+        const savedSize = window.localStorage && localStorage.getItem(emojiSizeKey);
+        if (savedSize) {
+            const parsedSize = JSON.parse(savedSize);
+            const sw = parseInt(parsedSize && parsedSize.width, 10);
+            const sh = parseInt(parsedSize && parsedSize.height, 10);
+            if (!isNaN(sw) && !isNaN(sh)) {
+                lunEmojiPickerPanel.style.width = Math.max(200, Math.min(Math.round(window.innerWidth * 0.95), sw)) + "px";
+                lunEmojiPickerPanel.style.height = Math.max(150, Math.min(Math.round(window.innerHeight * 0.8), sh)) + "px";
+            }
+        }
+    } catch (_) {}
     
     if (!(window.localStorage && localStorage.getItem("spkmod-pos-spkmod-emoji-picker-v2"))) {
         if (isMobile) {
@@ -7885,6 +7899,23 @@ function toggleEmojiPicker(anchorBtn) {
 
     renderEmojiGrid();
     document.body.appendChild(lunEmojiPickerPanel);
+
+    if (typeof ResizeObserver !== "undefined" && window.localStorage) {
+        const panelEl = lunEmojiPickerPanel;
+        const cs = getComputedStyle(panelEl);
+        let lastW = Math.round(parseFloat(cs.width)) || 0;
+        let lastH = Math.round(parseFloat(cs.height)) || 0;
+        const sizeObserver = new ResizeObserver(() => {
+            if (!panelEl.isConnected) { sizeObserver.disconnect(); return; }
+            const c = getComputedStyle(panelEl);
+            const w = Math.round(parseFloat(c.width));
+            const h = Math.round(parseFloat(c.height));
+            if (!w || !h || (w === lastW && h === lastH)) return;
+            lastW = w; lastH = h;
+            try { localStorage.setItem(emojiSizeKey, JSON.stringify({ width: w, height: h })); } catch (_) {}
+        });
+        sizeObserver.observe(panelEl);
+    }
     
     const closeHandler = (e) => {
         if (!lunEmojiPickerPanel) return;
