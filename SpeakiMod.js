@@ -2939,12 +2939,22 @@ function updateMinigameUI() {
 	updateStatsModalLive();
 }
 
-var spkmodTopZIndex = 600000;
+var spkmodTopZIndex = 2147483600;
 
 function bringToFront(element) {
 	if (!element) return;
+	if (element.id === "spkmod-emoji-picker-v2" || element.id === "spkmod-emoji-picker") {
+		element.style.setProperty("z-index", "2147483646", "important");
+		return;
+	}
 	spkmodTopZIndex++;
-	element.style.zIndex = spkmodTopZIndex;
+	if (spkmodTopZIndex >= 2147483640) {
+		spkmodTopZIndex = 2147483601;
+	}
+	element.style.setProperty("z-index", String(spkmodTopZIndex), "important");
+	if (typeof lunEmojiPickerPanel !== "undefined" && lunEmojiPickerPanel && lunEmojiPickerPanel.isConnected) {
+		lunEmojiPickerPanel.style.setProperty("z-index", "2147483646", "important");
+	}
 }
 
 function makeDraggable(element, handles) {
@@ -3450,6 +3460,12 @@ const SPKMOD_SETTINGS_KEYS = new Set([
 	"spkmod-pos-spkmod-settings-modal",
 	"spkmod-pos-spkmod-stats-modal",
 	"spkmod-pos-spkmod-jukebox-modal",
+	"spkmod-jukebox-favorites",
+	"spkmod-jukebox-playlist-key",
+	"spkmod-jukebox-vol",
+	"spkmod-jukebox-shuffle",
+	"spkmod-jukebox-repeat",
+	"spkmod-jukebox-mini",
 	"spkmod-pumpkin-tracker",
 	"spkmod-quests-modal-open",
 	"spkmod-reset-timer",
@@ -3836,8 +3852,268 @@ const SPKMOD_EMOJI_FONT_FALLBACK = '"Apple Color Emoji", "Segoe UI Emoji", "Sego
 // Playlist: https://www.youtube.com/watch?v=8kKIzim7ZqU&list=PLrELCdfutHrSkxmdw2t_KD-8aj4VCclah
 // ============================================================================
 
-const SPKMOD_OST_TRACKS = [["8kKIzim7ZqU","Warak - Trickcal Revive Soundtrack Collection"],["KbKO0Mqf54k","01. Trickcal Main Title"],["-8gyhj9R98Y","02. Day Life"],["ipcAfLYStNI","03. Lounge"],["5AI_lKxOETI","04. Weekday Farm"],["NPaTub4_isU","05. Hail The World Tree"],["j1qH2VUciTU","06. Theme Theater"],["RpboF3eVM68","07. No Way Out"],["V2XMhSAwLYA","08. Let's Go"],["cNMUQok7WEA","09. Tig, The Feedstance (Phase 1)"],["fngs-d-TCUg","10. Tig, The Feedstance (Phase 2)"],["eJ7ODfEh96Y","11. Tig, The Feedstance (Phase 3)"],["hD5MgN4DSmE","12. Honranada Honrane"],["WSdqZ1FfosY","13. Adventure Begins"],["ZNXdn36eOMg","14. Battle On Sunset"],["1O-YThrGVk4","15. Spirit Forest"],["NGPCBTXJqN0","16. Moistful Spirits"],["EJten4Wu0fo","17. Crystal Lake"],["J3dmNiBGjak","18. Aurora"],["_y3M8XKVLsM","19. Dragon Cave (Abyss)"],["ZhigzT8LLQQ","20. Dragon Cave (Crystal)"],["wYdkFC_RVZs","21. Dragon Cave (Water)"],["spwRCDkSt4c","22. Deep Cave"],["D1WiO91w03c","23. Ghost Village"],["HVbsQPo-rRk","24. Monatium"],["IWwoC-mttjI","25. City Night"],["DU9Yk9q6QwQ","26. Elf Dominion"],["09mm-5dSKD4","27. Fairy Town Street"],["NQjzjaApHvw","28. Bakery In Peace"],["oEGgIzeCPh0","29. Ashur Bakery"],["g4RIyAPEkKU","30. Elias Candyfloss"],["YHr95007HF8","31. Furry Forest"],["07n5EKuauf0","32. Lamb And Dumber"],["P4RXIMWlRw4","33. This Is Awkward"],["-s9ppxajbDI","34. Life Is Comedy"],["HNeR44LeCzs","35. Trick Or Treat"],["SvJsRWg46Lg","36. We're In Trouble"],["Es3OYEOwAAc","37. Gold Thief Attack"],["NQwbJLFS7GM","38. Get You Crayon"],["uP61J2aCIzA","39. Winner's Jwopaemteo"],["G1eAbD6Si30","40. Sugar Free"],["93NpP7g5tYc","41. Dimension Crash"],["wcy560HvxMM","42. Hyper Fatalism"],["AtLBZvMULGk","43. The Time Paradox"],["raqGBx3YrJM","44. Brave New World"],["so4U-Cg3hiI","45. Alpha And Omega"],["gt24X6RCFqE","Warak - Trickcalism"],["imtp2hKQavo","Warak - Bollelujah"],["hp0wsDfc97o","Warak - Eternal Dreamer"],["FEToiyx2yvo","Monatium Night (Hardstyle Remix)"]];
-const SPKMOD_BOLPOP_TRACKS = [["Fl-9XBxnHFY","【トリッカル】SUPIKI_KING","なめころり"],["_d6T7hWFeFQ","[트릭컬 볼팝] 아이시아 - 죄다 해고야!!","김치카"],["O_c39bSJVK0","ｽﾋﾟｷ × バニラ求人 【音MAD】","みずらば【Mizu】"],["VAikdCYVgn4","[트릭컬/볼팝] 우리 딸랑구 요미, 일루와잇! (私の娘ヨミ、こっちへ来てね！)","왓다옴 "],["vygNUzLzRxc","[트릭컬 볼팝] 고스트 퍼레이드 ゴーストパレード","룩크 LOOK"],["FeHDKMilBl0","스피키 울면 안돼 (울어도 돼) 🎄❤️","진짜 박시윤"],["nYhe1Rwd8oE","[트릭컬 볼팝] 이방인","플버"],["QQoQBOG59Ko","Dr.ｽﾋﾟｷ","偽名鳥"],["twsxcXSeoUg","Warak - 집으로 가는 길 (Feat. 방연지) ··· 트릭컬 리바이브 삽입곡","Warak"],["fEDmLfQ9HEs","[트릭컬 볼팝] 마도공학 대혁명","플버"],["HZPUFJ6riWM","【합작】오토핔이 ~합작 열심히 했는데~","aggaagwwga"],["L6amI_NevCE","​[트릭컬 볼팝] 에피카 - 떠나는 이의 뒷모습은 얼마나 아름다운가","김치카"],["w7Kn4yE0Npg","ウーワｱｱｱｱｱｱｱｱ‼︎‼︎","にのまい"],["hF9vOxO0kAw","[트릭컬 볼팝] 폰 갤러리에 있는 트릭컬 짤들로 노래를 만들어 보았다","플버"],["yzZlds_D8ps","[트릭컬 볼팝] 트릭컬은 볼따구 게임 MV","삼딴게"],["oDfHfnls0LQ","[트릭컬 볼팝] 에피카 - 우리 인연은 별자리 같아서","김치카"],["bnx7u3UDJF8","Squeezy Cheeks are coming! Treat or cheek!","Trickcal: Chibi Go"],["Qc2zH0-jlfk","[트릭컬 볼팝] 코미는 이렇게 안 생겼어 MV","이딴게"],["psMKLp_w6EU","[트릭컬 볼팝] 에피카 - 부족함이 흥이 되는 마법","김치카"],["mIrdrJXMz4o","[트릭컬 볼팝] 마이볼","플버"],["4IuD3towWd8","[트릭컬 볼팝] 버터의 꿈","플버"],["XyMPpZx3LwY","[트릭컬 볼팝] 마요 - 완전 멋진 요정의 용기임","김치카"],["VVCnOCPsJcM","[트릭컬 볼팝] 에피카 - 그리움은 은하수 같아서 (원작:내가 너를 /나태주) [JP Sub]","김치카"],["23OhWI11sg4","​[트릭컬 볼팝] 에피카 - 거짓말이 진실이 되는 마법","김치카"],["eyUTbB6ScQc","[BONUS TRACK] 일일 사도 체험 - 죠안 BBANGMIX ver.","EPIDGames"],["TfhEa500-jE","코미와 버터 - 촛불하나 Cover (AI❌)","성우 강새봄"],["N7kmESdsqDA","もちょっとトリッカル / トリッカル・もちもちほっペ大作戦 (Covered by ころねぽち)","ころね ぽち -Pochi korone-"],["lCoTM0YeGCo","[볼팝/에피카의 찬가극장] - 그대라는 찬사 汝という名の賛辞","김치카"],["DGbBXmBb7ag","[트릭컬 볼팝] 코미와 버터는 사료가 좋아 MV","삼딴게"],["QjopFOsOMRA","[트릭컬 볼팝] 우이 - 고여버린 행복의 연못","김치카"],["d-DA3alm5kk","エルダインのじょーじょーゆーじょー","イカ壺"],["ORWa5gcLiOs","ﾁｮﾜ魔女ｳｱｱニバル!!","P-yoko"],["sRax_NKoNkw","[트릭컬 볼팝] 에피카 - 내 안의 다정한 행복 (원작:행복 /나태주)","김치카"],["HbRKbN1ALNw","[볼팝/에피카의 찬가극장] - 그대를 위하여 기도를 올리네","김치카"],["JVl9XZhHP5s","もちょっとビーマイベイベー","伯方"],["cKwqd0wowEw","코미 - 후와후와 타임","aggaagwwga"],["cAki2dfY-VY","Warak - 끝까지 걸어가고 싶어 (Feat. 앤씨아) ··· 트릭컬 오프닝 Full Ver.","Warak"],["auwzjvdA1Ag","[트릭컬 볼팝] 스피키 바보 아니란 말이에요!「완전판」MV","삼딴게"],["z2Fw7VQaHWo","코미 - 나는 트릭컬이 싫어요 Full ver. 【트릭컬 3주년 합작 ED】","Loding"],["HAGZpV39BJc","[트릭컬 볼팝] 엘리아스 볼따구 (엘 박사 고속도로 힛트-쏭)","앵무쇠"],["S6FZcAsxgdM","스피키 - 니가 쪼아요 [트릭컬 1000일 축하 노래]","진짜 박시윤"],["6JT4Ij5kkGU","[트릭컬 볼팝] 물고기 따러 가자","플버"],["KSQf0t1X6iU","[트릭컬 볼팝] 요즘 트릭컬 진짜 별로네","플버"],["HDjdSK-oRC4","스피키 - 가랑눈","Coroskai"],["rQhHfJsvZdc","[트릭컬 볼팝] 궁극의 해피니스 アルティメット・ハピネス","룩크 LOOK"],["ibEuXlolilk","[트릭컬 볼팝] 에피카 - 한 다리만 건너면","김치카"],["NSlvqY2_OTY","​[트릭컬 볼팝] 에피카 - 흔들리며 피는 꽃에 찬사를","김치카"],["QaslIS_SiYw","ﾃﾞﾙｼﾞ罰せよ！！！【MEGALOVANIA】","りばらんす"],["O3BYSK8N2Eo","ナマ足魅惑のパンオタク","ぜもーち"],["v9ssvzKPBwc","스피키가 신나게 좋아요~ BIG BAND REMIX","인생음감"],["ix9rmxh2XGI","ｽﾋﾟｷ - 水平線","Saba kann"],["_TXaAI6kQqo","SPK.","めろんぱん"],["jg_4aOyusSQ","[우이 커버송]행복해져라~ 얍✨️_へむけじゃら_성우 김가령_トリッカル","성우 김가령"],["xjwAtee0480","스피키는 엄청난 것을 네르해갔습니다","aggaagwwga"],["Gd8UfnurNYA","新ｽﾋﾟｷ島 - Full ver.","フネろん / FUNE"],["bd7ZFA-b-zc","[트릭컬 볼팝] Mystic Cleaner","룩크 LOOK"],["B1vNd0kIGM8","For Ner, someday.","The Ring's Spikist Maestro"],["jsnZlSpB5Fg","[Trickcal: Chibi Go Arrange] Warak - Dimension Crash (Ustempo Remix)","RudBag"],["_Q-vhV4HJnU","[트릭컬 볼팝] 에피카 - 춤추는 달빛 아래","김치카"],["YfD1_jc3Zaw","ｽﾋﾟｷ故郷(ふるさと)","ホバギ管理人 Hobagi_Master "],["179c_7Tr94k","[트릭컬 볼팝] 에슈르 - 반죽처럼 부풀어라","김치카"],["k6MlDHQEYxg","[특별영상] Kira Kira ☆ Kishya","EPIDGames"],["JGRkknim_Gc","[트릭컬 볼팝] R41엘레나 - 뜨거운 아이스 아메리카노","김치카"],["jlCRhil90TA","[트릭컬 볼팝] 리스티 - 뉴 게임 플러스","김치카"],["8iE80ghzU8o","グッバイ戦線","めろんぱん"],["iGz4QlH9rD0","[트릭컬 볼팝] 에피카 - 지워진 이름의 축제","김치카"],["r-5St9XqV9g","Omochihoppe Stretchabole!","ゆうしゃアシスタント"],["Wv_kNmdRJHs","エシュールのパーフェクトまほう教室","けしごむ"],["AIYQxt-1M2w","ｴｰｳンジェル ドリーム","あいきっ"],["7j5zkBPQRZk","ｽﾋﾟｷﾊｲ","ひやねこ"],["jXTJMeZpYJQ","[볼팝/에피카의 찬가극장] - 한 송이 여왕의 찬가","김치카"],["MmI8N9M_V04","ｽﾋﾟｷ/シャイニングスター","ホバギ管理人 Hobagi_Master "],["z7c4pMjum6w","トリッカルキャニオン","けしごむ"],["lL4O6mxRRKA","[트릭컬 볼팝] 퓨어★샤인 다야","플버"],["ND2kwaZZQSs","[AI 커버] 비비 - ViVi 한국어버전 (원곡: Kenshi Yonezu)","김치카"],["cSQlcAE-ihk","もちょっとトリッカル（号泣）","多くは語るまい"],["lqwZFSZXmoM","ｽﾋﾟｷ - 夜に駆ける","けしごむ"],["Xq8LZn-l4vw","SPEAKI ZONE (FULL)","P-yoko"],["c6bpq3mqbbU","[볼팝/에피카의 찬가극장] - 작은 호랑이의 노래 [JP Sub]","김치카"],["DT9ysZx1wZ4","[트릭컬 볼팝] 에피카 - 생일 축하하오!","김치카"],["Fi7clBiPrLY","[트릭컬 볼팝]선배님!","Orion Cloud"],["DNS-q7AjLBw","[트릭컬 볼팝] 하트 박스","플버"],["ohdeZC2VwH0","스피키 파돌리기송 | 初音ｽﾋﾟｷの「イエヴァン・ポルッカ」","운차피"],["nXzgOlBnh7I","[트릭컬 볼팝] 재미의 왕이 재미를 원한다!","플버"],["bggll0OerzQ","치르밀 버터","aggaagwwga"],["JBes2jiR5yI","​[트릭컬 볼팝] 영원살이 - 잊힌 계절의 서사시","김치카"],["etjGxx4mPnM","[트릭컬 볼팝] 에피카,디아나 -매듭진 어제가, 오늘의 노래가 되는 마법","김치카"],["Ic5xH7v9pdo","[트릭컬 볼팝] 에피카 - 떠나는 건 내일 합시다 | 해변의 하룻밤","김치카"],["D3boQlSnHCg","대출해서 돈 버는 게임 (실화)","이딴게"],["45Q3IDqk9VA","カッコつけてｽﾋﾟｷで打打打打打打打打打打作ってるｽﾋﾟｷがいたんですよ～","フネろん / FUNE"],["cazCz_2OqYE","ｽﾋﾟﾋﾟﾋﾟｽﾋﾟｷ","フネろん / FUNE"],["RgOQ-ArGc9s","𝐁𝐢𝐠 𝐓𝐫𝐢𝐜𝐤𝐜𝐚𝐥","코드"],["I_S4xxnpyKU","ｽﾋﾟｷ素材天国 ミラクルスターズ リミックス0【トリッカル】","ミニゲーム工房"],["v06BYEfuUjI","ｽﾋﾟｷ - アゲハ蝶","安価壁"],["qH2loH0oYlc","ｽﾋﾟｷ - バグ","けしごむ"]];
+const SPKMOD_OST_TRACKS = [["KbKO0Mqf54k","Trickcal Main Title"],["-8gyhj9R98Y","Day Life"],["ipcAfLYStNI","Lounge"],["5AI_lKxOETI","Weekday Farm"],["NPaTub4_isU","Hail The World Tree"],["j1qH2VUciTU","Theme Theater"],["RpboF3eVM68","No Way Out"],["V2XMhSAwLYA","Let's Go"],["cNMUQok7WEA","Tig, The Feedstance (Phase 1)"],["fngs-d-TCUg","Tig, The Feedstance (Phase 2)"],["eJ7ODfEh96Y","Tig, The Feedstance (Phase 3)"],["hD5MgN4DSmE","Honranada Honrane"],["WSdqZ1FfosY","Adventure Begins"],["ZNXdn36eOMg","Battle On Sunset"],["1O-YThrGVk4","Spirit Forest"],["NGPCBTXJqN0","Moistful Spirits"],["EJten4Wu0fo","Crystal Lake"],["J3dmNiBGjak","Aurora"],["_y3M8XKVLsM","Dragon Cave (Abyss)"],["ZhigzT8LLQQ","Dragon Cave (Crystal)"],["wYdkFC_RVZs","Dragon Cave (Water)"],["spwRCDkSt4c","Deep Cave"],["D1WiO91w03c","Ghost Village"],["HVbsQPo-rRk","Monatium"],["IWwoC-mttjI","City Night"],["DU9Yk9q6QwQ","Elf Dominion"],["09mm-5dSKD4","Fairy Town Street"],["NQjzjaApHvw","Bakery In Peace"],["oEGgIzeCPh0","Ashur Bakery"],["g4RIyAPEkKU","Elias Candyfloss"],["YHr95007HF8","Furry Forest"],["07n5EKuauf0","Lamb And Dumber"],["P4RXIMWlRw4","This Is Awkward"],["-s9ppxajbDI","Life Is Comedy"],["HNeR44LeCzs","Trick Or Treat"],["SvJsRWg46Lg","We're In Trouble"],["Es3OYEOwAAc","Gold Thief Attack"],["NQwbJLFS7GM","Get You Crayon"],["uP61J2aCIzA","Winner's Jwopaemteo"],["G1eAbD6Si30","Sugar Free"],["93NpP7g5tYc","Dimension Crash"],["wcy560HvxMM","Hyper Fatalism"],["AtLBZvMULGk","The Time Paradox"],["raqGBx3YrJM","Brave New World"],["so4U-Cg3hiI","Alpha And Omega"],["gt24X6RCFqE","Warak - Trickcalism"],["imtp2hKQavo","Warak - Bollelujah"],["hp0wsDfc97o","Warak - Eternal Dreamer"],["cAki2dfY-VY","끝까지 걸어가고 싶어 (Feat. 앤씨아)","Warak"],["bnx7u3UDJF8","Squeezy Cheeks are coming!","EPIDGames"],["eyUTbB6ScQc","일일 사도 체험 - 죠안 BBANGMIX ver.","EPIDGames"],["twsxcXSeoUg","집으로 가는 길 (Feat. 방연지)","Warak"],["k6MlDHQEYxg","Kira Kira ☆ Kishya","EPIDGames"]];
+const SPKMOD_BOLPOP_TRACKS = [["Fl-9XBxnHFY","【トリッカル】SUPIKI_KING","なめころり"],["_d6T7hWFeFQ","아이시아 - 죄다 해고야!!","김치카"],["O_c39bSJVK0","ｽﾋﾟｷ × バニラ求人 【音MAD】","みずらば【Mizu】"],["VAikdCYVgn4","[트릭컬/볼팝] 우리 딸랑구 요미, 일루와잇! (私の娘ヨミ、こっちへ来てね！)","왓다옴 "],["vygNUzLzRxc","고스트 퍼레이드 ゴーストパレード","룩크 LOOK"],["FeHDKMilBl0","스피키 울면 안돼 (울어도 돼) 🎄❤️","진짜 박시윤"],["nYhe1Rwd8oE","이방인","플버"],["QQoQBOG59Ko","Dr.ｽﾋﾟｷ","偽名鳥"],["fEDmLfQ9HEs","마도공학 대혁명","플버"],["HZPUFJ6riWM","【합작】오토핔이 ~합작 열심히 했는데~","aggaagwwga"],["L6amI_NevCE","​에피카 - 떠나는 이의 뒷모습은 얼마나 아름다운가","김치카"],["w7Kn4yE0Npg","ウーワｱｱｱｱｱｱｱｱ‼︎‼︎","にのまい"],["hF9vOxO0kAw","폰 갤러리에 있는 트릭컬 짤들로 노래를 만들어 보았다","플버"],["yzZlds_D8ps","트릭컬은 볼따구 게임 MV","삼딴게"],["oDfHfnls0LQ","에피카 - 우리 인연은 별자리 같아서","김치카"],["Qc2zH0-jlfk","코미는 이렇게 안 생겼어 MV","이딴게"],["psMKLp_w6EU","에피카 - 부족함이 흥이 되는 마법","김치카"],["mIrdrJXMz4o","마이볼","플버"],["4IuD3towWd8","버터의 꿈","플버"],["XyMPpZx3LwY","마요 - 완전 멋진 요정의 용기임","김치카"],["VVCnOCPsJcM","에피카 - 그리움은 은하수 같아서 (원작:내가 너를 /나태주) [JP Sub]","김치카"],["23OhWI11sg4","​에피카 - 거짓말이 진실이 되는 마법","김치카"],["TfhEa500-jE","코미와 버터 - 촛불하나 Cover (AI❌)","성우 강새봄"],["N7kmESdsqDA","もちょっとトリッカル / トリッカル・もちもちほっペ大作戦 (Covered by ころねぽち)","ころね ぽち -Pochi korone-"],["lCoTM0YeGCo","[볼팝/에피카의 찬가극장] - 그대라는 찬사 汝という名の賛辞","김치카"],["DGbBXmBb7ag","코미와 버터는 사료가 좋아 MV","삼딴게"],["QjopFOsOMRA","우이 - 고여버린 행복의 연못","김치카"],["d-DA3alm5kk","エルダインのじょーじょーゆーじょー","イカ壺"],["ORWa5gcLiOs","ﾁｮﾜ魔女ｳｱｱニバル!!","P-yoko"],["sRax_NKoNkw","에피카 - 내 안의 다정한 행복 (원작:행복 /나태주)","김치카"],["HbRKbN1ALNw","[볼팝/에피카의 찬가극장] - 그대를 위하여 기도를 올리네","김치카"],["JVl9XZhHP5s","もちょっとビーマイベイベー","伯方"],["cKwqd0wowEw","코미 - 후와후와 타임","aggaagwwga"],["auwzjvdA1Ag","스피키 바보 아니란 말이에요!「완전판」MV","삼딴게"],["z2Fw7VQaHWo","코미 - 나는 트릭컬이 싫어요 Full ver. 【트릭컬 3주년 합작 ED】","Loding"],["HAGZpV39BJc","엘리아스 볼따구 (엘 박사 고속도로 힛트-쏭)","앵무쇠"],["S6FZcAsxgdM","스피키 - 니가 쪼아요 [트릭컬 1000일 축하 노래]","진짜 박시윤"],["6JT4Ij5kkGU","물고기 따러 가자","플버"],["KSQf0t1X6iU","요즘 트릭컬 진짜 별로네","플버"],["HDjdSK-oRC4","스피키 - 가랑눈","Coroskai"],["rQhHfJsvZdc","궁극의 해피니스 アルティメット・ハピネス","룩크 LOOK"],["ibEuXlolilk","에피카 - 한 다리만 건너면","김치카"],["NSlvqY2_OTY","​에피카 - 흔들리며 피는 꽃에 찬사를","김치카"],["QaslIS_SiYw","ﾃﾞﾙｼﾞ罰せよ！！！【MEGALOVANIA】","りばらんす"],["O3BYSK8N2Eo","ナマ足魅惑のパンオタク","ぜもーち"],["v9ssvzKPBwc","스피키가 신나게 좋아요~ BIG BAND REMIX","인생음감"],["ix9rmxh2XGI","ｽﾋﾟｷ - 水平線","Saba kann"],["_TXaAI6kQqo","SPK.","めろんぱん"],["jg_4aOyusSQ","[우이 커버송]행복해져라~ 얍✨️_へむけじゃら_성우 김가령_トリッカル","성우 김가령"],["xjwAtee0480","스피키는 엄청난 것을 네르해갔습니다","aggaagwwga"],["Gd8UfnurNYA","新ｽﾋﾟｷ島 - Full ver.","フネろん / FUNE"],["bd7ZFA-b-zc","Mystic Cleaner","룩크 LOOK"],["B1vNd0kIGM8","For Ner, someday.","The Ring's Spikist Maestro"],["jsnZlSpB5Fg","[Trickcal: Chibi Go Arrange] Warak - Dimension Crash (Ustempo Remix)","RudBag"],["_Q-vhV4HJnU","에피카 - 춤추는 달빛 아래","김치카"],["YfD1_jc3Zaw","ｽﾋﾟｷ故郷(ふるさと)","ホバギ管理人 Hobagi_Master "],["179c_7Tr94k","에슈르 - 반죽처럼 부풀어라","김치카"],["JGRkknim_Gc","R41엘레나 - 뜨거운 아이스 아메리카노","김치카"],["jlCRhil90TA","리스티 - 뉴 게임 플러스","김치카"],["8iE80ghzU8o","グッバイ戦線","めろんぱん"],["iGz4QlH9rD0","에피카 - 지워진 이름의 축제","김치카"],["r-5St9XqV9g","Omochihoppe Stretchabole!","ゆうしゃアシスタント"],["Wv_kNmdRJHs","エシュールのパーフェクトまほう教室","けしごむ"],["AIYQxt-1M2w","ｴｰｳンジェル ドリーム","あいきっ"],["7j5zkBPQRZk","ｽﾋﾟｷﾊｲ","ひやねこ"],["jXTJMeZpYJQ","[볼팝/에피카의 찬가극장] - 한 송이 여왕의 찬가","김치카"],["MmI8N9M_V04","ｽﾋﾟｷ/シャイニングスター","ホバギ管理人 Hobagi_Master "],["z7c4pMjum6w","トリッカルキャニオン","けしごむ"],["lL4O6mxRRKA","퓨어★샤인 다야","플버"],["ND2kwaZZQSs","[AI 커버] 비비 - ViVi 한국어버전 (원곡: Kenshi Yonezu)","김치카"],["cSQlcAE-ihk","もちょっとトリッカル（号泣）","多くは語るまい"],["lqwZFSZXmoM","ｽﾋﾟｷ - 夜に駆ける","けしごむ"],["Xq8LZn-l4vw","SPEAKI ZONE (FULL)","P-yoko"],["c6bpq3mqbbU","[볼팝/에피카의 찬가극장] - 작은 호랑이의 노래 [JP Sub]","김치카"],["DT9ysZx1wZ4","에피카 - 생일 축하하오!","김치카"],["Fi7clBiPrLY","[트릭컬 볼팝]선배님!","Orion Cloud"],["DNS-q7AjLBw","하트 박스","플버"],["ohdeZC2VwH0","스피키 파돌리기송 | 初音ｽﾋﾟｷの「イエヴァン・ポルッカ」","운차피"],["nXzgOlBnh7I","재미의 왕이 재미를 원한다!","플버"],["bggll0OerzQ","치르밀 버터","aggaagwwga"],["JBes2jiR5yI","​영원살이 - 잊힌 계절의 서사시","김치카"],["etjGxx4mPnM","에피카,디아나 -매듭진 어제가, 오늘의 노래가 되는 마법","김치카"],["Ic5xH7v9pdo","에피카 - 떠나는 건 내일 합시다 | 해변의 하룻밤","김치카"],["D3boQlSnHCg","대출해서 돈 버는 게임 (실화)","이딴게"],["45Q3IDqk9VA","カッコつけてｽﾋﾟｷで打打打打打打打打打打作ってるｽﾋﾟｷがいたんですよ～","フネろん / FUNE"],["cazCz_2OqYE","ｽﾋﾟﾋﾟﾋﾟｽﾋﾟｷ","フネろん / FUNE"],["RgOQ-ArGc9s","𝐁𝐢𝐠 𝐓𝐫𝐢𝐜𝐤𝐜𝐚𝐥","코드"],["I_S4xxnpyKU","ｽﾋﾟｷ素材天国 ミラクルスターズ リミックス0【トリッカル】","ミニゲーム工房"],["v06BYEfuUjI","ｽﾋﾟｷ - アゲハ蝶","安価壁"],["qH2loH0oYlc","ｽﾋﾟｷ - バグ","けしごむ"],["FEToiyx2yvo","Monatium Night (Hardstyle Remix)"]];
+
+// --- Jukebox i18n Helpers ---
+function getJukeboxText(key) {
+    if (typeof t === "function") {
+        const val = t(key);
+        if (val && val !== key) return val;
+    }
+    const enFallbacks = {
+        jukeboxTitle: "Monatium Radio Station",
+        jukeboxBtnTooltip: "Monatium Radio Station (Alt+M)",
+        jukeboxPlaylistOst: "OST",
+        jukeboxPlaylistBolpop: "Bolpop / MADs",
+        jukeboxBolpopTab: "Bolpop",
+        jukeboxPlaylistFavorites: "Favorites",
+        jukeboxBolpopMessage: "Here's some of my Trickcal favorite songs a few added by friends, I hope you enjoy this curated list. With Love, Glas~",
+        jukeboxFavoritesMessage: "Your favorite Trickcal songs playlist. Click ❤️ on any track to add or remove it.",
+        jukeboxFavoritesEmpty: "No favorite songs yet! Click ❤️ on any song to add it to this list.",
+        jukeboxAddFavorite: "Add to favorites",
+        jukeboxRemoveFavorite: "Remove from favorites",
+        jukeboxMiniPlayerExpand: "Expand (Double Right-Click to minimize)",
+        jukeboxTogglePlaylist: "Toggle Playlist",
+        jukeboxClose: "Hide (Alt+M)",
+        jukeboxShuffle: "Shuffle / Random",
+        jukeboxPrev: "Previous",
+        jukeboxPlay: "Play",
+        jukeboxPause: "Pause",
+        jukeboxNext: "Next",
+        jukeboxRepeat: "Repeat Mode",
+        jukeboxMiniPlayerHint: "Double right-click to open Mini-player!",
+        jukeboxMiniPlayerExpandHint: "Double right-click to expand!"
+    };
+    return enFallbacks[key] || key;
+}
+
+// --- Jukebox Thumbnail Preview Tooltip ---
+let lunJukeboxThumbPreview = null;
+function ensureJukeboxThumbPreview() {
+    if (lunJukeboxThumbPreview) return lunJukeboxThumbPreview;
+    lunJukeboxThumbPreview = document.createElement("img");
+    lunJukeboxThumbPreview.id = "spkmod-jukebox-thumb-preview";
+    lunJukeboxThumbPreview.style.cssText = "display: none; position: fixed; width: 280px; height: 158px; max-width: 90vw; border-radius: 10px; box-shadow: 0 12px 36px rgba(0,0,0,0.85); border: 2px solid var(--spkmod-accent, #e8b84b); background: #1a1424; object-fit: cover; z-index: 2147483647 !important; pointer-events: none; transition: opacity 0.15s ease-out;";
+    document.body.appendChild(lunJukeboxThumbPreview);
+    return lunJukeboxThumbPreview;
+}
+
+function positionJukeboxThumbPreview(thumbEl) {
+    if (!thumbEl || !lunJukeboxThumbPreview) return;
+    const rect = thumbEl.getBoundingClientRect();
+    const prevW = 280;
+    const prevH = 158;
+
+    let left = rect.left + rect.width / 2 - prevW / 2;
+    left = Math.max(12, Math.min(left, window.innerWidth - prevW - 12));
+
+    let top = rect.top - prevH - 12;
+    if (top < 12) {
+        top = rect.bottom + 12;
+    }
+    if (top + prevH > window.innerHeight - 12) {
+        top = Math.max(12, window.innerHeight - prevH - 12);
+    }
+
+    lunJukeboxThumbPreview.style.left = Math.round(left) + "px";
+    lunJukeboxThumbPreview.style.top = Math.round(top) + "px";
+}
+
+function showJukeboxThumbPreview(thumbEl) {
+    if (!thumbEl) return;
+    const preview = ensureJukeboxThumbPreview();
+    const src = thumbEl.src || "";
+    if (!src) return;
+
+    const hqSrc = src.replace('/mqdefault.jpg', '/hqdefault.jpg');
+    preview.onerror = () => { preview.src = src; };
+    preview.src = hqSrc;
+    preview.style.display = "block";
+    preview.style.opacity = "1";
+    positionJukeboxThumbPreview(thumbEl);
+}
+
+function hideJukeboxThumbPreview() {
+    if (lunJukeboxThumbPreview) {
+        lunJukeboxThumbPreview.style.display = "none";
+    }
+}
+
+// --- Jukebox Floating Hint Toast ---
+let lunJukeboxHintToast = null;
+let lunJukeboxHintTimeout = null;
+
+function showJukeboxHint(text, x, y) {
+    if (!lunJukeboxHintToast) {
+        lunJukeboxHintToast = document.createElement("div");
+        lunJukeboxHintToast.id = "spkmod-jukebox-hint-toast";
+        lunJukeboxHintToast.style.cssText = "position: fixed; z-index: 2147483647 !important; pointer-events: none; display: none; align-items: center; gap: 6px; background: rgba(26, 20, 36, 0.96); color: #ffdf79; border: 1px solid var(--spkmod-accent, #e8b84b); border-radius: 8px; padding: 6px 12px; font-size: 11px; font-weight: 700; box-shadow: 0 8px 24px rgba(0,0,0,0.85); white-space: nowrap; transition: opacity 0.2s, transform 0.2s; transform: translate(-50%, -100%); font-family: Pretendard, system-ui, sans-serif;";
+        document.body.appendChild(lunJukeboxHintToast);
+    }
+    lunJukeboxHintToast.innerHTML = `🖱️ ${text}`;
+    lunJukeboxHintToast.style.display = "inline-flex";
+    lunJukeboxHintToast.style.opacity = "1";
+
+    const prevW = lunJukeboxHintToast.offsetWidth || 180;
+    const prevH = lunJukeboxHintToast.offsetHeight || 32;
+    let clampedX = Math.max(prevW / 2 + 10, Math.min(x || (window.innerWidth / 2), window.innerWidth - prevW / 2 - 10));
+    let clampedY = Math.max(prevH + 10, (y || 100) - 8);
+
+    lunJukeboxHintToast.style.left = Math.round(clampedX) + "px";
+    lunJukeboxHintToast.style.top = Math.round(clampedY) + "px";
+
+    if (lunJukeboxHintTimeout) clearTimeout(lunJukeboxHintTimeout);
+    lunJukeboxHintTimeout = setTimeout(() => {
+        if (lunJukeboxHintToast) {
+            lunJukeboxHintToast.style.opacity = "0";
+            setTimeout(() => {
+                if (lunJukeboxHintToast) lunJukeboxHintToast.style.display = "none";
+            }, 200);
+        }
+    }, 2000);
+}
+
+function hideJukeboxHint() {
+    if (lunJukeboxHintTimeout) clearTimeout(lunJukeboxHintTimeout);
+    if (lunJukeboxHintToast) {
+        lunJukeboxHintToast.style.display = "none";
+    }
+}
+
+if (typeof window !== "undefined") {
+    window.addEventListener("scroll", () => {
+        hideJukeboxThumbPreview();
+        hideJukeboxHint();
+    }, true);
+    window.addEventListener("touchstart", () => {
+        hideJukeboxThumbPreview();
+        hideJukeboxHint();
+    }, { passive: true, capture: true });
+}
+
+function updateJukeboxI18n() {
+    const modal = lunHudElements && lunHudElements.jukeboxModal;
+    if (!modal) return;
+    const state = window.__speakiMusicState;
+
+    const titleEl = modal.querySelector('#spkmod-jukebox-header-title');
+    if (titleEl) {
+        titleEl.innerHTML = `<span style="font-size:15px;">🎵</span> ${getJukeboxText("jukeboxTitle")}`;
+    }
+
+    const tabOst = modal.querySelector('#spkmod-jukebox-tab-ost');
+    if (tabOst) {
+        tabOst.textContent = `💿 ${getJukeboxText("jukeboxPlaylistOst")}`;
+        tabOst.title = `Trickcal ${getJukeboxText("jukeboxPlaylistOst")}`;
+    }
+
+    const tabBolpop = modal.querySelector('#spkmod-jukebox-tab-bolpop');
+    if (tabBolpop) {
+        tabBolpop.textContent = `🎬 ${getJukeboxText("jukeboxBolpopTab")}`;
+        tabBolpop.title = getJukeboxText("jukeboxPlaylistBolpop");
+    }
+
+    const tabFav = modal.querySelector('#spkmod-jukebox-tab-fav');
+    if (tabFav) {
+        tabFav.title = getJukeboxText("jukeboxPlaylistFavorites");
+    }
+
+    const drawerBtn = modal.querySelector('#spkmod-jukebox-drawer-btn');
+    if (drawerBtn) {
+        drawerBtn.title = getJukeboxText("jukeboxTogglePlaylist");
+    }
+
+    const closeBtn = modal.querySelector('#spkmod-jukebox-close-btn');
+    if (closeBtn) {
+        closeBtn.title = getJukeboxText("jukeboxClose");
+    }
+
+    const miniExpandBtn = modal.querySelector('#spkmod-jukebox-mini-expand');
+    if (miniExpandBtn) {
+        miniExpandBtn.title = getJukeboxText("jukeboxMiniPlayerExpand");
+    }
+
+    const btnShuffle = modal.querySelector('#spkmod-jukebox-shuffle');
+    if (btnShuffle) {
+        btnShuffle.title = getJukeboxText("jukeboxShuffle");
+    }
+
+    const btnPrev = modal.querySelector('#spkmod-jukebox-prev');
+    if (btnPrev) {
+        btnPrev.title = getJukeboxText("jukeboxPrev");
+    }
+
+    const btnPlay = modal.querySelector('#spkmod-jukebox-play');
+    if (btnPlay) {
+        btnPlay.title = (state && state.isPlaying) ? getJukeboxText("jukeboxPause") : getJukeboxText("jukeboxPlay");
+    }
+
+    const btnNext = modal.querySelector('#spkmod-jukebox-next');
+    if (btnNext) {
+        btnNext.title = getJukeboxText("jukeboxNext");
+    }
+
+    const btnRepeat = modal.querySelector('#spkmod-jukebox-repeat');
+    if (btnRepeat) {
+        btnRepeat.title = getJukeboxText("jukeboxRepeat");
+    }
+
+    const msgCard = modal.querySelector('#spkmod-jukebox-bolpop-msg');
+    if (msgCard) {
+        msgCard.innerHTML = `💌 <i>${getJukeboxText("jukeboxBolpopMessage")}</i>`;
+    }
+
+    const favMsg = modal.querySelector('#spkmod-jukebox-fav-msg');
+    if (favMsg) {
+        favMsg.innerHTML = `❤️ <i>${getJukeboxText("jukeboxFavoritesMessage")}</i>`;
+    }
+
+    const favEmpty = modal.querySelector('#spkmod-jukebox-fav-empty');
+    if (favEmpty) {
+        favEmpty.innerHTML = `🤍 <i>${getJukeboxText("jukeboxFavoritesEmpty")}</i>`;
+    }
+
+    const curVid = state && getActiveJukeboxTracks()[state.currentTrackIndex]?.[0];
+    const heartBtn = modal.querySelector('#spkmod-jukebox-heart-btn');
+    if (heartBtn && curVid) {
+        const isFav = isJukeboxTrackFavorite(curVid);
+        heartBtn.textContent = isFav ? '❤️' : '🤍';
+        heartBtn.title = isFav ? getJukeboxText("jukeboxRemoveFavorite") : getJukeboxText("jukeboxAddFavorite");
+    }
+
+    const rowHearts = modal.querySelectorAll('.spkmod-jb-row-heart');
+    rowHearts.forEach(btn => {
+        const isFav = btn.textContent === '❤️';
+        btn.title = isFav ? getJukeboxText("jukeboxRemoveFavorite") : getJukeboxText("jukeboxAddFavorite");
+    });
+
+    const hintText = (state && state.isMiniMode) ? getJukeboxText("jukeboxMiniPlayerExpandHint") : getJukeboxText("jukeboxMiniPlayerHint");
+    const header = modal.querySelector('#spkmod-jukebox-header');
+    const trackInfo = modal.querySelector('#spkmod-jukebox-track-info');
+    if (header) {
+        header.title = hintText;
+        if (typeof setSpkmodRichTooltip === 'function') {
+            setSpkmodRichTooltip(header, '🖱️ ' + hintText);
+        }
+    }
+    if (trackInfo) {
+        trackInfo.title = hintText;
+        if (typeof setSpkmodRichTooltip === 'function') {
+            setSpkmodRichTooltip(trackInfo, '🖱️ ' + hintText);
+        }
+    }
+
+    if (typeof updateHudIconTooltips === "function") {
+        updateHudIconTooltips();
+    }
+}
+
+if (typeof spkmodI18nRenderers !== "undefined") {
+    spkmodI18nRenderers.push(() => {
+        updateJukeboxI18n();
+    });
+}
 
 window.__speakiMusicState = window.__speakiMusicState || {
     player: null,
@@ -3859,8 +4135,91 @@ window.__speakiMusicState = window.__speakiMusicState || {
     isMiniMode: (window.localStorage && localStorage.getItem("spkmod-jukebox-mini") === "true") || false
 };
 
+// --- Jukebox Favorites Management ---
+let lunJukeboxFavoriteIds = new Set();
+
+function loadJukeboxFavorites() {
+    try {
+        const raw = (window.localStorage && localStorage.getItem("spkmod-jukebox-favorites"));
+        if (raw) {
+            const list = JSON.parse(raw);
+            if (Array.isArray(list)) {
+                lunJukeboxFavoriteIds = new Set(list.map(item => Array.isArray(item) ? item[0] : (item && item.vid ? item.vid : item)));
+                return;
+            }
+        }
+    } catch (_) {}
+    lunJukeboxFavoriteIds = new Set();
+}
+loadJukeboxFavorites();
+
+function findJukeboxTrackByVid(vid) {
+    if (!vid) return null;
+    for (const t of SPKMOD_BOLPOP_TRACKS) {
+        if (t[0] === vid) return t;
+    }
+    for (const t of SPKMOD_OST_TRACKS) {
+        if (t[0] === vid) return [t[0], t[1], t[2] || ""];
+    }
+    return null;
+}
+
+function getJukeboxFavoriteTracks() {
+    try {
+        const raw = (window.localStorage && localStorage.getItem("spkmod-jukebox-favorites"));
+        if (raw) {
+            const list = JSON.parse(raw);
+            if (Array.isArray(list)) {
+                return list.map(item => {
+                    if (Array.isArray(item)) return [item[0], item[1], item[2] || ""];
+                    if (item && item.vid) return [item.vid, item.title, item.author || ""];
+                    const found = findJukeboxTrackByVid(item);
+                    return found || [item, "Favorite Track", ""];
+                });
+            }
+        }
+    } catch (_) {}
+    return [];
+}
+
+function isJukeboxTrackFavorite(vid) {
+    if (!vid) return false;
+    return lunJukeboxFavoriteIds.has(vid);
+}
+
+function toggleJukeboxFavorite(track) {
+    if (!track) return false;
+    const vid = Array.isArray(track) ? track[0] : (track.vid || track);
+    if (!vid) return false;
+
+    let favorites = getJukeboxFavoriteTracks();
+    const isFav = lunJukeboxFavoriteIds.has(vid);
+
+    if (isFav) {
+        favorites = favorites.filter(t => t[0] !== vid);
+        lunJukeboxFavoriteIds.delete(vid);
+    } else {
+        const found = findJukeboxTrackByVid(vid);
+        const title = found ? found[1] : (Array.isArray(track) ? track[1] : (track.title || "Track"));
+        const author = found ? (found[2] || "") : (Array.isArray(track) ? (track[2] || "") : (track.author || ""));
+        favorites.push([vid, title, author]);
+        lunJukeboxFavoriteIds.add(vid);
+    }
+
+    try {
+        if (window.localStorage) {
+            localStorage.setItem("spkmod-jukebox-favorites", JSON.stringify(favorites));
+        }
+    } catch (_) {}
+
+    return !isFav;
+}
+
 function getActiveJukeboxTracks() {
     const state = window.__speakiMusicState;
+    if (state.activePlaylistKey === "favorites") {
+        return getJukeboxFavoriteTracks();
+    }
     return (state.activePlaylistKey === "bolpop") ? SPKMOD_BOLPOP_TRACKS : SPKMOD_OST_TRACKS;
 }
 
@@ -3870,7 +4229,7 @@ function getActiveJukeboxTracks() {
     const tracks = getActiveJukeboxTracks();
     if (!state.currentTrackTitle && tracks && tracks.length > 0) {
         state.currentTrackTitle = tracks[0][1];
-        state.currentTrackAuthor = (state.activePlaylistKey === "bolpop") ? (tracks[0][2] || "") : "";
+        state.currentTrackAuthor = tracks[0][2] || "";
     }
 })();
 
@@ -4036,7 +4395,7 @@ function playTrackAtIndex(idx, userInitiated = true) {
     state.currentTrackIndex = idx;
     const item = tracks[idx];
     state.currentTrackTitle = item[1];
-    state.currentTrackAuthor = (state.activePlaylistKey === "bolpop") ? (item[2] || "") : "";
+    state.currentTrackAuthor = item[2] || "";
 
     updateJukeboxUI();
 
@@ -4085,6 +4444,9 @@ function toggleMiniPlayer(forceMini) {
     if (window.localStorage) {
         localStorage.setItem("spkmod-jukebox-mini", state.isMiniMode ? "true" : "false");
     }
+    hideJukeboxHint();
+    hideJukeboxThumbPreview();
+    updateJukeboxI18n();
 }
 
 function switchJukeboxPlaylist(key, autoPlay = false) {
@@ -4096,15 +4458,17 @@ function switchJukeboxPlaylist(key, autoPlay = false) {
     if (window.localStorage) localStorage.setItem("spkmod-jukebox-playlist-key", key);
 
     const tracks = getActiveJukeboxTracks();
-    const item = tracks[0] || ["", "No Tracks", ""];
+    const item = tracks[0] || ["", getJukeboxText(key === 'favorites' ? "jukeboxFavoritesEmpty" : "jukeboxNoTracks"), ""];
     state.currentTrackTitle = item[1];
-    state.currentTrackAuthor = (key === "bolpop") ? (item[2] || "") : "";
+    state.currentTrackAuthor = item[2] || "";
 
     const modal = lunHudElements.jukeboxModal;
     if (modal) {
         const tabOst = modal.querySelector('#spkmod-jukebox-tab-ost');
         const tabBolpop = modal.querySelector('#spkmod-jukebox-tab-bolpop');
+        const tabFav = modal.querySelector('#spkmod-jukebox-tab-fav');
         const msgCard = modal.querySelector('#spkmod-jukebox-bolpop-msg');
+        const favMsgCard = modal.querySelector('#spkmod-jukebox-fav-msg');
 
         if (tabOst) {
             tabOst.style.background = (key === 'ost') ? '#e8b84b' : '#3e3052';
@@ -4114,14 +4478,23 @@ function switchJukeboxPlaylist(key, autoPlay = false) {
             tabBolpop.style.background = (key === 'bolpop') ? '#e8b84b' : '#3e3052';
             tabBolpop.style.color = (key === 'bolpop') ? '#1a1424' : '#ffc94a';
         }
+        if (tabFav) {
+            tabFav.style.background = (key === 'favorites') ? '#e8b84b' : '#3e3052';
+            tabFav.style.color = (key === 'favorites') ? '#1a1424' : '#ff4d6d';
+        }
         if (msgCard) {
             msgCard.style.display = (key === 'bolpop') ? 'block' : 'none';
+            msgCard.innerHTML = `💌 <i>${getJukeboxText("jukeboxBolpopMessage")}</i>`;
+        }
+        if (favMsgCard) {
+            favMsgCard.style.display = (key === 'favorites' && tracks.length > 0) ? 'block' : 'none';
+            favMsgCard.innerHTML = `❤️ <i>${getJukeboxText("jukeboxFavoritesMessage")}</i>`;
         }
         populateJukeboxDrawer(modal);
     }
     updateJukeboxUI();
 
-    if (autoPlay && state.player && state.isReady) {
+    if (autoPlay && state.player && state.isReady && tracks.length > 0) {
         playTrackAtIndex(0);
     }
 }
@@ -4150,7 +4523,7 @@ function buildJukeboxUI() {
     const modal = buildElement("div", {
         id: "spkmod-jukebox-modal",
         className: "spkmod-music-modal" + (state.modalVisible ? "" : " hidden") + (state.isMiniMode ? " spkmod-mini-mode" : ""),
-        style: `position: fixed; left: ${initLeft}px; top: ${initTop}px; bottom: auto !important; right: auto !important; width: 380px; max-width: 95vw; background: linear-gradient(180deg, #2a2038 0%, #1a1424 100%); border: 2px solid var(--spkmod-accent, #e8b84b); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.15); font-family: Pretendard, system-ui, -apple-system, sans-serif; color: #fff; z-index: 2147483646 !important; padding: 14px 16px; box-sizing: border-box; user-select: none; display: flex; flex-direction: column; gap: 10px;`
+        style: `position: fixed; left: ${initLeft}px; top: ${initTop}px; bottom: auto !important; right: auto !important; width: 380px; max-width: 95vw; background: linear-gradient(180deg, #2a2038 0%, #1a1424 100%); border: 2px solid var(--spkmod-accent, #e8b84b); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.15); font-family: Pretendard, system-ui, -apple-system, sans-serif; color: #fff; z-index: 2147483600 !important; padding: 14px 16px; box-sizing: border-box; user-select: none; display: flex; flex-direction: column; gap: 10px;`
     });
 
     const activeTracks = getActiveJukeboxTracks();
@@ -4158,20 +4531,21 @@ function buildJukeboxUI() {
 
     modal.innerHTML = `
         <div id="spkmod-jukebox-header" style="display:flex;justify-content:space-between;align-items:center;cursor:move;border-bottom:1px solid rgba(232,184,75,0.3);padding-bottom:8px;">
-            <div style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px;color:#ffc94a;">
-                <span style="font-size:15px;">🎵</span> Speaki Jukebox
+            <div id="spkmod-jukebox-header-title" style="display:flex;align-items:center;gap:6px;font-weight:700;font-size:13px;color:#ffc94a;">
+                <span style="font-size:15px;">🎵</span> ${getJukeboxText("jukeboxTitle")}
             </div>
-            <div style="display:flex;align-items:center;gap:5px;">
-                <button id="spkmod-jukebox-tab-ost" title="Trickcal OST" style="background:${state.activePlaylistKey === 'ost' ? '#e8b84b' : '#3e3052'};color:${state.activePlaylistKey === 'ost' ? '#1a1424' : '#ffc94a'};border:1px solid #7c6894;border-radius:6px;cursor:pointer;padding:2px 7px;font-size:11px;font-weight:700;">💿 OST</button>
-                <button id="spkmod-jukebox-tab-bolpop" title="Bolpop & MADs" style="background:${state.activePlaylistKey === 'bolpop' ? '#e8b84b' : '#3e3052'};color:${state.activePlaylistKey === 'bolpop' ? '#1a1424' : '#ffc94a'};border:1px solid #7c6894;border-radius:6px;cursor:pointer;padding:2px 7px;font-size:11px;font-weight:700;">🎬 Bolpop</button>
-                <button id="spkmod-jukebox-drawer-btn" title="Toggle Playlist" style="background:#3e3052;border:1px solid #7c6894;color:#ffc94a;border-radius:6px;cursor:pointer;padding:2px 7px;font-size:12px;">📜</button>
-                <button id="spkmod-jukebox-close-btn" title="Hide (Alt+M)" style="background:transparent;border:none;color:#aaa;cursor:pointer;font-size:16px;line-height:1;padding:0 2px;">✕</button>
+            <div style="display:flex;align-items:center;gap:4px;">
+                <button id="spkmod-jukebox-tab-ost" title="Trickcal ${getJukeboxText('jukeboxPlaylistOst')}" style="background:${state.activePlaylistKey === 'ost' ? '#e8b84b' : '#3e3052'};color:${state.activePlaylistKey === 'ost' ? '#1a1424' : '#ffc94a'};border:1px solid #7c6894;border-radius:6px;cursor:pointer;padding:2px 6px;font-size:11px;font-weight:700;">💿 ${getJukeboxText('jukeboxPlaylistOst')}</button>
+                <button id="spkmod-jukebox-tab-bolpop" title="${getJukeboxText('jukeboxPlaylistBolpop')}" style="background:${state.activePlaylistKey === 'bolpop' ? '#e8b84b' : '#3e3052'};color:${state.activePlaylistKey === 'bolpop' ? '#1a1424' : '#ffc94a'};border:1px solid #7c6894;border-radius:6px;cursor:pointer;padding:2px 6px;font-size:11px;font-weight:700;">🎬 ${getJukeboxText('jukeboxBolpopTab')}</button>
+                <button id="spkmod-jukebox-tab-fav" title="${getJukeboxText('jukeboxPlaylistFavorites')}" style="background:${state.activePlaylistKey === 'favorites' ? '#e8b84b' : '#3e3052'};color:${state.activePlaylistKey === 'favorites' ? '#1a1424' : '#ff4d6d'};border:1px solid #7c6894;border-radius:6px;cursor:pointer;padding:2px 7px;font-size:11px;font-weight:700;">❤️</button>
+                <button id="spkmod-jukebox-drawer-btn" title="${getJukeboxText('jukeboxTogglePlaylist')}" style="background:#3e3052;border:1px solid #7c6894;color:#ffc94a;border-radius:6px;cursor:pointer;padding:2px 6px;font-size:11px;">📜</button>
+                <button id="spkmod-jukebox-close-btn" title="${getJukeboxText('jukeboxClose')}" style="background:transparent;border:none;color:#aaa;cursor:pointer;font-size:15px;line-height:1;padding:0 2px;">✕</button>
             </div>
         </div>
 
         <div id="spkmod-jukebox-track-info" style="display:flex;align-items:center;gap:10px;background:rgba(0,0,0,0.3);padding:8px 10px;border-radius:10px;overflow:hidden;cursor:move;">
-            <button class="spkmod-mini-expand-btn" id="spkmod-jukebox-mini-expand" title="${t('jukeboxMiniPlayerExpand') || 'Expand'}" style="background:#e8b84b;border:none;color:#1a1424;border-radius:6px;width:24px;height:24px;cursor:pointer;font-size:12px;display:none;align-items:center;justify-content:center;flex-shrink:0;">⛶</button>
-            <img id="spkmod-jukebox-thumb" src="https://img.youtube.com/vi/${curVid}/mqdefault.jpg" style="width:46px;height:46px;border-radius:8px;object-fit:cover;border:1px solid rgba(232,184,75,0.4);flex-shrink:0;background:#1a1424;pointer-events:none;">
+            <button class="spkmod-mini-expand-btn" id="spkmod-jukebox-mini-expand" title="${getJukeboxText('jukeboxMiniPlayerExpand')}" style="background:#e8b84b;border:none;color:#1a1424;border-radius:6px;width:24px;height:24px;cursor:pointer;font-size:12px;display:none;align-items:center;justify-content:center;flex-shrink:0;">⛶</button>
+            <img id="spkmod-jukebox-thumb" src="https://img.youtube.com/vi/${curVid}/mqdefault.jpg" style="width:46px;height:46px;border-radius:8px;object-fit:cover;border:1px solid rgba(232,184,75,0.4);flex-shrink:0;background:#1a1424;cursor:zoom-in;pointer-events:auto;">
             <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;">
                 <div id="spkmod-jukebox-title" style="font-size:13px;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
                     ${state.currentTrackTitle}
@@ -4180,6 +4554,7 @@ function buildJukeboxUI() {
                     ${state.currentTrackAuthor}
                 </div>
             </div>
+            <button id="spkmod-jukebox-heart-btn" title="${isJukeboxTrackFavorite(curVid) ? getJukeboxText('jukeboxRemoveFavorite') : getJukeboxText('jukeboxAddFavorite')}" style="background:transparent;border:none;cursor:pointer;font-size:16px;line-height:1;padding:4px;display:flex;align-items:center;justify-content:center;transition:transform 0.15s;flex-shrink:0;">${isJukeboxTrackFavorite(curVid) ? '❤️' : '🤍'}</button>
         </div>
 
         <div id="spkmod-jukebox-seek-row" style="display:flex;flex-direction:column;gap:4px;">
@@ -4192,11 +4567,11 @@ function buildJukeboxUI() {
 
         <div id="spkmod-jukebox-controls-row" style="display:flex;align-items:center;justify-content:space-between;padding:2px 4px;">
             <div style="display:flex;align-items:center;gap:8px;">
-                <button id="spkmod-jukebox-shuffle" title="Shuffle / Random" style="background:${state.shuffle ? '#e8b84b' : '#3b2d4f'};border:1px solid #5a4675;color:${state.shuffle ? '#1a1424' : '#bbb'};border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;">🔀</button>
-                <button id="spkmod-jukebox-prev" title="Previous" style="background:#3b2d4f;border:1px solid #5a4675;color:#fff;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">⏮</button>
-                <button id="spkmod-jukebox-play" title="Play/Pause" style="background:#e8b84b;border:none;color:#1a1424;border-radius:50%;width:38px;height:38px;cursor:pointer;font-size:17px;font-weight:bold;display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(232,184,75,0.4);">▶</button>
-                <button id="spkmod-jukebox-next" title="Next" style="background:#3b2d4f;border:1px solid #5a4675;color:#fff;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">⏭</button>
-                <button id="spkmod-jukebox-repeat" title="Repeat Mode" style="background:${state.repeatMode !== 'off' ? '#e8b84b' : '#3b2d4f'};border:1px solid #5a4675;color:${state.repeatMode !== 'off' ? '#1a1424' : '#bbb'};border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;">${state.repeatMode === 'one' ? '🔂' : '🔁'}</button>
+                <button id="spkmod-jukebox-shuffle" title="${getJukeboxText('jukeboxShuffle')}" style="background:${state.shuffle ? '#e8b84b' : '#3b2d4f'};border:1px solid #5a4675;color:${state.shuffle ? '#1a1424' : '#bbb'};border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;">🔀</button>
+                <button id="spkmod-jukebox-prev" title="${getJukeboxText('jukeboxPrev')}" style="background:#3b2d4f;border:1px solid #5a4675;color:#fff;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">⏮</button>
+                <button id="spkmod-jukebox-play" title="${state.isPlaying ? getJukeboxText('jukeboxPause') : getJukeboxText('jukeboxPlay')}" style="background:#e8b84b;border:none;color:#1a1424;border-radius:50%;width:38px;height:38px;cursor:pointer;font-size:17px;font-weight:bold;display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(232,184,75,0.4);">▶</button>
+                <button id="spkmod-jukebox-next" title="${getJukeboxText('jukeboxNext')}" style="background:#3b2d4f;border:1px solid #5a4675;color:#fff;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">⏭</button>
+                <button id="spkmod-jukebox-repeat" title="${getJukeboxText('jukeboxRepeat')}" style="background:${state.repeatMode !== 'off' ? '#e8b84b' : '#3b2d4f'};border:1px solid #5a4675;color:${state.repeatMode !== 'off' ? '#1a1424' : '#bbb'};border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;">${state.repeatMode === 'one' ? '🔂' : '🔁'}</button>
             </div>
             <div id="spkmod-jukebox-vol-box" style="display:flex;align-items:center;gap:6px;background:rgba(0,0,0,0.25);padding:4px 8px;border-radius:12px;">
                 <span id="spkmod-jukebox-vol-icon" style="font-size:13px;">🔊</span>
@@ -4206,7 +4581,10 @@ function buildJukeboxUI() {
 
         <div id="spkmod-jukebox-drawer" style="display:none;max-height:190px;overflow-y:auto;background:rgba(0,0,0,0.35);border:1px solid #4a3861;border-radius:8px;padding:6px;font-size:12px;margin-top:4px;">
             <div id="spkmod-jukebox-bolpop-msg" style="background:rgba(232,184,75,0.12);border:1px solid rgba(232,184,75,0.35);border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:11px;color:#ffdf79;line-height:1.45;display:${state.activePlaylistKey === 'bolpop' ? 'block' : 'none'};">
-                💌 <i>${t("jukeboxBolpopMessage") || "Here's some of my Trickcal favorite songs a few added by friends, I hope you enjoy this curated list. With Love. Glas~"}</i>
+                💌 <i>${getJukeboxText("jukeboxBolpopMessage")}</i>
+            </div>
+            <div id="spkmod-jukebox-fav-msg" style="background:rgba(255,77,109,0.12);border:1px solid rgba(255,77,109,0.35);border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:11px;color:#ff9ebb;line-height:1.45;display:${(state.activePlaylistKey === 'favorites' && activeTracks.length > 0) ? 'block' : 'none'};">
+                ❤️ <i>${getJukeboxText("jukeboxFavoritesMessage")}</i>
             </div>
             <div id="spkmod-jukebox-items" style="display:flex;flex-direction:column;gap:3px;"></div>
         </div>
@@ -4220,7 +4598,7 @@ function buildJukeboxUI() {
         makeDraggable(modal, [header, trackInfo]);
     }
 
-    // Double right-click toggle mini player
+    // Double right-click toggle mini player (single right-click shows hint)
     let lastRightClickTime = 0;
     modal.addEventListener('contextmenu', (e) => {
         const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
@@ -4229,10 +4607,17 @@ function buildJukeboxUI() {
         const now = Date.now();
         if (now - lastRightClickTime < 450) {
             lastRightClickTime = 0;
+            hideJukeboxHint();
             toggleMiniPlayer();
         } else {
             lastRightClickTime = now;
+            const hint = state.isMiniMode ? getJukeboxText("jukeboxMiniPlayerExpandHint") : getJukeboxText("jukeboxMiniPlayerHint");
+            showJukeboxHint(hint, e.clientX, e.clientY);
         }
+    });
+
+    modal.addEventListener("mouseleave", () => {
+        hideJukeboxThumbPreview();
     });
 
     modal.addEventListener("wheel", (e) => { e.stopPropagation(); }, { passive: true });
@@ -4252,7 +4637,9 @@ function buildJukeboxUI() {
     const drawer = modal.querySelector('#spkmod-jukebox-drawer');
     const tabOst = modal.querySelector('#spkmod-jukebox-tab-ost');
     const tabBolpop = modal.querySelector('#spkmod-jukebox-tab-bolpop');
+    const tabFav = modal.querySelector('#spkmod-jukebox-tab-fav');
     const miniExpandBtn = modal.querySelector('#spkmod-jukebox-mini-expand');
+    const nowPlayingHeartBtn = modal.querySelector('#spkmod-jukebox-heart-btn');
 
     btnPlay.addEventListener('click', () => {
         if (!state.player || !state.isReady) return;
@@ -4303,10 +4690,22 @@ function buildJukeboxUI() {
     });
 
     closeBtn.addEventListener('click', () => {
+        hideJukeboxHint();
+        hideJukeboxThumbPreview();
         modal.classList.add('hidden');
         state.modalVisible = false;
         if (window.localStorage) localStorage.setItem("spkmod-jukebox-visible", "false");
     });
+
+    const thumbImg = modal.querySelector('#spkmod-jukebox-thumb');
+    if (thumbImg) {
+        thumbImg.addEventListener('mouseenter', () => {
+            showJukeboxThumbPreview(thumbImg);
+        });
+        thumbImg.addEventListener('mouseleave', () => {
+            hideJukeboxThumbPreview();
+        });
+    }
 
     if (tabOst) {
         tabOst.addEventListener('click', () => {
@@ -4320,14 +4719,43 @@ function buildJukeboxUI() {
         });
     }
 
+    if (tabFav) {
+        tabFav.addEventListener('click', () => {
+            switchJukeboxPlaylist('favorites', state.isPlaying);
+        });
+    }
+
+    if (nowPlayingHeartBtn) {
+        nowPlayingHeartBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const tracks = getActiveJukeboxTracks();
+            const cur = tracks[state.currentTrackIndex] || findJukeboxTrackByVid(state.player?.getVideoData()?.video_id) || [state.player?.getVideoData()?.video_id, state.currentTrackTitle, state.currentTrackAuthor];
+            if (!cur[0]) return;
+            toggleJukeboxFavorite(cur);
+            if (state.activePlaylistKey === 'favorites') {
+                const updatedTracks = getActiveJukeboxTracks();
+                if (state.currentTrackIndex >= updatedTracks.length) {
+                    state.currentTrackIndex = Math.max(0, updatedTracks.length - 1);
+                }
+            }
+            updateJukeboxUI();
+            populateJukeboxDrawer(modal);
+        });
+        nowPlayingHeartBtn.addEventListener('mouseenter', () => { nowPlayingHeartBtn.style.transform = 'scale(1.25)'; });
+        nowPlayingHeartBtn.addEventListener('mouseleave', () => { nowPlayingHeartBtn.style.transform = 'scale(1)'; });
+    }
+
     if (miniExpandBtn) {
         miniExpandBtn.addEventListener('click', (e) => {
             e.stopPropagation();
+            hideJukeboxHint();
+            hideJukeboxThumbPreview();
             toggleMiniPlayer(false);
         });
     }
 
     populateJukeboxDrawer(modal);
+    updateJukeboxI18n();
     return modal;
 }
 
@@ -4340,23 +4768,54 @@ function populateJukeboxDrawer(modal) {
     const state = window.__speakiMusicState;
     const tracks = getActiveJukeboxTracks();
 
+    if (state.activePlaylistKey === 'favorites' && (!tracks || tracks.length === 0)) {
+        const emptyDiv = document.createElement('div');
+        emptyDiv.id = 'spkmod-jukebox-fav-empty';
+        emptyDiv.style.cssText = 'padding:16px 12px;text-align:center;color:#bcaecf;font-size:11.5px;line-height:1.5;';
+        emptyDiv.innerHTML = `🤍 <i>${getJukeboxText("jukeboxFavoritesEmpty")}</i>`;
+        listContainer.appendChild(emptyDiv);
+        return;
+    }
+
     tracks.forEach(([vid, title, author], idx) => {
         const row = document.createElement('div');
         row.className = 'spkmod-pl-item';
-        row.style.cssText = 'padding:5px 8px;border-radius:5px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:background 0.15s;display:flex;align-items:center;justify-content:space-between;gap:8px;';
+        row.style.cssText = 'padding:5px 8px;border-radius:5px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:background 0.15s;display:flex;align-items:center;justify-content:space-between;gap:6px;';
 
         const titleSpan = document.createElement('span');
         titleSpan.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;';
         titleSpan.textContent = `${idx + 1}. ${title}`;
-
         row.appendChild(titleSpan);
 
-        if (state.activePlaylistKey === 'bolpop' && author) {
+        if (author) {
             const authorSpan = document.createElement('span');
-            authorSpan.style.cssText = 'font-size:10px;color:#aaa;flex-shrink:0;';
+            authorSpan.style.cssText = 'font-size:10px;color:#ffc94a;opacity:0.9;white-space:nowrap;margin-right:2px;max-width:110px;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;';
             authorSpan.textContent = author;
             row.appendChild(authorSpan);
         }
+
+        const isFav = isJukeboxTrackFavorite(vid);
+        const rowHeartBtn = document.createElement('button');
+        rowHeartBtn.className = 'spkmod-jb-row-heart';
+        rowHeartBtn.style.cssText = 'background:transparent;border:none;cursor:pointer;font-size:13px;padding:1px 4px;line-height:1;display:inline-flex;align-items:center;justify-content:center;transition:transform 0.15s;flex-shrink:0;';
+        rowHeartBtn.textContent = isFav ? '❤️' : '🤍';
+        rowHeartBtn.title = isFav ? getJukeboxText("jukeboxRemoveFavorite") : getJukeboxText("jukeboxAddFavorite");
+
+        rowHeartBtn.addEventListener('mouseenter', () => { rowHeartBtn.style.transform = 'scale(1.25)'; });
+        rowHeartBtn.addEventListener('mouseleave', () => { rowHeartBtn.style.transform = 'scale(1)'; });
+        rowHeartBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleJukeboxFavorite([vid, title, author]);
+            if (state.activePlaylistKey === 'favorites') {
+                const updatedTracks = getActiveJukeboxTracks();
+                if (state.currentTrackIndex >= updatedTracks.length) {
+                    state.currentTrackIndex = Math.max(0, updatedTracks.length - 1);
+                }
+            }
+            updateJukeboxUI();
+            populateJukeboxDrawer(modal);
+        });
+        row.appendChild(rowHeartBtn);
 
         row.title = title + (author ? ' - ' + author : '');
         row.addEventListener('click', () => {
@@ -4380,16 +4839,35 @@ function updateJukeboxUI() {
     const timeCur = modal.querySelector('#spkmod-jukebox-time-cur');
     const timeDur = modal.querySelector('#spkmod-jukebox-time-dur');
     const seekBar = modal.querySelector('#spkmod-jukebox-seek');
+    const heartBtn = modal.querySelector('#spkmod-jukebox-heart-btn');
 
-    if (btnPlay) btnPlay.textContent = state.isPlaying ? '⏸' : '▶';
+    if (btnPlay) {
+        btnPlay.textContent = state.isPlaying ? '⏸' : '▶';
+        btnPlay.title = state.isPlaying ? getJukeboxText("jukeboxPause") : getJukeboxText("jukeboxPlay");
+    }
     if (titleEl && state.currentTrackTitle) titleEl.textContent = state.currentTrackTitle;
     if (authorEl) {
         authorEl.textContent = state.currentTrackAuthor || '';
-        authorEl.style.display = (state.activePlaylistKey === 'bolpop' && state.currentTrackAuthor) ? 'block' : 'none';
+        authorEl.style.display = state.currentTrackAuthor ? 'block' : 'none';
+    }
+    if (heartBtn && curVid) {
+        const isFav = isJukeboxTrackFavorite(curVid);
+        heartBtn.textContent = isFav ? '❤️' : '🤍';
+        heartBtn.title = isFav ? getJukeboxText("jukeboxRemoveFavorite") : getJukeboxText("jukeboxAddFavorite");
+    }
+
+    const favMsg = modal.querySelector('#spkmod-jukebox-fav-msg');
+    if (favMsg) {
+        favMsg.style.display = (state.activePlaylistKey === 'favorites' && tracks.length > 0) ? 'block' : 'none';
     }
     if (thumbImg && curVid) {
         const targetSrc = `https://img.youtube.com/vi/${curVid}/mqdefault.jpg`;
-        if (thumbImg.src !== targetSrc) thumbImg.src = targetSrc;
+        if (thumbImg.src !== targetSrc) {
+            thumbImg.src = targetSrc;
+            if (lunJukeboxThumbPreview && lunJukeboxThumbPreview.style.display === "block") {
+                showJukeboxThumbPreview(thumbImg);
+            }
+        }
     }
     if (timeCur) timeCur.textContent = formatJukeboxTime(state.currentTime);
     if (timeDur) timeDur.textContent = formatJukeboxTime(state.duration);
@@ -4447,11 +4925,11 @@ function initJukeboxPlayer() {
                         if (foundIdx !== -1) {
                             state.currentTrackIndex = foundIdx;
                             state.currentTrackTitle = tracks[foundIdx][1];
-                            state.currentTrackAuthor = (state.activePlaylistKey === 'bolpop') ? (tracks[foundIdx][2] || '') : '';
+                            state.currentTrackAuthor = tracks[foundIdx][2] || '';
                         } else {
                             const data = state.player.getVideoData();
                             state.currentTrackTitle = cleanJukeboxTitle(data?.title || 'Trickcal BGM');
-                            state.currentTrackAuthor = (state.activePlaylistKey === 'bolpop') ? (data?.author || '') : '';
+                            state.currentTrackAuthor = (state.activePlaylistKey === 'ost') ? '' : (data?.author || '');
                         }
                         state.duration = state.player.getDuration() || 0;
 
@@ -6082,7 +6560,19 @@ document.head.appendChild(buildElement(
 		#spkmod-info-modal, #spkmod-effects-modal, #spkmod-stats-modal,
 		#spkmod-edits-modal, #spkmod-quests-modal, #spkmod-map-modal,
 		#spkmod-jukebox-modal, .spkmod-music-modal {
-			z-index: 2147483645 !important;
+			z-index: 2147483600 !important;
+		}
+
+		#spkmod-emoji-picker-v2, #spkmod-emoji-picker,
+		#spkmod-custom-dialog-backdrop,
+		#spkmod-poll-modal, #spkmod-telemetry-modal, #spkmod-decalogue-tos {
+			z-index: 2147483646 !important;
+		}
+
+		#spkmod-global-emoji-preview,
+		#spkmod-jukebox-thumb-preview,
+		#spkmod-jukebox-hint-toast {
+			z-index: 2147483647 !important;
 		}
 
 		#spkmod-jukebox-modal.spkmod-mini-mode {
@@ -6101,7 +6591,8 @@ document.head.appendChild(buildElement(
 		#spkmod-jukebox-modal.spkmod-mini-mode #spkmod-jukebox-vol-box,
 		#spkmod-jukebox-modal.spkmod-mini-mode #spkmod-jukebox-shuffle,
 		#spkmod-jukebox-modal.spkmod-mini-mode #spkmod-jukebox-repeat,
-		#spkmod-jukebox-modal.spkmod-mini-mode #spkmod-jukebox-author {
+		#spkmod-jukebox-modal.spkmod-mini-mode #spkmod-jukebox-author,
+		#spkmod-jukebox-modal.spkmod-mini-mode #spkmod-jukebox-heart-btn {
 			display: none !important;
 		}
 		#spkmod-jukebox-modal.spkmod-mini-mode #spkmod-jukebox-thumb {
@@ -7296,7 +7787,7 @@ document.body.appendChild(
 					className: "spkmod-panel-btn",
 					style: "flex: 1; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 12pt; cursor: pointer;",
 					innerText: "🎵",
-					title: "Speaki Jukebox (Alt+M)",
+					title: (typeof getJukeboxText === "function" ? getJukeboxText("jukeboxBtnTooltip") : (typeof t === "function" ? t("jukeboxBtnTooltip") : null)) || "Monatium Radio Station (Alt+M)",
 					onclick: _ => {
 						if (typeof toggleMusicPlayer === "function") toggleMusicPlayer();
 					}
@@ -8281,7 +8772,8 @@ function updateHudIconTooltips() {
 
     // 13. Jukebox button
     if (lunPanelElements.jukeboxBtn) {
-        setSpkmodRichTooltip(lunPanelElements.jukeboxBtn, "🎵 " + (t("jukeboxBtnTooltip") || "Speaki Jukebox (Alt+M)"));
+        const tip = (typeof getJukeboxText === "function" ? getJukeboxText("jukeboxBtnTooltip") : t("jukeboxBtnTooltip")) || "Monatium Radio Station (Alt+M)";
+        setSpkmodRichTooltip(lunPanelElements.jukeboxBtn, "🎵 " + tip);
     }
 
     // 14. Drag / Lock button
@@ -8608,7 +9100,8 @@ function toggleEmojiPicker(anchorBtn) {
     const isMobile = typeof window.speakiMobile !== "undefined" || (typeof navigator !== "undefined" && /mobi|android/i.test(navigator.userAgent));
     const defaultW = isMobile ? "360px" : "420px";
     const defaultH = isMobile ? "320px" : "420px";
-    lunEmojiPickerPanel.style.cssText = `position: fixed; width: ${defaultW}; height: ${defaultH}; max-width: 95vw; max-height: 80vh; min-width: 200px; min-height: 150px; resize: both; overflow: hidden; background: rgba(20, 20, 20, 0.95); border: 1px solid #555; border-radius: 6px; padding: 6px; display: flex; flex-direction: column; gap: 4px; z-index: 9999999; box-shadow: 0 4px 12px rgba(0,0,0,0.5); pointer-events: auto;`;
+    lunEmojiPickerPanel.style.cssText = `position: fixed; width: ${defaultW}; height: ${defaultH}; max-width: 95vw; max-height: 80vh; min-width: 200px; min-height: 150px; resize: both; overflow: hidden; background: rgba(20, 20, 20, 0.95); border: 1px solid #555; border-radius: 6px; padding: 6px; display: flex; flex-direction: column; gap: 4px; z-index: 2147483646 !important; box-shadow: 0 4px 12px rgba(0,0,0,0.5); pointer-events: auto;`;
+    lunEmojiPickerPanel.style.setProperty("z-index", "2147483646", "important");
     const emojiSizeKey = "spkmod-size-spkmod-emoji-picker-v2";
 
     try {
@@ -8665,6 +9158,7 @@ function toggleEmojiPicker(anchorBtn) {
 
     renderEmojiGrid();
     document.body.appendChild(lunEmojiPickerPanel);
+    lunEmojiPickerPanel.style.setProperty("z-index", "2147483646", "important");
 
     if (typeof ResizeObserver !== "undefined" && window.localStorage) {
         const panelEl = lunEmojiPickerPanel;
@@ -9048,7 +9542,7 @@ window.showPollModal = function(forceLang) {
 
     const overlay = document.createElement("div");
     overlay.id = "spkmod-poll-modal";
-    overlay.style.cssText = "position: fixed; inset: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.93); z-index: 9999999; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; color: white;";
+    overlay.style.cssText = "position: fixed; inset: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.93); z-index: 2147483646 !important; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; color: white;";
 
     overlay.addEventListener("wheel", (e) => { e.stopPropagation(); }, { passive: true });
     overlay.addEventListener("touchmove", (e) => { e.stopPropagation(); }, { passive: true });
@@ -9443,7 +9937,7 @@ window.showTelemetryConsentModal = function(forceLang) {
 
     const overlay = document.createElement("div");
     overlay.id = "spkmod-telemetry-modal";
-    overlay.style.cssText = "position: fixed; inset: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.90); z-index: 9999999; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; color: white;";
+    overlay.style.cssText = "position: fixed; inset: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.90); z-index: 2147483646 !important; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; color: white;";
 
     overlay.addEventListener("wheel", (e) => { e.stopPropagation(); }, { passive: true });
     overlay.addEventListener("touchmove", (e) => { e.stopPropagation(); }, { passive: true });
@@ -9663,7 +10157,7 @@ window.checkDecalogueToS = function(forceLang) {
 
     const overlay = document.createElement("div");
     overlay.id = "spkmod-decalogue-tos";
-    overlay.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.95); z-index: 9999999; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; color: white;";
+    overlay.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.95); z-index: 2147483646 !important; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; color: white;";
 
     const content = document.createElement("div");
     content.style.cssText = "background: #1e293b; border: 2px solid #334155; border-radius: 12px; padding: 24px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);";
@@ -17048,7 +17542,7 @@ function spkmodPrompt({ title = "Enter Value", label = "", defaultValue = "", pl
 
 		const backdrop = document.createElement("div");
 		backdrop.id = "spkmod-custom-dialog-backdrop";
-		backdrop.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(2px); z-index: 9999999; display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; box-sizing: border-box; padding: 12px;";
+		backdrop.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(2px); z-index: 2147483646 !important; display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; box-sizing: border-box; padding: 12px;";
 
 		const dialog = document.createElement("div");
 		dialog.style.cssText = "background: #1e293b; border: 1px solid #475569; border-radius: 8px; box-shadow: 0 20px 40px rgba(0,0,0,0.8); width: 340px; max-width: 92vw; padding: 16px; color: #f1f5f9; display: flex; flex-direction: column; gap: 10px; box-sizing: border-box;";
@@ -17162,7 +17656,7 @@ function spkmodConfirm({ title = "Confirm", message = "Are you sure?", confirmTe
 
 		const backdrop = document.createElement("div");
 		backdrop.id = "spkmod-custom-dialog-backdrop";
-		backdrop.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(2px); z-index: 9999999; display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; box-sizing: border-box; padding: 12px;";
+		backdrop.style.cssText = "position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(2px); z-index: 2147483646 !important; display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; box-sizing: border-box; padding: 12px;";
 
 		const dialog = document.createElement("div");
 		dialog.style.cssText = "background: #1e293b; border: 1px solid #475569; border-radius: 8px; box-shadow: 0 20px 40px rgba(0,0,0,0.8); width: 320px; max-width: 92vw; padding: 16px; color: #f1f5f9; display: flex; flex-direction: column; gap: 10px; box-sizing: border-box;";
@@ -18107,6 +18601,9 @@ document.body.appendChild(
 							}
 							window.lunEmojiTargetInput = bbsModalElements.input;
 							toggleEmojiPicker(bbsModalElements.emojiBtn);
+							if (typeof lunEmojiPickerPanel !== "undefined" && lunEmojiPickerPanel) {
+								lunEmojiPickerPanel.style.setProperty("z-index", "2147483646", "important");
+							}
 						}
 					}
 				}),
@@ -23826,7 +24323,7 @@ function ensureQuickLoginStyles() {
 			width: 320px;
 			max-height: 85vh;
 			overflow-y: auto;
-			z-index: 9999999;
+			z-index: 2147483646 !important;
 			background: var(--sr-color-panel-bg, #1a1b26);
 			color: var(--sr-color-text, #ffffff);
 			border: .1875rem solid var(--sr-color-border-strong, #3a3b4e);
