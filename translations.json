@@ -716,7 +716,8 @@
         "jukeboxFavoritesMessage": "Your favorite Trickcal songs playlist. Click ❤️ on any track to add or remove it.",
         "jukeboxFavoritesEmpty": "No favorite songs yet! Click ❤️ on any song to add it to this list.",
         "jukeboxAddFavorite": "Add to favorites",
-        "jukeboxRemoveFavorite": "Remove from favorites"
+        "jukeboxRemoveFavorite": "Remove from favorites",
+        "jukeboxResizeTooltip": "Drag corner to resize window"
     },
     "ja": {
         "langName": "日本語",
@@ -1465,7 +1466,8 @@
         "jukeboxFavoritesMessage": "お気に入りのトリッカル曲プレイリストです。❤️をクリックして追加・削除できます。",
         "jukeboxFavoritesEmpty": "お気に入りの曲がまだありません！曲の❤️をクリックして追加してください。",
         "jukeboxAddFavorite": "お気に入りに追加",
-        "jukeboxRemoveFavorite": "お気に入りから削除"
+        "jukeboxRemoveFavorite": "お気に入りから削除",
+        "jukeboxResizeTooltip": "角をドラッグしてウィンドウサイズを変更"
     },
     "ko": {
         "langName": "한국어",
@@ -2184,7 +2186,8 @@
         "jukeboxFavoritesMessage": "나만의 트릭컬 즐겨찾기 재생목록입니다. ❤️를 눌러 곡을 추가하거나 제거할 수 있습니다.",
         "jukeboxFavoritesEmpty": "아직 즐겨찾기한 곡이 없습니다! 곡 목록의 ❤️를 눌러 추가해 보세요.",
         "jukeboxAddFavorite": "즐겨찾기에 추가",
-        "jukeboxRemoveFavorite": "즐겨찾기에서 제거"
+        "jukeboxRemoveFavorite": "즐겨찾기에서 제거",
+        "jukeboxResizeTooltip": "모서리를 드래그하여 창 크기 조절"
     },
     "zh-TW": {
         "langName": "繁體中文",
@@ -2903,7 +2906,8 @@
         "jukeboxFavoritesMessage": "你的個人 Trickcal 最愛播放清單。點擊 ❤️ 即可新增或移除歌曲。",
         "jukeboxFavoritesEmpty": "尚無收藏的歌曲！點擊歌曲旁邊的 ❤️ 即可加入此清單。",
         "jukeboxAddFavorite": "加入我的最愛",
-        "jukeboxRemoveFavorite": "從我的最愛移除"
+        "jukeboxRemoveFavorite": "從我的最愛移除",
+        "jukeboxResizeTooltip": "拖曳邊角調整視窗大小"
     },
     "zh-CN": {
         "langName": "简体中文",
@@ -3622,7 +3626,8 @@
         "jukeboxFavoritesMessage": "你的个人 Trickcal 收藏播放列表。点击 ❤️ 即可添加或移除歌曲。",
         "jukeboxFavoritesEmpty": "暂无收藏的歌曲！点击歌曲旁边的 ❤️ 即可添加到此列表。",
         "jukeboxAddFavorite": "添加到我的收藏",
-        "jukeboxRemoveFavorite": "从我的收藏移除"
+        "jukeboxRemoveFavorite": "从我的收藏移除",
+        "jukeboxResizeTooltip": "拖拽边角调整窗口大小"
     },
     "es-419": {
         "langName": "Español",
@@ -4341,6 +4346,7 @@
         "jukeboxFavoritesMessage": "Tu lista de canciones favoritas de Trickcal. Haz clic en ❤️ para añadir o quitar canciones.",
         "jukeboxFavoritesEmpty": "¡Aún no hay canciones favoritas! Haz clic en ❤️ en cualquier canción para agregarla aquí.",
         "jukeboxAddFavorite": "Añadir a favoritos",
-        "jukeboxRemoveFavorite": "Quitar de favoritos"
+        "jukeboxRemoveFavorite": "Quitar de favoritos",
+        "jukeboxResizeTooltip": "Arrastra la esquina para redimensionar la ventana"
     }
 }

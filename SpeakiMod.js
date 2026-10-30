@@ -3142,7 +3142,7 @@ function makeResizable(element, handle, options = {}) {
 	const sizeKey = options.storageKey || (element.id ? ("spkmod-size-" + element.id) : null);
 
 	// Restore saved size if available
-	if (sizeKey && window.localStorage) {
+	if (sizeKey && window.localStorage && options.restoreSize !== false) {
 		try {
 			const saved = localStorage.getItem(sizeKey);
 			if (saved) {
@@ -3238,7 +3238,11 @@ function makeResizable(element, handle, options = {}) {
 			const rect = element.getBoundingClientRect();
 			const finalW = Math.round(rect.width / currentScale);
 			const finalH = Math.round(rect.height / currentScale);
-			localStorage.setItem(sizeKey, JSON.stringify({ width: finalW, height: finalH }));
+			if (typeof options.saveSize === "function") {
+				options.saveSize(finalW, finalH, sizeKey);
+			} else {
+				localStorage.setItem(sizeKey, JSON.stringify({ width: finalW, height: finalH }));
+			}
 		}
 	}
 
@@ -3852,8 +3856,8 @@ const SPKMOD_EMOJI_FONT_FALLBACK = '"Apple Color Emoji", "Segoe UI Emoji", "Sego
 // Playlist: https://www.youtube.com/watch?v=8kKIzim7ZqU&list=PLrELCdfutHrSkxmdw2t_KD-8aj4VCclah
 // ============================================================================
 
-const SPKMOD_OST_TRACKS = [["KbKO0Mqf54k","Trickcal Main Title"],["-8gyhj9R98Y","Day Life"],["ipcAfLYStNI","Lounge"],["5AI_lKxOETI","Weekday Farm"],["NPaTub4_isU","Hail The World Tree"],["j1qH2VUciTU","Theme Theater"],["RpboF3eVM68","No Way Out"],["V2XMhSAwLYA","Let's Go"],["cNMUQok7WEA","Tig, The Feedstance (Phase 1)"],["fngs-d-TCUg","Tig, The Feedstance (Phase 2)"],["eJ7ODfEh96Y","Tig, The Feedstance (Phase 3)"],["hD5MgN4DSmE","Honranada Honrane"],["WSdqZ1FfosY","Adventure Begins"],["ZNXdn36eOMg","Battle On Sunset"],["1O-YThrGVk4","Spirit Forest"],["NGPCBTXJqN0","Moistful Spirits"],["EJten4Wu0fo","Crystal Lake"],["J3dmNiBGjak","Aurora"],["_y3M8XKVLsM","Dragon Cave (Abyss)"],["ZhigzT8LLQQ","Dragon Cave (Crystal)"],["wYdkFC_RVZs","Dragon Cave (Water)"],["spwRCDkSt4c","Deep Cave"],["D1WiO91w03c","Ghost Village"],["HVbsQPo-rRk","Monatium"],["IWwoC-mttjI","City Night"],["DU9Yk9q6QwQ","Elf Dominion"],["09mm-5dSKD4","Fairy Town Street"],["NQjzjaApHvw","Bakery In Peace"],["oEGgIzeCPh0","Ashur Bakery"],["g4RIyAPEkKU","Elias Candyfloss"],["YHr95007HF8","Furry Forest"],["07n5EKuauf0","Lamb And Dumber"],["P4RXIMWlRw4","This Is Awkward"],["-s9ppxajbDI","Life Is Comedy"],["HNeR44LeCzs","Trick Or Treat"],["SvJsRWg46Lg","We're In Trouble"],["Es3OYEOwAAc","Gold Thief Attack"],["NQwbJLFS7GM","Get You Crayon"],["uP61J2aCIzA","Winner's Jwopaemteo"],["G1eAbD6Si30","Sugar Free"],["93NpP7g5tYc","Dimension Crash"],["wcy560HvxMM","Hyper Fatalism"],["AtLBZvMULGk","The Time Paradox"],["raqGBx3YrJM","Brave New World"],["so4U-Cg3hiI","Alpha And Omega"],["gt24X6RCFqE","Warak - Trickcalism"],["imtp2hKQavo","Warak - Bollelujah"],["hp0wsDfc97o","Warak - Eternal Dreamer"],["cAki2dfY-VY","끝까지 걸어가고 싶어 (Feat. 앤씨아)"],["bnx7u3UDJF8","Squeezy Cheeks are coming!"],["eyUTbB6ScQc","일일 사도 체험 - 죠안 BBANGMIX ver."],["twsxcXSeoUg","집으로 가는 길 (Feat. 방연지)"],["k6MlDHQEYxg","Kira Kira ☆ Kishya"]];
-const SPKMOD_BOLPOP_TRACKS = [["Fl-9XBxnHFY", "【トリッカル】SUPIKI_KING", "なめころり"], ["_d6T7hWFeFQ", "아이시아 - 죄다 해고야!!", "김치카"], ["O_c39bSJVK0", "ｽﾋﾟｷ × バニラ求人 【音MAD】", "みずらば【Mizu】"], ["VAikdCYVgn4", "[트릭컬/볼팝] 우리 딸랑구 요미, 일루와잇! (私の娘ヨミ、こっちへ来てね！)", "왓다옴 "], ["vygNUzLzRxc", "고스트 퍼레이드 ゴーストパレード", "룩크 LOOK"], ["FeHDKMilBl0", "스피키 울면 안돼 (울어도 돼) 🎄❤️", "진짜 박시윤"], ["nYhe1Rwd8oE", "이방인", "플버"], ["QQoQBOG59Ko", "Dr.ｽﾋﾟｷ", "偽名鳥"], ["fEDmLfQ9HEs", "마도공학 대혁명", "플버"], ["HZPUFJ6riWM", "【합작】오토핔이 ~합작 열심히 했는데~", "aggaagwwga"], ["L6amI_NevCE", "​에피카 - 떠나는 이의 뒷모습은 얼마나 아름다운가", "김치카"], ["w7Kn4yE0Npg", "ウーワｱｱｱｱｱｱｱｱ‼︎‼︎", "にのまい"], ["hF9vOxO0kAw", "폰 갤러리에 있는 트릭컬 짤들로 노래를 만들어 보았다", "플버"], ["yzZlds_D8ps", "트릭컬은 볼따구 게임 MV", "삼딴게"], ["oDfHfnls0LQ", "에피카 - 우리 인연은 별자리 같아서", "김치카"], ["Qc2zH0-jlfk", "코미는 이렇게 안 생겼어 MV", "이딴게"], ["psMKLp_w6EU", "에피카 - 부족함이 흥이 되는 마법", "김치카"], ["mIrdrJXMz4o", "마이볼", "플버"], ["4IuD3towWd8", "버터의 꿈", "플버"], ["XyMPpZx3LwY", "마요 - 완전 멋진 요정의 용기임", "김치카"], ["VVCnOCPsJcM", "에피카 - 그리움은 은하수 같아서 (원작:내가 너를 /나태주) [JP Sub]", "김치카"], ["23OhWI11sg4", "​에피카 - 거짓말이 진실이 되는 마법", "김치카"], ["TfhEa500-jE", "코미와 버터 - 촛불하나 Cover (AI❌)", "성우 강새봄"], ["N7kmESdsqDA", "もちょっとトリッカル / トリッカル・もちもちほっペ大作戦 (Covered by ころねぽち)", "ころね ぽち -Pochi korone-"], ["lCoTM0YeGCo", "[볼팝/에피카의 찬가극장] - 그대라는 찬사 汝という名の賛辞", "김치카"], ["DGbBXmBb7ag", "코미와 버터는 사료가 좋아 MV", "삼딴게"], ["QjopFOsOMRA", "우이 - 고여버린 행복의 연못", "김치카"], ["d-DA3alm5kk", "エルダインのじょーじょーゆーじょー", "イカ壺"], ["ORWa5gcLiOs", "ﾁｮﾜ魔女ｳｱｱニバル!!", "P-yoko"], ["sRax_NKoNkw", "에피카 - 내 안의 다정한 행복 (원작:행복 /나태주)", "김치카"], ["HbRKbN1ALNw", "[볼팝/에피카의 찬가극장] - 그대를 위하여 기도를 올리네", "김치카"], ["JVl9XZhHP5s", "もちょっとビーマイベイベー", "伯方"], ["cKwqd0wowEw", "코미 - 후와후와 타임", "aggaagwwga"], ["auwzjvdA1Ag", "스피키 바보 아니란 말이에요!「완전판」MV", "삼딴게"], ["z2Fw7VQaHWo", "코미 - 나는 트릭컬이 싫어요 Full ver. 【트릭컬 3주년 합작 ED】", "Loding"], ["HAGZpV39BJc", "엘리아스 볼따구 (엘 박사 고속도로 힛트-쏭)", "앵무쇠"], ["S6FZcAsxgdM", "스피키 - 니가 쪼아요 [트릭컬 1000일 축하 노래]", "진짜 박시윤"], ["6JT4Ij5kkGU", "물고기 따러 가자", "플버"], ["KSQf0t1X6iU", "요즘 트릭컬 진짜 별로네", "플버"], ["HDjdSK-oRC4", "스피키 - 가랑눈", "Coroskai"], ["rQhHfJsvZdc", "궁극의 해피니스 アルティメット・ハピネス", "룩크 LOOK"], ["ibEuXlolilk", "에피카 - 한 다리만 건너면", "김치카"], ["NSlvqY2_OTY", "​에피카 - 흔들리며 피는 꽃에 찬사를", "김치카"], ["QaslIS_SiYw", "ﾃﾞﾙｼﾞ罰せよ！！！【MEGALOVANIA】", "りばらんす"], ["O3BYSK8N2Eo", "ナマ足魅惑のパンオタク", "ぜもーち"], ["v9ssvzKPBwc", "스피키가 신나게 좋아요~ BIG BAND REMIX", "인생음감"], ["ix9rmxh2XGI", "ｽﾋﾟｷ - 水平線", "Saba kann"], ["_TXaAI6kQqo", "SPK.", "めろんぱん"], ["jg_4aOyusSQ", "[우이 커버송]행복해져라~ 얍✨️_へむけじゃら_성우 김가령_トリッカル", "성우 김가령"], ["xjwAtee0480", "스피키는 엄청난 것을 네르해갔습니다", "aggaagwwga"], ["Gd8UfnurNYA", "新ｽﾋﾟｷ島 - Full ver.", "フネろん / FUNE"], ["bd7ZFA-b-zc", "Mystic Cleaner", "룩크 LOOK"], ["B1vNd0kIGM8", "For Ner, someday.", "The Ring's Spikist Maestro"], ["jsnZlSpB5Fg", "Warak - Dimension Crash (Ustempo Remix)", "RudBag"], ["_Q-vhV4HJnU", "에피카 - 춤추는 달빛 아래", "김치카"], ["YfD1_jc3Zaw", "ｽﾋﾟｷ故郷(ふるさと)", "ホバギ管理人 Hobagi_Master "], ["179c_7Tr94k", "에슈르 - 반죽처럼 부풀어라", "김치카"], ["JGRkknim_Gc", "R41엘레나 - 뜨거운 아이스 아메리카노", "김치카"], ["jlCRhil90TA", "리스티 - 뉴 게임 플러스", "김치카"], ["8iE80ghzU8o", "グッバイ戦線", "めろんぱん"], ["iGz4QlH9rD0", "에피카 - 지워진 이름의 축제", "김치카"], ["r-5St9XqV9g", "Omochihoppe Stretchabole!", "ゆうしゃアシスタント"], ["Wv_kNmdRJHs", "エシュールのパーフェクトまほう教室", "けしごむ"], ["AIYQxt-1M2w", "ｴｰｳンジェル ドリーム", "あいきっ"], ["7j5zkBPQRZk", "ｽﾋﾟｷﾊｲ", "ひやねこ"], ["jXTJMeZpYJQ", "[볼팝/에피카의 찬가극장] - 한 송이 여왕의 찬가", "김치카"], ["MmI8N9M_V04", "ｽﾋﾟｷ/シャイニングスター", "ホバギ管理人 Hobagi_Master "], ["z7c4pMjum6w", "トリッカルキャニオン", "けしごむ"], ["lL4O6mxRRKA", "퓨어★샤인 다야", "플버"], ["ND2kwaZZQSs", "[AI 커버] 비비 - ViVi 한국어버전 (원곡: Kenshi Yonezu)", "김치카"], ["cSQlcAE-ihk", "もちょっとトリッカル（号泣）", "多くは語るまい"], ["lqwZFSZXmoM", "ｽﾋﾟｷ - 夜に駆ける", "けしごむ"], ["Xq8LZn-l4vw", "SPEAKI ZONE (FULL)", "P-yoko"], ["c6bpq3mqbbU", "[볼팝/에피카의 찬가극장] - 작은 호랑이의 노래 [JP Sub]", "김치카"], ["DT9ysZx1wZ4", "에피카 - 생일 축하하오!", "김치카"], ["Fi7clBiPrLY", "[트릭컬 볼팝]선배님!", "Orion Cloud"], ["DNS-q7AjLBw", "하트 박스", "플버"], ["ohdeZC2VwH0", "스피키 파돌리기송 | 初音ｽﾋﾟｷの「イエヴァン・ポルッカ」", "운차피"], ["nXzgOlBnh7I", "재미의 왕이 재미를 원한다!", "플버"], ["bggll0OerzQ", "치르밀 버터", "aggaagwwga"], ["JBes2jiR5yI", "​영원살이 - 잊힌 계절의 서사시", "김치카"], ["etjGxx4mPnM", "에피카,디아나 -매듭진 어제가, 오늘의 노래가 되는 마법", "김치카"], ["Ic5xH7v9pdo", "에피카 - 떠나는 건 내일 합시다 | 해변의 하룻밤", "김치카"], ["D3boQlSnHCg", "대출해서 돈 버는 게임 (실화)", "이딴게"], ["45Q3IDqk9VA", "カッコつけてｽﾋﾟｷで打打打打打打打打打打作ってるｽﾋﾟｷがいたんですよ～", "フネろん / FUNE"], ["cazCz_2OqYE", "ｽﾋﾟﾋﾟﾋﾟｽﾋﾟｷ", "フネろん / FUNE"], ["RgOQ-ArGc9s", "𝐁𝐢𝐠 𝐓𝐫𝐢𝐜𝐤𝐜𝐚𝐥", "코드"], ["I_S4xxnpyKU", "ｽﾋﾟｷ素材天国 ミラクルスターズ リミックス0【トリッカル】", "ミニゲーム工房"], ["v06BYEfuUjI", "ｽﾋﾟｷ - アゲハ蝶", "安価壁"], ["qH2loH0oYlc", "ｽﾋﾟｷ - バグ", "けしごむ"], ["FEToiyx2yvo", "Monatium Night (Hardstyle Remix)", "Rudbag"],["9HSUC76lY3I","스피키 - 신 같네 (god-ish)","코드"],["TNtepRyysj0","2대째 큐이 (feat. 사제장)","코드"],["Lb2XUysqTLA","旋風ノ舞【司祭長】","LRu"],["aCuOV5gOCAU","【トリッカル】†††スピキタイム the ダァーク†††【音MAD】","JM1ntL"],["tHQXN4UQrpk","【音MAD】!!!ｽﾋﾟｷタイム!!!【トリッカル】","JM1ntL"],["kLsuBD_RhCY","큐이큐이★나이트피버","Coroskai"],["MFpjnmgurPo","ﾁｮﾜロック","けしごむ"]];
+const SPKMOD_OST_TRACKS = [["KbKO0Mqf54k","Trickcal Main Title"],["-8gyhj9R98Y","Day Life"],["ipcAfLYStNI","Lounge"],["5AI_lKxOETI","Weekday Farm"],["NPaTub4_isU","Hail The World Tree"],["j1qH2VUciTU","Theme Theater"],["RpboF3eVM68","No Way Out"],["V2XMhSAwLYA","Let's Go"],["cNMUQok7WEA","Tig, The Feedstance (Phase 1)"],["fngs-d-TCUg","Tig, The Feedstance (Phase 2)"],["eJ7ODfEh96Y","Tig, The Feedstance (Phase 3)"],["hD5MgN4DSmE","Honranada Honrane"],["WSdqZ1FfosY","Adventure Begins"],["ZNXdn36eOMg","Battle On Sunset"],["1O-YThrGVk4","Spirit Forest"],["NGPCBTXJqN0","Moistful Spirits"],["EJten4Wu0fo","Crystal Lake"],["J3dmNiBGjak","Aurora"],["_y3M8XKVLsM","Dragon Cave (Abyss)"],["ZhigzT8LLQQ","Dragon Cave (Crystal)"],["wYdkFC_RVZs","Dragon Cave (Water)"],["spwRCDkSt4c","Deep Cave"],["D1WiO91w03c","Ghost Village"],["HVbsQPo-rRk","Monatium"],["IWwoC-mttjI","City Night"],["DU9Yk9q6QwQ","Elf Dominion"],["09mm-5dSKD4","Fairy Town Street"],["NQjzjaApHvw","Bakery In Peace"],["oEGgIzeCPh0","Ashur Bakery"],["g4RIyAPEkKU","Elias Candyfloss"],["YHr95007HF8","Furry Forest"],["07n5EKuauf0","Lamb And Dumber"],["P4RXIMWlRw4","This Is Awkward"],["-s9ppxajbDI","Life Is Comedy"],["HNeR44LeCzs","Trick Or Treat"],["SvJsRWg46Lg","We're In Trouble"],["Es3OYEOwAAc","Gold Thief Attack"],["NQwbJLFS7GM","Get You Crayon"],["uP61J2aCIzA","Winner's Jwopaemteo"],["G1eAbD6Si30","Sugar Free"],["93NpP7g5tYc","Dimension Crash"],["wcy560HvxMM","Hyper Fatalism"],["AtLBZvMULGk","The Time Paradox"],["raqGBx3YrJM","Brave New World"],["so4U-Cg3hiI","Alpha And Omega"],["gt24X6RCFqE","Warak - Trickcalism"],["imtp2hKQavo","Warak - Bollelujah"],["hp0wsDfc97o","Warak - Eternal Dreamer"],["cAki2dfY-VY","끝까지 걸어가고 싶어 (Feat. 앤씨아)"],["bnx7u3UDJF8","Squeezy Cheeks are coming!"],["eyUTbB6ScQc","일일 사도 체험 - 죠안 BBANGMIX ver."],["twsxcXSeoUg","집으로 가는 길 (Feat. 방연지)"],["k6MlDHQEYxg","Kira Kira ☆ Kishya"],["aiO8PhJZWJE","본 교관은 교주에게 실망했다"]];
+const SPKMOD_BOLPOP_TRACKS = [["Fl-9XBxnHFY", "【トリッカル】SUPIKI_KING", "なめころり"], ["_d6T7hWFeFQ", "아이시아 - 죄다 해고야!!", "김치카"], ["O_c39bSJVK0", "ｽﾋﾟｷ × バニラ求人 【音MAD】", "みずらば【Mizu】"], ["VAikdCYVgn4", "[트릭컬/볼팝] 우리 딸랑구 요미, 일루와잇! (私の娘ヨミ、こっちへ来てね！)", "왓다옴 "], ["vygNUzLzRxc", "고스트 퍼레이드 ゴーストパレード", "룩크 LOOK"], ["FeHDKMilBl0", "스피키 울면 안돼 (울어도 돼) 🎄❤️", "진짜 박시윤"], ["nYhe1Rwd8oE", "이방인", "플버"], ["QQoQBOG59Ko", "Dr.ｽﾋﾟｷ", "偽名鳥"], ["fEDmLfQ9HEs", "마도공학 대혁명", "플버"], ["HZPUFJ6riWM", "【합작】오토핔이 ~합작 열심히 했는데~", "aggaagwwga"], ["L6amI_NevCE", "​에피카 - 떠나는 이의 뒷모습은 얼마나 아름다운가", "김치카"], ["w7Kn4yE0Npg", "ウーワｱｱｱｱｱｱｱｱ‼︎‼︎", "にのまい"], ["hF9vOxO0kAw", "폰 갤러리에 있는 트릭컬 짤들로 노래를 만들어 보았다", "플버"], ["yzZlds_D8ps", "트릭컬은 볼따구 게임 MV", "삼딴게"], ["oDfHfnls0LQ", "에피카 - 우리 인연은 별자리 같아서", "김치카"], ["Qc2zH0-jlfk", "코미는 이렇게 안 생겼어 MV", "이딴게"], ["psMKLp_w6EU", "에피카 - 부족함이 흥이 되는 마법", "김치카"], ["mIrdrJXMz4o", "마이볼", "플버"], ["4IuD3towWd8", "버터의 꿈", "플버"], ["XyMPpZx3LwY", "마요 - 완전 멋진 요정의 용기임", "김치카"], ["VVCnOCPsJcM", "에피카 - 그리움은 은하수 같아서 (원작:내가 너를 /나태주) [JP Sub]", "김치카"], ["23OhWI11sg4", "​에피카 - 거짓말이 진실이 되는 마법", "김치카"], ["TfhEa500-jE", "코미와 버터 - 촛불하나 Cover (AI❌)", "성우 강새봄"], ["N7kmESdsqDA", "もちょっとトリッカル / トリッカル・もちもちほっペ大作戦 (Covered by ころねぽち)", "ころね ぽち -Pochi korone-"], ["lCoTM0YeGCo", "[볼팝/에피카의 찬가극장] - 그대라는 찬사 汝という名の賛辞", "김치카"], ["DGbBXmBb7ag", "코미와 버터는 사료가 좋아 MV", "삼딴게"], ["QjopFOsOMRA", "우이 - 고여버린 행복의 연못", "김치카"], ["d-DA3alm5kk", "エルダインのじょーじょーゆーじょー", "イカ壺"], ["ORWa5gcLiOs", "ﾁｮﾜ魔女ｳｱｱニバル!!", "P-yoko"], ["sRax_NKoNkw", "에피카 - 내 안의 다정한 행복 (원작:행복 /나태주)", "김치카"], ["HbRKbN1ALNw", "[볼팝/에피카의 찬가극장] - 그대를 위하여 기도를 올리네", "김치카"], ["JVl9XZhHP5s", "もちょっとビーマイベイベー", "伯方"], ["cKwqd0wowEw", "코미 - 후와후와 타임", "aggaagwwga"], ["auwzjvdA1Ag", "스피키 바보 아니란 말이에요!「완전판」MV", "삼딴게"], ["z2Fw7VQaHWo", "코미 - 나는 트릭컬이 싫어요 Full ver. 【트릭컬 3주년 합작 ED】", "Loding"], ["HAGZpV39BJc", "엘리아스 볼따구 (엘 박사 고속도로 힛트-쏭)", "앵무쇠"], ["S6FZcAsxgdM", "스피키 - 니가 쪼아요 [트릭컬 1000일 축하 노래]", "진짜 박시윤"], ["6JT4Ij5kkGU", "물고기 따러 가자", "플버"], ["KSQf0t1X6iU", "요즘 트릭컬 진짜 별로네", "플버"], ["HDjdSK-oRC4", "스피키 - 가랑눈", "Coroskai"], ["rQhHfJsvZdc", "궁극의 해피니스 アルティメット・ハピネス", "룩크 LOOK"], ["ibEuXlolilk", "에피카 - 한 다리만 건너면", "김치카"], ["NSlvqY2_OTY", "​에피카 - 흔들리며 피는 꽃에 찬사를", "김치카"], ["QaslIS_SiYw", "ﾃﾞﾙｼﾞ罰せよ！！！【MEGALOVANIA】", "りばらんす"], ["O3BYSK8N2Eo", "ナマ足魅惑のパンオタク", "ぜもーち"], ["v9ssvzKPBwc", "스피키가 신나게 좋아요~ BIG BAND REMIX", "인생음감"], ["ix9rmxh2XGI", "ｽﾋﾟｷ - 水平線", "Saba kann"], ["_TXaAI6kQqo", "SPK.", "めろんぱん"], ["jg_4aOyusSQ", "[우이 커버송]행복해져라~ 얍✨️_へむけじゃら_성우 김가령_トリッカル", "성우 김가령"], ["xjwAtee0480", "스피키는 엄청난 것을 네르해갔습니다", "aggaagwwga"], ["Gd8UfnurNYA", "新ｽﾋﾟｷ島 - Full ver.", "フネろん / FUNE"], ["bd7ZFA-b-zc", "Mystic Cleaner", "룩크 LOOK"], ["B1vNd0kIGM8", "For Ner, someday.", "The Ring's Spikist Maestro"], ["jsnZlSpB5Fg", "Warak - Dimension Crash (Ustempo Remix)", "RudBag"], ["_Q-vhV4HJnU", "에피카 - 춤추는 달빛 아래", "김치카"], ["YfD1_jc3Zaw", "ｽﾋﾟｷ故郷(ふるさと)", "ホバギ管理人 Hobagi_Master "], ["179c_7Tr94k", "에슈르 - 반죽처럼 부풀어라", "김치카"], ["JGRkknim_Gc", "R41엘레나 - 뜨거운 아이스 아메리카노", "김치카"], ["jlCRhil90TA", "리스티 - 뉴 게임 플러스", "김치카"], ["8iE80ghzU8o", "グッバイ戦線", "めろんぱん"], ["iGz4QlH9rD0", "에피카 - 지워진 이름의 축제", "김치카"], ["r-5St9XqV9g", "Omochihoppe Stretchabole!", "ゆうしゃアシスタント"], ["Wv_kNmdRJHs", "エシュールのパーフェクトまほう教室", "けしごむ"], ["AIYQxt-1M2w", "ｴｰｳンジェル ドリーム", "あいきっ"], ["7j5zkBPQRZk", "ｽﾋﾟｷﾊｲ", "ひやねこ"], ["jXTJMeZpYJQ", "[볼팝/에피카의 찬가극장] - 한 송이 여왕의 찬가", "김치카"], ["MmI8N9M_V04", "ｽﾋﾟｷ/シャイニングスター", "ホバギ管理人 Hobagi_Master "], ["z7c4pMjum6w", "トリッカルキャニオン", "けしごむ"], ["lL4O6mxRRKA", "퓨어★샤인 다야", "플버"], ["ND2kwaZZQSs", "[AI 커버] 비비 - ViVi 한국어버전 (원곡: Kenshi Yonezu)", "김치카"], ["cSQlcAE-ihk", "もちょっとトリッカル（号泣）", "多くは語るまい"], ["lqwZFSZXmoM", "ｽﾋﾟｷ - 夜に駆ける", "けしごむ"], ["Xq8LZn-l4vw", "SPEAKI ZONE (FULL)", "P-yoko"], ["c6bpq3mqbbU", "[볼팝/에피카의 찬가극장] - 작은 호랑이의 노래 [JP Sub]", "김치카"], ["DT9ysZx1wZ4", "에피카 - 생일 축하하오!", "김치카"], ["Fi7clBiPrLY", "[트릭컬 볼팝]선배님!", "Orion Cloud"], ["DNS-q7AjLBw", "하트 박스", "플버"], ["ohdeZC2VwH0", "스피키 파돌리기송 | 初音ｽﾋﾟｷの「イエヴァン・ポルッカ」", "운차피"], ["nXzgOlBnh7I", "재미의 왕이 재미를 원한다!", "플버"], ["bggll0OerzQ", "치르밀 버터", "aggaagwwga"], ["JBes2jiR5yI", "​영원살이 - 잊힌 계절의 서사시", "김치카"], ["etjGxx4mPnM", "에피카,디아나 -매듭진 어제가, 오늘의 노래가 되는 마법", "김치카"], ["Ic5xH7v9pdo", "에피카 - 떠나는 건 내일 합시다 | 해변의 하룻밤", "김치카"], ["D3boQlSnHCg", "대출해서 돈 버는 게임 (실화)", "이딴게"], ["45Q3IDqk9VA", "カッコつけてｽﾋﾟｷで打打打打打打打打打打作ってるｽﾋﾟｷがいたんですよ～", "フネろん / FUNE"], ["cazCz_2OqYE", "ｽﾋﾟﾋﾟﾋﾟｽﾋﾟｷ", "フネろん / FUNE"], ["RgOQ-ArGc9s", "𝐁𝐢𝐠 𝐓𝐫𝐢𝐜𝐤𝐜𝐚𝐥", "코드"], ["I_S4xxnpyKU", "ｽﾋﾟｷ素材天国 ミラクルスターズ リミックス0【トリッカル】", "ミニゲーム工房"], ["v06BYEfuUjI", "ｽﾋﾟｷ - アゲハ蝶", "安価壁"], ["qH2loH0oYlc", "ｽﾋﾟｷ - バグ", "けしごむ"], ["FEToiyx2yvo", "Monatium Night (Hardstyle Remix)", "Rudbag"],["9HSUC76lY3I","스피키 - 신 같네 (god-ish)","코드"],["TNtepRyysj0","2대째 큐이 (feat. 사제장)","코드"],["Lb2XUysqTLA","旋風ノ舞【司祭長】","LRu"],["aCuOV5gOCAU","【トリッカル】†††スピキタイム the ダァーク†††【音MAD】","JM1ntL"],["tHQXN4UQrpk","【音MAD】!!!ｽﾋﾟｷタイム!!!【トリッカル】","JM1ntL"],["kLsuBD_RhCY","큐이큐이★나이트피버","Coroskai"],["MFpjnmgurPo","ﾁｮﾜロック","けしごむ"],["gwM-r6npRm4","ｽﾋﾟｷ - 怪獣","安価壁"],["KUO45PabkLw","ｽﾋﾟｷ - 千本桜","れいぜん"],["__CygK7133U","ネルル","めろんぱん"]];
 
 // --- Jukebox i18n Helpers ---
 function getJukeboxText(key) {
@@ -3883,7 +3887,8 @@ function getJukeboxText(key) {
         jukeboxNext: "Next",
         jukeboxRepeat: "Repeat Mode",
         jukeboxMiniPlayerHint: "Double right-click to open Mini-player!",
-        jukeboxMiniPlayerExpandHint: "Double right-click to expand!"
+        jukeboxMiniPlayerExpandHint: "Double right-click to expand!",
+        jukeboxResizeTooltip: "Drag corner to resize window"
     };
     return enFallbacks[key] || key;
 }
@@ -4102,6 +4107,11 @@ function updateJukeboxI18n() {
         if (typeof setSpkmodRichTooltip === 'function') {
             setSpkmodRichTooltip(trackInfo, '🖱️ ' + hintText);
         }
+    }
+
+    const resizeHandle = modal.querySelector('#spkmod-jukebox-resize-handle');
+    if (resizeHandle) {
+        resizeHandle.title = getJukeboxText("jukeboxResizeTooltip");
     }
 
     if (typeof updateHudIconTooltips === "function") {
@@ -4529,9 +4539,26 @@ function buildJukeboxUI() {
 
     const state = window.__speakiMusicState;
 
+    // Restore saved dimensions & drawer state
+    let savedW = 380;
+    let savedH = 420;
+    try {
+        const rawSize = localStorage.getItem("spkmod-size-spkmod-jukebox-modal");
+        if (rawSize) {
+            const sz = JSON.parse(rawSize);
+            if (sz.width) savedW = Math.max(340, Math.min(Math.round(window.innerWidth * 0.98), parseInt(sz.width, 10)));
+            if (sz.height) savedH = Math.max(260, Math.min(Math.round(window.innerHeight * 0.95), parseInt(sz.height, 10)));
+        }
+    } catch (_) {}
+
+    let isDrawerOpen = false;
+    try {
+        isDrawerOpen = localStorage.getItem("spkmod-jukebox-drawer-open") === "true";
+    } catch (_) {}
+
     // Load persisted coordinates or default nicely without setting bottom/right
-    let initLeft = Math.max(10, window.innerWidth - 410);
-    let initTop = Math.max(10, window.innerHeight - 280);
+    let initLeft = Math.max(10, window.innerWidth - (savedW + 30));
+    let initTop = Math.max(10, window.innerHeight - (isDrawerOpen ? savedH + 30 : 280));
     try {
         const raw = localStorage.getItem("spkmod-pos-spkmod-jukebox-modal");
         if (raw) {
@@ -4548,7 +4575,7 @@ function buildJukeboxUI() {
     const modal = buildElement("div", {
         id: "spkmod-jukebox-modal",
         className: "spkmod-music-modal" + (state.modalVisible ? "" : " hidden") + (state.isMiniMode ? " spkmod-mini-mode" : ""),
-        style: `position: fixed; left: ${initLeft}px; top: ${initTop}px; bottom: auto !important; right: auto !important; width: 380px; max-width: 95vw; background: linear-gradient(180deg, #2a2038 0%, #1a1424 100%); border: 2px solid var(--spkmod-accent, #e8b84b); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.15); font-family: Pretendard, system-ui, -apple-system, sans-serif; color: #fff; z-index: 2147483600 !important; padding: 14px 16px; box-sizing: border-box; user-select: none; display: flex; flex-direction: column; gap: 10px;`
+        style: `position: fixed; left: ${initLeft}px; top: ${initTop}px; bottom: auto !important; right: auto !important; width: ${savedW}px; height: ${isDrawerOpen ? savedH + 'px' : 'auto'}; min-width: 340px; min-height: 170px; max-width: 98vw; max-height: 95vh; background: linear-gradient(180deg, #2a2038 0%, #1a1424 100%); border: 2px solid var(--spkmod-accent, #e8b84b); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.15); font-family: Pretendard, system-ui, -apple-system, sans-serif; color: #fff; z-index: 2147483600 !important; padding: 14px 16px; box-sizing: border-box; user-select: none; display: flex; flex-direction: column; gap: 10px; overflow: hidden;`
     });
 
     const activeTracks = getActiveJukeboxTracks();
@@ -4604,7 +4631,7 @@ function buildJukeboxUI() {
             </div>
         </div>
 
-        <div id="spkmod-jukebox-drawer" style="display:none;max-height:190px;overflow-y:auto;background:rgba(0,0,0,0.35);border:1px solid #4a3861;border-radius:8px;padding:6px;font-size:12px;margin-top:4px;">
+        <div id="spkmod-jukebox-drawer" style="display:${isDrawerOpen ? 'block' : 'none'};flex:1 1 auto;min-height:100px;overflow-y:auto;background:rgba(0,0,0,0.35);border:1px solid #4a3861;border-radius:8px;padding:6px;font-size:12px;margin-top:4px;">
             <div id="spkmod-jukebox-bolpop-msg" style="background:rgba(232,184,75,0.12);border:1px solid rgba(232,184,75,0.35);border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:11px;color:#ffdf79;line-height:1.45;display:${state.activePlaylistKey === 'bolpop' ? 'block' : 'none'};">
                 💌 <i>${getJukeboxText("jukeboxBolpopMessage")}</i>
             </div>
@@ -4621,6 +4648,49 @@ function buildJukeboxUI() {
     const trackInfo = modal.querySelector('#spkmod-jukebox-track-info');
     if (typeof makeDraggable === 'function') {
         makeDraggable(modal, [header, trackInfo]);
+    }
+
+    // Corner resize handle
+    const resizeHandle = buildElement("div", {
+        id: "spkmod-jukebox-resize-handle",
+        title: getJukeboxText("jukeboxResizeTooltip") || "Drag corner to resize window",
+        style: "position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; user-select: none; z-index: 100; display: flex; align-items: flex-end; justify-content: flex-end; padding: 0 2px 2px 0; touch-action: none;"
+    }, [
+        buildElement("span", {
+            innerHTML: `<svg viewBox="0 0 10 10" width="10" height="10" style="opacity: 0.65; display: block; pointer-events: none;"><path d="M9 1 L1 9 M9 5 L5 9 M9 9 L9 9" stroke="#e8b84b" stroke-width="1.2" stroke-linecap="round"/></svg>`
+        })
+    ]);
+    modal.appendChild(resizeHandle);
+
+    if (typeof makeResizable === 'function') {
+        makeResizable(modal, resizeHandle, {
+            minWidth: 340,
+            minHeight: 260,
+            restoreSize: false,
+            onResize: (newW, newH) => {
+                savedW = newW;
+                if (drawer.style.display === 'none' && newH > 220) {
+                    drawer.style.display = 'block';
+                    if (window.localStorage) localStorage.setItem("spkmod-jukebox-drawer-open", "true");
+                }
+                if (drawer.style.display !== 'none') {
+                    savedH = newH;
+                }
+            },
+            saveSize: (finalW, finalH, key) => {
+                savedW = finalW;
+                if (drawer.style.display !== 'none') {
+                    savedH = finalH;
+                    if (window.localStorage) {
+                        localStorage.setItem(key, JSON.stringify({ width: finalW, height: finalH }));
+                    }
+                } else {
+                    if (window.localStorage) {
+                        localStorage.setItem(key, JSON.stringify({ width: finalW, height: savedH }));
+                    }
+                }
+            }
+        });
     }
 
     // Double right-click toggle mini player (single right-click shows hint)
@@ -4720,7 +4790,16 @@ function buildJukeboxUI() {
     });
 
     drawerBtn.addEventListener('click', () => {
-        drawer.style.display = drawer.style.display === 'none' ? 'block' : 'none';
+        const isCurrentlyOpen = drawer.style.display !== 'none';
+        if (isCurrentlyOpen) {
+            drawer.style.display = 'none';
+            modal.style.height = 'auto';
+            if (window.localStorage) localStorage.setItem("spkmod-jukebox-drawer-open", "false");
+        } else {
+            drawer.style.display = 'block';
+            modal.style.height = savedH + 'px';
+            if (window.localStorage) localStorage.setItem("spkmod-jukebox-drawer-open", "true");
+        }
     });
 
     closeBtn.addEventListener('click', () => {
@@ -6656,8 +6735,13 @@ document.head.appendChild(buildElement(
 		#spkmod-jukebox-modal.spkmod-mini-mode #spkmod-jukebox-shuffle,
 		#spkmod-jukebox-modal.spkmod-mini-mode #spkmod-jukebox-repeat,
 		#spkmod-jukebox-modal.spkmod-mini-mode #spkmod-jukebox-author,
-		#spkmod-jukebox-modal.spkmod-mini-mode #spkmod-jukebox-heart-btn {
+		#spkmod-jukebox-modal.spkmod-mini-mode #spkmod-jukebox-heart-btn,
+		#spkmod-jukebox-modal.spkmod-mini-mode #spkmod-jukebox-resize-handle {
 			display: none !important;
+		}
+		#spkmod-jukebox-resize-handle:hover svg path {
+			stroke: #ffc94a;
+			opacity: 1;
 		}
 		#spkmod-jukebox-modal.spkmod-mini-mode #spkmod-jukebox-thumb {
 			width: 28px !important;
