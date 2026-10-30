@@ -3852,7 +3852,9 @@ const SPKMOD_JUKEBOX_TRACKS = [
     ["HNeR44LeCzs","35. Trick Or Treat"],["SvJsRWg46Lg","36. We're In Trouble"],["Es3OYEOwAAc","37. Gold Thief Attack"],
     ["NQwbJLFS7GM","38. Get You Crayon"],["uP61J2aCIzA","39. Winner's Jwopaemteo"],["G1eAbD6Si30","40. Sugar Free"],
     ["93NpP7g5tYc","41. Dimension Crash"],["wcy560HvxMM","42. Hyper Fatalism"],["AtLBZvMULGk","43. The Time Paradox"],
-    ["raqGBx3YrJM","44. Brave New World"],["so4U-Cg3hiI","45. Alpha And Omega"]
+    ["raqGBx3YrJM","44. Brave New World"],["so4U-Cg3hiI","45. Alpha And Omega"],
+    ["gt24X6RCFqE","Warak - Trickcalism"],["imtp2hKQavo","Warak - Bollelujah"],
+    ["hp0wsDfc97o","Warak - Eternal Dreamer"],["FEToiyx2yvo","Monatium Night (Hardstyle Remix)"]
 ];
 const SPKMOD_JUKEBOX_PLAYLIST_ID = 'PLrELCdfutHrSkxmdw2t_KD-8aj4VCclah';
 
@@ -4105,18 +4107,37 @@ function buildJukeboxUI() {
         else state.player.playVideo();
     });
 
+    function playTrackAtIndex(idx) {
+        if (!state.player || !state.isReady) return;
+        idx = (idx + SPKMOD_JUKEBOX_TRACKS.length) % SPKMOD_JUKEBOX_TRACKS.length;
+        state.currentTrackIndex = idx;
+        state.currentTrackTitle = SPKMOD_JUKEBOX_TRACKS[idx][1];
+        updateJukeboxUI();
+        try {
+            state.player.playVideoAt(idx);
+        } catch (_) {}
+        setTimeout(() => {
+            const vid = SPKMOD_JUKEBOX_TRACKS[idx][0];
+            const curVid = state.player?.getVideoData()?.video_id;
+            if (curVid !== vid) {
+                try { state.player.loadVideoById(vid); } catch (_) {}
+            }
+        }, 300);
+    }
+
     function playNext() {
         if (!state.player || !state.isReady) return;
         if (state.shuffle) {
             const randIdx = Math.floor(Math.random() * SPKMOD_JUKEBOX_TRACKS.length);
-            state.player.playVideoAt(randIdx);
+            playTrackAtIndex(randIdx);
         } else {
-            state.player.nextVideo();
+            playTrackAtIndex(state.currentTrackIndex + 1);
         }
     }
 
     btnPrev.addEventListener('click', () => {
-        if (state.player && state.isReady) state.player.previousVideo();
+        if (!state.player || !state.isReady) return;
+        playTrackAtIndex(state.currentTrackIndex - 1);
     });
     btnNext.addEventListener('click', () => {
         playNext();
@@ -4174,7 +4195,17 @@ function populateJukeboxDrawer(modal) {
         row.textContent = title;
         row.title = title;
         row.addEventListener('click', () => {
-            if (state.player && state.isReady) state.player.playVideoAt(idx);
+            if (state.player && state.isReady) {
+                try {
+                    state.player.playVideoAt(idx);
+                } catch (_) {}
+                setTimeout(() => {
+                    const curVid = state.player?.getVideoData()?.video_id;
+                    if (curVid !== vid) {
+                        try { state.player.loadVideoById(vid); } catch (_) {}
+                    }
+                }, 300);
+            }
         });
         listContainer.appendChild(row);
     });
@@ -4242,13 +4273,20 @@ function initJukeboxPlayer() {
                         state.isPlaying = true;
                         suppressGameBgm(true);
 
-                        const idx = state.player.getPlaylistIndex() || 0;
-                        state.currentTrackIndex = idx;
-                        if (SPKMOD_JUKEBOX_TRACKS[idx]) {
-                            state.currentTrackTitle = SPKMOD_JUKEBOX_TRACKS[idx][1];
+                        const curVid = state.player.getVideoData()?.video_id;
+                        const foundIdx = curVid ? SPKMOD_JUKEBOX_TRACKS.findIndex(t => t[0] === curVid) : -1;
+                        if (foundIdx !== -1) {
+                            state.currentTrackIndex = foundIdx;
+                            state.currentTrackTitle = SPKMOD_JUKEBOX_TRACKS[foundIdx][1];
                         } else {
-                            const data = state.player.getVideoData();
-                            state.currentTrackTitle = cleanJukeboxTitle(data?.title || 'Trickcal BGM');
+                            const idx = state.player.getPlaylistIndex();
+                            if (typeof idx === 'number' && idx >= 0 && SPKMOD_JUKEBOX_TRACKS[idx]) {
+                                state.currentTrackIndex = idx;
+                                state.currentTrackTitle = SPKMOD_JUKEBOX_TRACKS[idx][1];
+                            } else {
+                                const data = state.player.getVideoData();
+                                state.currentTrackTitle = cleanJukeboxTitle(data?.title || 'Trickcal BGM');
+                            }
                         }
                         state.duration = state.player.getDuration() || 0;
 
@@ -4274,8 +4312,23 @@ function initJukeboxPlayer() {
                             state.player.playVideo();
                         } else if (state.shuffle) {
                             const randIdx = Math.floor(Math.random() * SPKMOD_JUKEBOX_TRACKS.length);
-                            state.player.playVideoAt(randIdx);
-                        } else if (state.repeatMode === 'off' && state.currentTrackIndex === SPKMOD_JUKEBOX_TRACKS.length - 1) {
+                            try { state.player.playVideoAt(randIdx); } catch (_) {}
+                            setTimeout(() => {
+                                const vid = SPKMOD_JUKEBOX_TRACKS[randIdx][0];
+                                if (state.player?.getVideoData()?.video_id !== vid) {
+                                    try { state.player.loadVideoById(vid); } catch (_) {}
+                                }
+                            }, 300);
+                        } else if (state.repeatMode === 'all' || (state.repeatMode === 'off' && state.currentTrackIndex < SPKMOD_JUKEBOX_TRACKS.length - 1)) {
+                            const nextIdx = (state.currentTrackIndex + 1) % SPKMOD_JUKEBOX_TRACKS.length;
+                            try { state.player.playVideoAt(nextIdx); } catch (_) {}
+                            setTimeout(() => {
+                                const vid = SPKMOD_JUKEBOX_TRACKS[nextIdx][0];
+                                if (state.player?.getVideoData()?.video_id !== vid) {
+                                    try { state.player.loadVideoById(vid); } catch (_) {}
+                                }
+                            }, 300);
+                        } else {
                             state.isPlaying = false;
                             suppressGameBgm(false);
                         }
@@ -21976,10 +22029,6 @@ function hookGameStateOnce() {
 		gameState.cameraController.__speakiObstaclesHooked = true;
 	}
 
-	if (gameState.speakovHost && typeof initDuckovFpHook === "function") {
-		initDuckovFpHook(gameState.speakovHost);
-	}
-
 	if (typeof gameState.trySendChat === "function" && !gameState.__speakiTrySendChatHooked) {
 		const origTrySendChat = gameState.trySendChat.bind(gameState);
 		gameState.trySendChat = (msg) => {
@@ -22119,13 +22168,7 @@ function hookGameStateOnce() {
 						break;
 					case "firstperson":
 					case "fp":
-						if (typeof gameState !== "undefined" && gameState?.isSpeakovActive?.()) {
-							if (typeof window.testDuckovFP === "function") {
-								window.testDuckovFP();
-							}
-						} else if (lunPanelElements.firstPersonBtn) {
-							lunPanelElements.firstPersonBtn.click();
-						}
+						if (lunPanelElements.firstPersonBtn) lunPanelElements.firstPersonBtn.click();
 						break;
 					case "camlock":
 						if (lunPanelElements.lockCameraBtn) lunPanelElements.lockCameraBtn.click();
@@ -23428,433 +23471,6 @@ if (typeof spkmodI18nRenderers !== 'undefined') {
         }
     });
 }
-
-// == Duckov (Speakov) First Person Camera (Fixed Controls, 360 Mouse Look & Full Render Distance) ==
-(function() {
-    window.__duckovFpState = window.__duckovFpState || {
-        enabled: false,
-        pitch: 0,
-        yaw: 0,
-        sensitivity: 0.0025,
-        invertY: false,
-        invertX: false,
-        ads: false,
-        isLocked: false
-    };
-    const state = window.__duckovFpState;
-
-    // Track arrow keys alongside WASD for smooth movement without altering aim
-    const extraMoveKeys = {
-        up: false,
-        down: false,
-        left: false,
-        right: false
-    };
-
-    function getHost() {
-        const gs = window.gameState || (typeof gameState !== 'undefined' ? gameState : null);
-        if (gs && gs.speakovHost) return gs.speakovHost;
-        if (window.speakovHost) return window.speakovHost;
-        return null;
-    }
-
-    function isPointerLocked(host) {
-        if (!host) return !!document.pointerLockElement;
-        const cur = document.pointerLockElement || (host.shadow && host.shadow.pointerLockElement);
-        if (!cur) return false;
-        return cur === document.body || cur === host.host || cur === host.canvas || cur === host.shadow?.pointerLockElement || cur === document.documentElement;
-    }
-
-    // Ensure custom CSS rule for guaranteed cursor hiding
-    function updateCursorStyle(enable) {
-        let style = document.getElementById('__duckovCursorStyle');
-        if (!style) {
-            style = document.createElement('style');
-            style.id = '__duckovCursorStyle';
-            style.textContent = `
-                .duckov-fp-active, .duckov-fp-active *, .duckov-fp-active canvas {
-                    cursor: none !important;
-                }
-            `;
-            document.head.appendChild(style);
-        }
-        if (enable) {
-            document.body.classList.add('duckov-fp-active');
-            const host = getHost();
-            if (host?.host) host.host.classList.add('duckov-fp-active');
-        } else {
-            document.body.classList.remove('duckov-fp-active');
-            const host = getHost();
-            if (host?.host) host.host.classList.remove('duckov-fp-active');
-        }
-    }
-
-    function initDuckovFpHook(host) {
-        if (!host) return false;
-
-        // Save original functions once to prevent wrapper nesting on re-execution
-        if (!host.__duckovOrigUpdateCam) host.__duckovOrigUpdateCam = host.updateCamera.bind(host);
-        if (!host.__duckovOrigUpdateInput) host.__duckovOrigUpdateInput = host.updateInput.bind(host);
-        if (!host.__duckovOrigUpdateVisuals) host.__duckovOrigUpdateVisuals = host.updateVisuals.bind(host);
-        if (!host.__duckovOrigAimAtScreen) host.__duckovOrigAimAtScreen = host.aimAtScreenPoint.bind(host);
-        if (!host.__duckovOrigUpdateMobileYaw) host.__duckovOrigUpdateMobileYaw = host.updateMobileYaw.bind(host);
-
-        // 1. Hook updateCamera to Character Eye Level
-        host.updateCamera = function(dt) {
-            if (state.enabled) {
-                const pos = this.viewDisplayPosition() ?? (typeof this.positionVector === 'function' ? this.positionVector(0, 0) : { x: 0, z: 0 });
-                const groundY = typeof this.standingY === 'function' ? this.standingY(pos.x, pos.z) : 0;
-                this.cameraGroundY += (groundY - this.cameraGroundY) * (1 - Math.exp(-dt / 0.15));
-
-                const viewId = typeof this.viewObjectId === 'function' ? this.viewObjectId() : this.localObjectId;
-                const yaw = state.yaw ?? (viewId !== null && this.playerYaws && this.playerYaws.get(viewId)) ?? 0;
-                const pitch = state.pitch || 0;
-
-                const eyeHeight = 0.95;
-                const forwardOffset = 0.22;
-                const camX = pos.x + Math.sin(yaw) * forwardOffset;
-                const camY = this.cameraGroundY + eyeHeight;
-                const camZ = pos.z + Math.cos(yaw) * forwardOffset;
-                this.camera.position.set(camX, camY, camZ);
-
-                const lookDist = 30.0;
-                const cosP = Math.cos(pitch);
-                const sinP = Math.sin(pitch);
-                const targetX = camX + Math.sin(yaw) * cosP * lookDist;
-                const targetY = camY - sinP * lookDist;
-                const targetZ = camZ + Math.cos(yaw) * cosP * lookDist;
-                this.camera.lookAt(targetX, targetY, targetZ);
-
-                // FPS FOV (85 normal, 60 when holding right-click for ADS zoom)
-                const targetFov = state.ads ? 60 : 85;
-                if (this.camera.fov !== targetFov) {
-                    this.camera.fov = targetFov;
-                    this.camera.updateProjectionMatrix();
-                }
-            } else {
-                if (this.camera.fov !== 48) {
-                    this.camera.fov = 48;
-                    this.camera.updateProjectionMatrix();
-                }
-                host.__duckovOrigUpdateCam(dt);
-            }
-        };
-
-        // 2. Prevent movement from rotating aim (Fix for "moving left or right arrows will also move the aim")
-        host.updateMobileYaw = function(nowMs, pos) {
-            if (state.enabled) return;
-            host.__duckovOrigUpdateMobileYaw(nowMs, pos);
-        };
-
-        // 3. Hook updateInput: Rotate WASD & Arrow movement into camera view direction without altering aim
-        host.updateInput = function(nowMs, dt) {
-            if (state.enabled && this.canAcceptGameplayInput() && this.localObjectId !== null && this.mapGeometry !== null) {
-                const hasW = this.pressedKeys.has('w') || extraMoveKeys.up;
-                const hasA = this.pressedKeys.has('a') || extraMoveKeys.left;
-                const hasS = this.pressedKeys.has('s') || extraMoveKeys.down;
-                const hasD = this.pressedKeys.has('d') || extraMoveKeys.right;
-
-                if (hasW || hasA || hasS || hasD) {
-                    this.pressedKeys.delete('w');
-                    this.pressedKeys.delete('a');
-                    this.pressedKeys.delete('s');
-                    this.pressedKeys.delete('d');
-
-                    const fwd = (hasW ? 1 : 0) - (hasS ? 1 : 0);
-                    const strafe = (hasD ? 1 : 0) - (hasA ? 1 : 0);
-                    const len = Math.hypot(fwd, strafe);
-                    const nfwd = len > 1 ? fwd / len : fwd;
-                    const nstrafe = len > 1 ? strafe / len : strafe;
-
-                    const curYaw = state.yaw ?? (this.localObjectId !== null && this.playerYaws.get(this.localObjectId)) ?? 0;
-                    const fwdX = Math.sin(curYaw);
-                    const fwdZ = Math.cos(curYaw);
-                    const rightX = -Math.cos(curYaw);
-                    const rightZ = Math.sin(curYaw);
-
-                    this.joystickVector.x = nfwd * fwdX + nstrafe * rightX;
-                    this.joystickVector.y = nfwd * fwdZ + nstrafe * rightZ;
-
-                    host.__duckovOrigUpdateInput(nowMs, dt);
-
-                    // Re-apply current mouse aim yaw so joystick processing doesn't override character facing
-                    if (this.localObjectId !== null && state.yaw !== undefined) {
-                        this.playerYaws.set(this.localObjectId, state.yaw);
-                    }
-
-                    if (this.pressedKeys.has('w') || extraMoveKeys.up) this.pressedKeys.add('w');
-                    if (this.pressedKeys.has('a') || extraMoveKeys.left) this.pressedKeys.add('a');
-                    if (this.pressedKeys.has('s') || extraMoveKeys.down) this.pressedKeys.add('s');
-                    if (this.pressedKeys.has('d') || extraMoveKeys.right) this.pressedKeys.add('d');
-
-                    this.joystickVector.set(0, 0);
-                    return;
-                }
-            }
-            host.__duckovOrigUpdateInput(nowMs, dt);
-        };
-
-        // 4. Hide local avatar head/body in FP
-        host.updateVisuals = function(dt, now) {
-            host.__duckovOrigUpdateVisuals(dt, now);
-            if (this.localObjectId !== null && this.playerVisuals) {
-                const me = this.playerVisuals.get(this.localObjectId);
-                if (me && me.root) {
-                    me.root.visible = !state.enabled;
-                }
-            }
-        };
-
-        // 5. Prevent 2D ground raycaster from overriding yaw in FP
-        host.aimAtScreenPoint = function(x, y) {
-            if (state.enabled) return;
-            host.__duckovOrigAimAtScreen(x, y);
-        };
-
-        // 6. Disable 2D ground flashlight mask in FP
-        if (host.visionCone && typeof host.visionCone.setEnabled === 'function') {
-            if (!host.visionCone.__origSetEnabled) {
-                host.visionCone.__origSetEnabled = host.visionCone.setEnabled.bind(host.visionCone);
-            }
-            host.visionCone.setEnabled = function(en) {
-                host.visionCone.__origSetEnabled(state.enabled ? false : en);
-            };
-        }
-
-        // 7. Extend Enemy Rendering Distance across full draw distance (Fix for "rendering distance of enemies is too short")
-        if (host.enemyVisibility) {
-            if (!host.enemyVisibility.__origIsInView) {
-                host.enemyVisibility.__origIsInView = host.enemyVisibility.isInView.bind(host.enemyVisibility);
-                host.enemyVisibility.__origIsHidden = host.enemyVisibility.isHidden.bind(host.enemyVisibility);
-                host.enemyVisibility.__origIsShown = host.enemyVisibility.isShown.bind(host.enemyVisibility);
-            }
-            host.enemyVisibility.isInView = function(pos) {
-                if (state.enabled) return true;
-                return this.__origIsInView(pos);
-            };
-            host.enemyVisibility.isHidden = function(id) {
-                if (state.enabled) return false;
-                return this.__origIsHidden(id);
-            };
-            host.enemyVisibility.isShown = function(id) {
-                if (state.enabled) return true;
-                return this.__origIsShown(id);
-            };
-        }
-
-        // 8. 360° Infinite Mouse Look & Bullet Alignment
-        let lastClientX = null;
-        let lastClientY = null;
-
-        const onMouseMove = (e) => {
-            if (!state.enabled || !host.active || host.localObjectId === null) return;
-            if (e.__duckovProcessed) return;
-            e.__duckovProcessed = true;
-
-            const locked = isPointerLocked(host);
-            let dx = 0;
-            let dy = 0;
-
-            if (locked) {
-                dx = e.movementX || 0;
-                dy = e.movementY || 0;
-                lastClientX = e.clientX;
-                lastClientY = e.clientY;
-            } else {
-                if (lastClientX !== null && lastClientY !== null) {
-                    dx = e.clientX - lastClientX;
-                    dy = e.clientY - lastClientY;
-                }
-                lastClientX = e.clientX;
-                lastClientY = e.clientY;
-            }
-
-            if (dx === 0 && dy === 0) return;
-
-            if (state.invertX) dx = -dx;
-            if (state.invertY) dy = -dy;
-
-            // YAW: Horizontal 360 rotation (mouse right -> turn right)
-            state.yaw = (state.yaw || 0) - dx * state.sensitivity;
-            state.yaw = Math.atan2(Math.sin(state.yaw), Math.cos(state.yaw));
-            host.playerYaws.set(host.localObjectId, state.yaw);
-
-            // PITCH: Vertical view angle
-            state.pitch = Math.max(-1.15, Math.min(1.15, (state.pitch || 0) + dy * state.sensitivity));
-
-            // Align weapon aimPoint with 3D crosshair ray
-            const pos = host.playerPositions.get(host.localObjectId);
-            if (pos) {
-                const groundY = typeof host.standingY === 'function' ? host.standingY(pos.x, pos.z) : 0;
-                const cosP = Math.cos(state.pitch);
-                const sinP = Math.sin(state.pitch);
-                host.aimPoint.set(
-                    pos.x + Math.sin(state.yaw) * cosP * 25,
-                    groundY + 0.95 - sinP * 25,
-                    pos.z + Math.cos(state.yaw) * cosP * 25
-                );
-            }
-        };
-
-        const acquirePointerLock = () => {
-            if (!state.enabled) return;
-            const targets = [document.body, host.host, host.canvas, document.documentElement].filter(Boolean);
-            for (const target of targets) {
-                try {
-                    const res = target.requestPointerLock();
-                    if (res && typeof res.catch === 'function') res.catch(() => {});
-                    break;
-                } catch (_) {}
-            }
-        };
-
-        if (host.canvas && !host.canvas.__duckovFpEvents) {
-            host.canvas.__duckovFpEvents = true;
-
-            host.canvas.addEventListener('click', acquirePointerLock);
-            host.canvas.addEventListener('pointerdown', (e) => {
-                if (state.enabled && e.button === 0) acquirePointerLock();
-            });
-
-            host.canvas.addEventListener('mousemove', onMouseMove);
-            host.canvas.addEventListener('pointermove', onMouseMove);
-
-            // ADS (Right-click zoom)
-            host.canvas.addEventListener('mousedown', (e) => {
-                if (state.enabled && e.button === 2) {
-                    e.preventDefault();
-                    state.ads = true;
-                }
-            });
-            host.canvas.addEventListener('contextmenu', (e) => {
-                if (state.enabled) e.preventDefault();
-            });
-        }
-
-        if (!window.__duckovGlobalMouseHooked) {
-            window.__duckovGlobalMouseHooked = true;
-
-            window.addEventListener('click', acquirePointerLock, { capture: true });
-            window.addEventListener('pointerdown', (e) => {
-                if (state.enabled && e.button === 0) acquirePointerLock();
-            }, { capture: true });
-
-            window.addEventListener('mousemove', onMouseMove, { capture: true });
-            window.addEventListener('pointermove', onMouseMove, { capture: true });
-
-            document.addEventListener('pointerlockchange', () => {
-                const curHost = getHost();
-                state.isLocked = isPointerLocked(curHost);
-                console.log(`[Duckov FP] Pointer Lock: ${state.isLocked ? 'LOCKED' : 'UNLOCKED'}`);
-            });
-
-            window.addEventListener('mouseup', (e) => {
-                if (e.button === 2) state.ads = false;
-            });
-
-            // Arrow keys movement listeners
-            window.addEventListener('keydown', (e) => {
-                if (!state.enabled) return;
-                const tag = document.activeElement ? (document.activeElement.tagName || '').toLowerCase() : '';
-                if (tag === 'input' || tag === 'textarea' || document.activeElement?.isContentEditable) return;
-
-                if (e.code === 'ArrowUp' || e.key === 'ArrowUp') { extraMoveKeys.up = true; e.preventDefault(); }
-                if (e.code === 'ArrowDown' || e.key === 'ArrowDown') { extraMoveKeys.down = true; e.preventDefault(); }
-                if (e.code === 'ArrowLeft' || e.key === 'ArrowLeft') { extraMoveKeys.left = true; e.preventDefault(); }
-                if (e.code === 'ArrowRight' || e.key === 'ArrowRight') { extraMoveKeys.right = true; e.preventDefault(); }
-            });
-
-            window.addEventListener('keyup', (e) => {
-                if (e.code === 'ArrowUp' || e.key === 'ArrowUp') extraMoveKeys.up = false;
-                if (e.code === 'ArrowDown' || e.key === 'ArrowDown') extraMoveKeys.down = false;
-                if (e.code === 'ArrowLeft' || e.key === 'ArrowLeft') extraMoveKeys.left = false;
-                if (e.code === 'ArrowRight' || e.key === 'ArrowRight') extraMoveKeys.right = false;
-            });
-        }
-
-        return true;
-    }
-
-    function updateCrosshair(host) {
-        if (!host || !host.hudRoot) return;
-        let ch = host.hudRoot.querySelector('.duckov-fp-crosshair');
-        if (!ch) {
-            ch = document.createElement('div');
-            ch.className = 'duckov-fp-crosshair';
-            ch.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:20px;height:20px;pointer-events:none;z-index:999;display:none;';
-            ch.innerHTML = `
-                <div style="position:absolute;left:9px;top:9px;width:2px;height:2px;background:#00ffcc;border-radius:50%;box-shadow:0 0 3px #000;"></div>
-                <div style="position:absolute;left:9px;top:2px;width:2px;height:5px;background:rgba(255,255,255,0.9);box-shadow:0 0 2px #000;"></div>
-                <div style="position:absolute;left:9px;bottom:2px;width:2px;height:5px;background:rgba(255,255,255,0.9);box-shadow:0 0 2px #000;"></div>
-                <div style="position:absolute;top:9px;left:2px;width:5px;height:2px;background:rgba(255,255,255,0.9);box-shadow:0 0 2px #000;"></div>
-                <div style="position:absolute;top:9px;right:2px;width:5px;height:2px;background:rgba(255,255,255,0.9);box-shadow:0 0 2px #000;"></div>
-            `;
-            host.hudRoot.appendChild(ch);
-        }
-        ch.style.display = state.enabled ? 'block' : 'none';
-    }
-
-    window.testDuckovFP = function(enable) {
-        const host = getHost();
-        if (!host) {
-            console.error('%c[Duckov FP Test] ERROR: speakovHost could not be found! Make sure you are inside Duckov match and gameState is loaded.', 'color: #ff4444; font-weight: bold; font-size: 14px;');
-            return 'ERROR: speakovHost not found';
-        }
-
-        state.enabled = (typeof enable === 'boolean') ? enable : !state.enabled;
-        initDuckovFpHook(host);
-        updateCrosshair(host);
-        updateCursorStyle(state.enabled);
-
-        if (state.enabled) {
-            state.yaw = (host.localObjectId !== null && host.playerYaws.get(host.localObjectId)) ?? Math.PI;
-            state.pitch = 0;
-            try {
-                if (!isPointerLocked(host)) {
-                    const res = document.body.requestPointerLock ? document.body.requestPointerLock() : host.canvas?.requestPointerLock();
-                    if (res && typeof res.catch === 'function') res.catch(() => {});
-                }
-            } catch (_) {}
-        } else {
-            if (document.pointerLockElement) {
-                try { document.exitPointerLock(); } catch (_) {}
-            }
-            if (host.camera && host.camera.fov !== 48) {
-                host.camera.fov = 48;
-                host.camera.updateProjectionMatrix();
-            }
-            if (host.localObjectId !== null && host.playerVisuals) {
-                const me = host.playerVisuals.get(host.localObjectId);
-                if (me && me.root) me.root.visible = true;
-            }
-        }
-
-        console.log(`%c[Duckov FP Test] 1st Person Camera: ${state.enabled ? 'ON' : 'OFF'}`, `color: ${state.enabled ? '#44ff88' : '#ff8888'}; font-weight: bold; font-size: 14px;`);
-        console.log("Controls: Left-click anywhere to lock mouse (360 look), WASD or Arrow Keys to move, Right-click hold for ADS zoom, 'V' to toggle.");
-        return `Duckov First-Person is now ${state.enabled ? 'ENABLED' : 'DISABLED'}`;
-    };
-
-    // Hotkey V listener
-    if (!window.__duckovFpHotkeyBound) {
-        window.__duckovFpHotkeyBound = true;
-        window.addEventListener('keydown', (e) => {
-            if ((e.key === 'v' || e.key === 'V' || e.code === 'KeyV') && !e.ctrlKey && !e.altKey && !e.metaKey) {
-                const tag = document.activeElement ? (document.activeElement.tagName || '').toLowerCase() : '';
-                if (tag === 'input' || tag === 'textarea' || document.activeElement?.isContentEditable) return;
-                const host = getHost();
-                if (host && host.active) {
-                    e.preventDefault();
-                    window.testDuckovFP();
-                }
-            }
-        });
-    }
-
-    const host = getHost();
-    if (host) initDuckovFpHook(host);
-    window.testDuckovFP(true);
-})();
-
 
 
 const SPKMOD_ACCOUNTS_KEY = "spkmod-saved-accounts";
