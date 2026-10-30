@@ -4212,6 +4212,7 @@ window.__speakiMusicState = window.__speakiMusicState || {
     volume: (window.localStorage && parseInt(localStorage.getItem("spkmod-jukebox-vol"), 10)) || 75,
     savedBgmVolume: null,
     isBgmSuppressed: false,
+    isSuppressingBgmInternal: false,
     isChangingTrack: false,
     changeTrackTimeout: null,
     shuffle: (window.localStorage && localStorage.getItem("spkmod-jukebox-shuffle") === "true") || false,
@@ -4238,6 +4239,29 @@ function loadJukeboxFavorites() {
     lunJukeboxFavoriteIds = new Set();
 }
 loadJukeboxFavorites();
+
+// Clean up suppressed state if player closed tab or reloaded mid-song
+try {
+    const wasSuppressed = (window.localStorage && localStorage.getItem("spkmod-is-bgm-suppressed") === "true");
+    const rawSaved = (window.localStorage && localStorage.getItem("spkmod-user-bgm-volume"));
+    if (rawSaved !== null && rawSaved !== "") {
+        const n = Number(rawSaved);
+        if (Number.isFinite(n) && n >= 0 && n <= 100) {
+            window.__speakiMusicState.savedBgmVolume = n;
+        }
+    }
+    if (wasSuppressed && typeof window.__speakiMusicState.savedBgmVolume === "number") {
+        const raw = (window.localStorage && localStorage.getItem('sr1_settings'));
+        if (raw) {
+            const s = JSON.parse(raw);
+            if (s && s.bgmVolume === 0 && window.__speakiMusicState.savedBgmVolume > 0) {
+                s.bgmVolume = window.__speakiMusicState.savedBgmVolume;
+                localStorage.setItem('sr1_settings', JSON.stringify(s));
+            }
+        }
+        localStorage.setItem("spkmod-is-bgm-suppressed", "false");
+    }
+} catch (_) {}
 
 function findJukeboxTrackByVid(vid) {
     if (!vid) return null;
@@ -4344,12 +4368,71 @@ function findJukeboxBgmNodes() {
     return nodes;
 }
 
+function getUserActualBgmVolume() {
+    const state = window.__speakiMusicState;
+    if (typeof state.savedBgmVolume === "number" && Number.isFinite(state.savedBgmVolume) && state.savedBgmVolume >= 0 && state.savedBgmVolume <= 100) {
+        return state.savedBgmVolume;
+    }
+    try {
+        if (window.localStorage) {
+            const raw = localStorage.getItem("spkmod-user-bgm-volume");
+            if (raw !== null && raw !== "") {
+                const n = Number(raw);
+                if (Number.isFinite(n) && n >= 0 && n <= 100) {
+                    state.savedBgmVolume = n;
+                    return n;
+                }
+            }
+        }
+    } catch (_) {}
+    return null;
+}
+
+function setUserActualBgmVolume(vol) {
+    if (typeof vol !== "number" || !Number.isFinite(vol)) return;
+    const clamped = Math.max(0, Math.min(100, Math.round(vol)));
+    const state = window.__speakiMusicState;
+    state.savedBgmVolume = clamped;
+    try {
+        if (window.localStorage) {
+            localStorage.setItem("spkmod-user-bgm-volume", String(clamped));
+        }
+    } catch (_) {}
+}
+
+function hookNativeSettingsVolume() {
+    const state = window.__speakiMusicState;
+    if (typeof window.updateGameSettings === "function" && !window.updateGameSettings.__spkmodBgmHooked) {
+        const origUpdate = window.updateGameSettings;
+        const wrapped = function(patch) {
+            if (patch && typeof patch.bgmVolume === "number" && Number.isFinite(patch.bgmVolume)) {
+                if (!state.isSuppressingBgmInternal) {
+                    setUserActualBgmVolume(patch.bgmVolume);
+                }
+            }
+            return origUpdate.apply(this, arguments);
+        };
+        wrapped.__spkmodBgmHooked = true;
+        window.updateGameSettings = wrapped;
+    }
+}
+
 function findNativeBgmSlider() {
     const inputs = Array.from(document.querySelectorAll('input[type="range"]'));
     for (const input of inputs) {
+        if (input.id && input.id.startsWith('spkmod-')) continue;
         const row = input.closest('.sr-panel__row') || input.parentElement;
         const text = (row?.textContent || '').toLowerCase();
         if (text.includes('bgm') || text.includes('music') || text.includes('배경음') || text.includes('音楽') || text.includes('音樂')) {
+            if (!input.__spkmodBgmHooked) {
+                input.__spkmodBgmHooked = true;
+                input.addEventListener('input', () => {
+                    const val = Number(input.value);
+                    if (Number.isFinite(val) && !window.__speakiMusicState.isSuppressingBgmInternal) {
+                        setUserActualBgmVolume(val);
+                    }
+                });
+            }
             return input;
         }
     }
@@ -4358,42 +4441,68 @@ function findNativeBgmSlider() {
 
 function suppressGameBgm(mute) {
     const state = window.__speakiMusicState;
+    hookNativeSettingsVolume();
     const slider = findNativeBgmSlider();
     const nodes = findJukeboxBgmNodes();
 
     if (mute) {
         if (state.isBgmSuppressed) return;
+
+        // 1. Determine and save user's actual volume
+        let currentVol = getUserActualBgmVolume();
+        if (currentVol === null) {
+            if (typeof window.getGameSettings === "function") {
+                try {
+                    const s = window.getGameSettings();
+                    if (s && typeof s.bgmVolume === "number" && Number.isFinite(s.bgmVolume)) {
+                        currentVol = Math.max(0, Math.min(100, s.bgmVolume));
+                    }
+                } catch (_) {}
+            }
+            if (currentVol === null && slider && slider.value !== '') {
+                const n = Number(slider.value);
+                if (Number.isFinite(n)) currentVol = Math.max(0, Math.min(100, n));
+            }
+            if (currentVol === null) {
+                try {
+                    const raw = localStorage.getItem('sr1_settings');
+                    if (raw) {
+                        const s = JSON.parse(raw);
+                        if (typeof s.bgmVolume === "number" && Number.isFinite(s.bgmVolume)) {
+                            currentVol = Math.max(0, Math.min(100, s.bgmVolume));
+                        }
+                    }
+                } catch (_) {}
+            }
+            if (currentVol === null) currentVol = 70; // Native game default is 70
+        }
+
+        setUserActualBgmVolume(currentVol);
         state.isBgmSuppressed = true;
+        try {
+            if (window.localStorage) localStorage.setItem("spkmod-is-bgm-suppressed", "true");
+        } catch (_) {}
 
-        if (typeof window.getGameSettings === "function") {
-            try {
-                const s = window.getGameSettings();
-                if (s && typeof s.bgmVolume === "number" && s.bgmVolume > 0) {
-                    state.savedBgmVolume = s.bgmVolume;
-                }
-            } catch (_) {}
-        }
-
-        if (slider) {
-            const cur = Number(slider.value);
-            state.savedBgmVolume = cur > 0 ? cur : (state.savedBgmVolume || 100);
-            slider.value = '0';
-            slider.dispatchEvent(new Event('input', { bubbles: true }));
-            slider.dispatchEvent(new Event('change', { bubbles: true }));
-        } else {
-            try {
-                const raw = localStorage.getItem('sr1_settings');
-                if (raw) {
-                    const s = JSON.parse(raw);
-                    state.savedBgmVolume = (typeof s.bgmVolume === 'number' && s.bgmVolume > 0) ? s.bgmVolume : (state.savedBgmVolume || 100);
-                    s.bgmVolume = 0;
-                    localStorage.setItem('sr1_settings', JSON.stringify(s));
-                }
-            } catch (_) {}
-        }
-
-        if (typeof window.updateGameSettings === "function") {
-            try { window.updateGameSettings({ bgmVolume: 0 }); } catch (_) {}
+        state.isSuppressingBgmInternal = true;
+        try {
+            if (slider) {
+                slider.value = '0';
+                slider.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            if (typeof window.updateGameSettings === "function") {
+                try { window.updateGameSettings({ bgmVolume: 0 }); } catch (_) {}
+            } else {
+                try {
+                    const raw = localStorage.getItem('sr1_settings');
+                    if (raw) {
+                        const s = JSON.parse(raw);
+                        s.bgmVolume = 0;
+                        localStorage.setItem('sr1_settings', JSON.stringify(s));
+                    }
+                } catch (_) {}
+            }
+        } finally {
+            state.isSuppressingBgmInternal = false;
         }
 
         nodes.forEach(node => {
@@ -4405,31 +4514,43 @@ function suppressGameBgm(mute) {
     } else {
         if (!state.isBgmSuppressed) return;
         state.isBgmSuppressed = false;
+        try {
+            if (window.localStorage) localStorage.setItem("spkmod-is-bgm-suppressed", "false");
+        } catch (_) {}
 
-        const restoreVol = state.savedBgmVolume !== null ? state.savedBgmVolume : 100;
-
-        if (slider) {
-            slider.value = String(restoreVol);
-            slider.dispatchEvent(new Event('input', { bubbles: true }));
-            slider.dispatchEvent(new Event('change', { bubbles: true }));
-        } else {
-            try {
-                const raw = localStorage.getItem('sr1_settings');
-                if (raw) {
-                    const s = JSON.parse(raw);
-                    s.bgmVolume = restoreVol;
-                    localStorage.setItem('sr1_settings', JSON.stringify(s));
-                }
-            } catch (_) {}
+        let restoreVol = getUserActualBgmVolume();
+        if (restoreVol === null || !Number.isFinite(restoreVol)) {
+            restoreVol = 70;
         }
+        restoreVol = Math.max(0, Math.min(100, restoreVol));
 
-        if (typeof window.updateGameSettings === "function") {
-            try { window.updateGameSettings({ bgmVolume: restoreVol }); } catch (_) {}
+        state.isSuppressingBgmInternal = true;
+        try {
+            if (slider) {
+                slider.value = String(restoreVol);
+                slider.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            if (typeof window.updateGameSettings === "function") {
+                try { window.updateGameSettings({ bgmVolume: restoreVol }); } catch (_) {}
+            } else {
+                try {
+                    const raw = localStorage.getItem('sr1_settings');
+                    if (raw) {
+                        const s = JSON.parse(raw);
+                        s.bgmVolume = restoreVol;
+                        localStorage.setItem('sr1_settings', JSON.stringify(s));
+                    }
+                } catch (_) {}
+            }
+        } finally {
+            state.isSuppressingBgmInternal = false;
         }
 
         nodes.forEach(node => {
             if (node.gain?.gain) {
-                node.gain.gain.value = (node.__savedGain !== undefined) ? node.__savedGain : (restoreVol / 100);
+                node.gain.gain.value = (node.__savedGain !== undefined && node.__savedGain > 0)
+                    ? node.__savedGain
+                    : (restoreVol / 100);
             }
         });
     }
@@ -4930,6 +5051,7 @@ function buildJukeboxUI() {
                 const scroll = drawer ? drawer.scrollTop : 0;
                 populateJukeboxDrawer(modal);
                 if (drawer) drawer.scrollTop = scroll;
+                updateJukeboxUI();
             } else {
                 const rows = modal.querySelectorAll('.spkmod-pl-item');
                 const row = rows[state.currentTrackIndex];
@@ -4961,9 +5083,12 @@ function buildJukeboxUI() {
 }
 
 function populateJukeboxDrawer(modal) {
+    modal = modal || lunHudElements.jukeboxModal;
     if (!modal) return;
     const listContainer = modal.querySelector('#spkmod-jukebox-items');
     if (!listContainer) return;
+    const drawer = modal.querySelector('#spkmod-jukebox-drawer');
+    const nowPlayingHeartBtn = modal.querySelector('#spkmod-jukebox-heart-btn');
     listContainer.innerHTML = '';
 
     const state = window.__speakiMusicState;
@@ -5025,6 +5150,7 @@ function populateJukeboxDrawer(modal) {
                 const scroll = drawer ? drawer.scrollTop : 0;
                 populateJukeboxDrawer(modal);
                 if (drawer) drawer.scrollTop = scroll;
+                updateJukeboxUI();
             }
         });
         row.appendChild(rowHeartBtn);
