@@ -4918,15 +4918,29 @@ function buildJukeboxUI() {
             const tracks = getActiveJukeboxTracks();
             const cur = tracks[state.currentTrackIndex] || findJukeboxTrackByVid(state.player?.getVideoData()?.video_id) || [state.player?.getVideoData()?.video_id, state.currentTrackTitle, state.currentTrackAuthor];
             if (!cur[0]) return;
-            toggleJukeboxFavorite(cur);
+            const isNowFav = toggleJukeboxFavorite(cur);
+            nowPlayingHeartBtn.textContent = isNowFav ? '❤️' : '🤍';
+            nowPlayingHeartBtn.title = isNowFav ? getJukeboxText("jukeboxRemoveFavorite") : getJukeboxText("jukeboxAddFavorite");
+
             if (state.activePlaylistKey === 'favorites') {
                 const updatedTracks = getActiveJukeboxTracks();
                 if (state.currentTrackIndex >= updatedTracks.length) {
                     state.currentTrackIndex = Math.max(0, updatedTracks.length - 1);
                 }
+                const scroll = drawer ? drawer.scrollTop : 0;
+                populateJukeboxDrawer(modal);
+                if (drawer) drawer.scrollTop = scroll;
+            } else {
+                const rows = modal.querySelectorAll('.spkmod-pl-item');
+                const row = rows[state.currentTrackIndex];
+                if (row) {
+                    const rowHeart = row.querySelector('.spkmod-jb-row-heart');
+                    if (rowHeart) {
+                        rowHeart.textContent = isNowFav ? '❤️' : '🤍';
+                        rowHeart.title = isNowFav ? getJukeboxText("jukeboxRemoveFavorite") : getJukeboxText("jukeboxAddFavorite");
+                    }
+                }
             }
-            updateJukeboxUI();
-            populateJukeboxDrawer(modal);
         });
         nowPlayingHeartBtn.addEventListener('mouseenter', () => { nowPlayingHeartBtn.style.transform = 'scale(1.25)'; });
         nowPlayingHeartBtn.addEventListener('mouseleave', () => { nowPlayingHeartBtn.style.transform = 'scale(1)'; });
@@ -4992,15 +5006,26 @@ function populateJukeboxDrawer(modal) {
         rowHeartBtn.addEventListener('mouseleave', () => { rowHeartBtn.style.transform = 'scale(1)'; });
         rowHeartBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            toggleJukeboxFavorite([vid, title, author]);
+            const isNowFav = toggleJukeboxFavorite([vid, title, author]);
+            rowHeartBtn.textContent = isNowFav ? '❤️' : '🤍';
+            rowHeartBtn.title = isNowFav ? getJukeboxText("jukeboxRemoveFavorite") : getJukeboxText("jukeboxAddFavorite");
+
+            // Sync now-playing heart if this track is currently active
+            const curTracks = getActiveJukeboxTracks();
+            if (curTracks[state.currentTrackIndex]?.[0] === vid && nowPlayingHeartBtn) {
+                nowPlayingHeartBtn.textContent = isNowFav ? '❤️' : '🤍';
+                nowPlayingHeartBtn.title = isNowFav ? getJukeboxText("jukeboxRemoveFavorite") : getJukeboxText("jukeboxAddFavorite");
+            }
+
             if (state.activePlaylistKey === 'favorites') {
                 const updatedTracks = getActiveJukeboxTracks();
                 if (state.currentTrackIndex >= updatedTracks.length) {
                     state.currentTrackIndex = Math.max(0, updatedTracks.length - 1);
                 }
+                const scroll = drawer ? drawer.scrollTop : 0;
+                populateJukeboxDrawer(modal);
+                if (drawer) drawer.scrollTop = scroll;
             }
-            updateJukeboxUI();
-            populateJukeboxDrawer(modal);
         });
         row.appendChild(rowHeartBtn);
 
@@ -6824,6 +6849,21 @@ document.head.appendChild(buildElement(
 		#spkmod-jukebox-resize-handle:hover svg path {
 			stroke: #ffc94a;
 			opacity: 1;
+		}
+
+		#spkmod-jukebox-drawer::-webkit-scrollbar {
+			width: 6px;
+		}
+		#spkmod-jukebox-drawer::-webkit-scrollbar-track {
+			background: rgba(0, 0, 0, 0.25);
+			border-radius: 4px;
+		}
+		#spkmod-jukebox-drawer::-webkit-scrollbar-thumb {
+			background: rgba(232, 184, 75, 0.45);
+			border-radius: 4px;
+		}
+		#spkmod-jukebox-drawer::-webkit-scrollbar-thumb:hover {
+			background: rgba(232, 184, 75, 0.75);
 		}
 		#spkmod-jukebox-bolpop-msg mark {
 			background: #e8b84b;
