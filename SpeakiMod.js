@@ -1505,7 +1505,8 @@ var lunHudElements = {
 	statsModal: null,
 	hotkeysModal: null,
 	effectsModal: null,
-	editsModal: null
+	editsModal: null,
+	jukeboxModal: null
 };
 var eventModalElements = {
 	headerTitle: null,
@@ -1560,6 +1561,7 @@ var lunPanelElements = {
 	walkToPortalBtn: null,
 	headerBtn: null,
 	settingsBtn: null,
+	jukeboxBtn: null,
 	danceBtn: null,
 	autoJumpBtn: null,
 	chowayoBtn: null,
@@ -3286,7 +3288,7 @@ function positionModalNicely(modal) {
 			}
 		}
 
-		const approxWidth = modal.offsetWidth || (modal.id === "spkmod-settings-modal" ? 480 : (modal.id === "spkmod-stats-modal" ? 240 : 400));
+		const approxWidth = modal.offsetWidth || (modal.id === "spkmod-settings-modal" ? 480 : (modal.id === "spkmod-stats-modal" ? 240 : (modal.id === "spkmod-jukebox-modal" ? 380 : 400)));
 		let nextLeft = Math.round(rightmostRect.right + 10);
 		let nextTop = Math.max(50, Math.round(rightmostRect.top));
 
@@ -3447,6 +3449,7 @@ const SPKMOD_SETTINGS_KEYS = new Set([
 	"spkmod-pos-spkmod-quests-modal",
 	"spkmod-pos-spkmod-settings-modal",
 	"spkmod-pos-spkmod-stats-modal",
+	"spkmod-pos-spkmod-jukebox-modal",
 	"spkmod-pumpkin-tracker",
 	"spkmod-quests-modal-open",
 	"spkmod-reset-timer",
@@ -3827,6 +3830,484 @@ var lunHudBackground = (window.localStorage && localStorage.getItem("spkmod-hud-
 
 const SPKMOD_REPO_FONTS_BASE = "https://raw.githubusercontent.com/DJTOMATO/SpeakiRPG/main/fonts/";
 const SPKMOD_EMOJI_FONT_FALLBACK = '"Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"';
+
+// ============================================================================
+// Speaki Jukebox: Global YouTube Music Player
+// Playlist: https://www.youtube.com/watch?v=8kKIzim7ZqU&list=PLrELCdfutHrSkxmdw2t_KD-8aj4VCclah
+// ============================================================================
+
+const SPKMOD_JUKEBOX_TRACKS = [
+    ["8kKIzim7ZqU","Warak - Trickcal Revive Soundtrack Collection"],["KbKO0Mqf54k","01. Trickcal Main Title"],
+    ["-8gyhj9R98Y","02. Day Life"],["ipcAfLYStNI","03. Lounge"],["5AI_lKxOETI","04. Weekday Farm"],
+    ["NPaTub4_isU","05. Hail The World Tree"],["j1qH2VUciTU","06. Theme Theater"],["RpboF3eVM68","07. No Way Out"],
+    ["V2XMhSAwLYA","08. Let's Go"],["cNMUQok7WEA","09. Tig, The Feedstance (Phase 1)"],["fngs-d-TCUg","10. Tig, The Feedstance (Phase 2)"],
+    ["eJ7ODfEh96Y","11. Tig, The Feedstance (Phase 3)"],["hD5MgN4DSmE","12. Honranada Honrane"],["WSdqZ1FfosY","13. Adventure Begins"],
+    ["ZNXdn36eOMg","14. Battle On Sunset"],["1O-YThrGVk4","15. Spirit Forest"],["NGPCBTXJqN0","16. Moistful Spirits"],
+    ["EJten4Wu0fo","17. Crystal Lake"],["J3dmNiBGjak","18. Aurora"],["_y3M8XKVLsM","19. Dragon Cave (Abyss)"],
+    ["ZhigzT8LLQQ","20. Dragon Cave (Crystal)"],["wYdkFC_RVZs","21. Dragon Cave (Water)"],["spwRCDkSt4c","22. Deep Cave"],
+    ["D1WiO91w03c","23. Ghost Village"],["HVbsQPo-rRk","24. Monatium"],["IWwoC-mttjI","25. City Night"],
+    ["DU9Yk9q6QwQ","26. Elf Dominion"],["09mm-5dSKD4","27. Fairy Town Street"],["NQjzjaApHvw","28. Bakery In Peace"],
+    ["oEGgIzeCPh0","29. Ashur Bakery"],["g4RIyAPEkKU","30. Elias Candyfloss"],["YHr95007HF8","31. Furry Forest"],
+    ["07n5EKuauf0","32. Lamb And Dumber"],["P4RXIMWlRw4","33. This Is Awkward"],["-s9ppxajbDI","34. Life Is Comedy"],
+    ["HNeR44LeCzs","35. Trick Or Treat"],["SvJsRWg46Lg","36. We're In Trouble"],["Es3OYEOwAAc","37. Gold Thief Attack"],
+    ["NQwbJLFS7GM","38. Get You Crayon"],["uP61J2aCIzA","39. Winner's Jwopaemteo"],["G1eAbD6Si30","40. Sugar Free"],
+    ["93NpP7g5tYc","41. Dimension Crash"],["wcy560HvxMM","42. Hyper Fatalism"],["AtLBZvMULGk","43. The Time Paradox"],
+    ["raqGBx3YrJM","44. Brave New World"],["so4U-Cg3hiI","45. Alpha And Omega"]
+];
+const SPKMOD_JUKEBOX_PLAYLIST_ID = 'PLrELCdfutHrSkxmdw2t_KD-8aj4VCclah';
+
+window.__speakiMusicState = window.__speakiMusicState || {
+    player: null,
+    isReady: false,
+    isPlaying: false,
+    currentTrackIndex: 0,
+    currentTrackTitle: SPKMOD_JUKEBOX_TRACKS[0][1],
+    duration: 0,
+    currentTime: 0,
+    volume: (window.localStorage && parseInt(localStorage.getItem("spkmod-jukebox-vol"), 10)) || 75,
+    savedBgmVolume: null,
+    isBgmSuppressed: false,
+    shuffle: (window.localStorage && localStorage.getItem("spkmod-jukebox-shuffle") === "true") || false,
+    repeatMode: (window.localStorage && localStorage.getItem("spkmod-jukebox-repeat")) || "all",
+    updateInterval: null,
+    modalVisible: false
+};
+
+function cleanJukeboxTitle(title) {
+    if (!title) return 'Track';
+    return title
+        .replace(/^\[?\s*Trickc?al\s+Revive\s+Soundtrack\s*\]?\s*/i, '')
+        .replace(/[-–—]?\s*ddocchi\s*/gi, '')
+        .replace(/[-–—]?\s*ddochi\s*/gi, '')
+        .trim();
+}
+
+function findJukeboxBgmNodes() {
+    const nodes = [];
+    try {
+        const gs = window.gameState || (typeof gameState !== 'undefined' ? gameState : null);
+        const camera = gs?.camera || gs?.speakovHost?.camera || gs?.miningHost?.camera;
+        if (camera) {
+            camera.traverse(child => {
+                if (child && (child.isAudio || child.type === 'Audio') && child.loop) {
+                    nodes.push(child);
+                }
+            });
+        }
+    } catch (_) {}
+    return nodes;
+}
+
+function findNativeBgmSlider() {
+    const inputs = Array.from(document.querySelectorAll('input[type="range"]'));
+    for (const input of inputs) {
+        const row = input.closest('.sr-panel__row') || input.parentElement;
+        const text = (row?.textContent || '').toLowerCase();
+        if (text.includes('bgm') || text.includes('music') || text.includes('배경음') || text.includes('音楽') || text.includes('音樂')) {
+            return input;
+        }
+    }
+    return null;
+}
+
+function suppressGameBgm(mute) {
+    const state = window.__speakiMusicState;
+    const slider = findNativeBgmSlider();
+    const nodes = findJukeboxBgmNodes();
+
+    if (mute) {
+        if (state.isBgmSuppressed) return;
+        state.isBgmSuppressed = true;
+
+        if (typeof window.getGameSettings === "function") {
+            try {
+                const s = window.getGameSettings();
+                if (s && typeof s.bgmVolume === "number" && s.bgmVolume > 0) {
+                    state.savedBgmVolume = s.bgmVolume;
+                }
+            } catch (_) {}
+        }
+
+        if (slider) {
+            const cur = Number(slider.value);
+            state.savedBgmVolume = cur > 0 ? cur : (state.savedBgmVolume || 100);
+            slider.value = '0';
+            slider.dispatchEvent(new Event('input', { bubbles: true }));
+            slider.dispatchEvent(new Event('change', { bubbles: true }));
+        } else {
+            try {
+                const raw = localStorage.getItem('sr1_settings');
+                if (raw) {
+                    const s = JSON.parse(raw);
+                    state.savedBgmVolume = (typeof s.bgmVolume === 'number' && s.bgmVolume > 0) ? s.bgmVolume : (state.savedBgmVolume || 100);
+                    s.bgmVolume = 0;
+                    localStorage.setItem('sr1_settings', JSON.stringify(s));
+                }
+            } catch (_) {}
+        }
+
+        if (typeof window.updateGameSettings === "function") {
+            try { window.updateGameSettings({ bgmVolume: 0 }); } catch (_) {}
+        }
+
+        nodes.forEach(node => {
+            if (node.gain?.gain) {
+                node.__savedGain = node.gain.gain.value;
+                node.gain.gain.value = 0;
+            }
+        });
+    } else {
+        if (!state.isBgmSuppressed) return;
+        state.isBgmSuppressed = false;
+
+        const restoreVol = state.savedBgmVolume !== null ? state.savedBgmVolume : 100;
+
+        if (slider) {
+            slider.value = String(restoreVol);
+            slider.dispatchEvent(new Event('input', { bubbles: true }));
+            slider.dispatchEvent(new Event('change', { bubbles: true }));
+        } else {
+            try {
+                const raw = localStorage.getItem('sr1_settings');
+                if (raw) {
+                    const s = JSON.parse(raw);
+                    s.bgmVolume = restoreVol;
+                    localStorage.setItem('sr1_settings', JSON.stringify(s));
+                }
+            } catch (_) {}
+        }
+
+        if (typeof window.updateGameSettings === "function") {
+            try { window.updateGameSettings({ bgmVolume: restoreVol }); } catch (_) {}
+        }
+
+        nodes.forEach(node => {
+            if (node.gain?.gain) {
+                node.gain.gain.value = (node.__savedGain !== undefined) ? node.__savedGain : (restoreVol / 100);
+            }
+        });
+    }
+}
+
+function initYouTubeApi(cb) {
+    if (window.YT && window.YT.Player) {
+        cb();
+        return;
+    }
+    const origReady = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = function() {
+        if (typeof origReady === 'function') origReady();
+        cb();
+    };
+    if (!document.getElementById('__yt_iframe_api_script')) {
+        const tag = document.createElement('script');
+        tag.id = '__yt_iframe_api_script';
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.head.appendChild(tag);
+    }
+}
+
+function createYtContainer() {
+    let container = document.getElementById('spkmod-yt-iframe-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'spkmod-yt-iframe-container';
+        container.style.cssText = 'position:fixed;bottom:-500px;left:-500px;width:240px;height:160px;opacity:0.01;pointer-events:none;z-index:-1000;';
+        container.innerHTML = '<div id="spkmod-yt-player-target"></div>';
+        document.body.appendChild(container);
+    }
+    return 'spkmod-yt-player-target';
+}
+
+function formatJukeboxTime(sec) {
+    if (!sec || isNaN(sec)) return '00:00';
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
+function buildJukeboxUI() {
+    if (lunHudElements.jukeboxModal) return lunHudElements.jukeboxModal;
+
+    const state = window.__speakiMusicState;
+    const modal = buildElement("div", {
+        id: "spkmod-jukebox-modal",
+        className: "spkmod-music-modal hidden",
+        style: "position: fixed; bottom: 24px; right: 24px; width: 380px; max-width: 95vw; background: linear-gradient(180deg, #2a2038 0%, #1a1424 100%); border: 2px solid var(--spkmod-accent, #e8b84b); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.15); font-family: Pretendard, system-ui, -apple-system, sans-serif; color: #fff; z-index: 2147483646 !important; padding: 14px 16px; box-sizing: border-box; user-select: none; display: flex; flex-direction: column; gap: 10px;"
+    });
+
+    modal.innerHTML = `
+        <div id="spkmod-jukebox-header" style="display:flex;justify-content:space-between;align-items:center;cursor:move;border-bottom:1px solid rgba(232,184,75,0.3);padding-bottom:8px;">
+            <div style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;color:#ffc94a;">
+                <span style="font-size:16px;">🎵</span> Speaki Jukebox
+            </div>
+            <div style="display:flex;gap:6px;">
+                <button id="spkmod-jukebox-drawer-btn" title="Toggle Playlist" style="background:#3e3052;border:1px solid #7c6894;color:#ffc94a;border-radius:6px;cursor:pointer;padding:2px 8px;font-size:12px;">📜 Playlist</button>
+                <button id="spkmod-jukebox-close-btn" title="Hide (Alt+M)" style="background:transparent;border:none;color:#aaa;cursor:pointer;font-size:16px;line-height:1;">✕</button>
+            </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:2px;background:rgba(0,0,0,0.3);padding:8px 12px;border-radius:8px;">
+            <div id="spkmod-jukebox-title" style="font-size:13px;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                ${state.currentTrackTitle}
+            </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span id="spkmod-jukebox-time-cur" style="font-size:11px;color:#aaa;min-width:34px;">00:00</span>
+                <input id="spkmod-jukebox-seek" type="range" min="0" max="100" value="0" style="flex:1;height:5px;accent-color:#e8b84b;cursor:pointer;">
+                <span id="spkmod-jukebox-time-dur" style="font-size:11px;color:#aaa;min-width:34px;text-align:right;">00:00</span>
+            </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:2px 4px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <button id="spkmod-jukebox-shuffle" title="Shuffle / Random" style="background:${state.shuffle ? '#e8b84b' : '#3b2d4f'};border:1px solid #5a4675;color:${state.shuffle ? '#1a1424' : '#bbb'};border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;">🔀</button>
+                <button id="spkmod-jukebox-prev" title="Previous" style="background:#3b2d4f;border:1px solid #5a4675;color:#fff;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">⏮</button>
+                <button id="spkmod-jukebox-play" title="Play/Pause" style="background:#e8b84b;border:none;color:#1a1424;border-radius:50%;width:40px;height:40px;cursor:pointer;font-size:18px;font-weight:bold;display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(232,184,75,0.4);">▶</button>
+                <button id="spkmod-jukebox-next" title="Next" style="background:#3b2d4f;border:1px solid #5a4675;color:#fff;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">⏭</button>
+                <button id="spkmod-jukebox-repeat" title="Repeat Mode" style="background:${state.repeatMode !== 'off' ? '#e8b84b' : '#3b2d4f'};border:1px solid #5a4675;color:${state.repeatMode !== 'off' ? '#1a1424' : '#bbb'};border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;">${state.repeatMode === 'one' ? '🔂' : '🔁'}</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;background:rgba(0,0,0,0.25);padding:4px 8px;border-radius:12px;">
+                <span id="spkmod-jukebox-vol-icon" style="font-size:13px;">🔊</span>
+                <input id="spkmod-jukebox-vol" type="range" min="0" max="100" value="${state.volume}" style="width:65px;height:4px;accent-color:#e8b84b;cursor:pointer;">
+            </div>
+        </div>
+        <div id="spkmod-jukebox-drawer" style="display:none;max-height:180px;overflow-y:auto;background:rgba(0,0,0,0.35);border:1px solid #4a3861;border-radius:8px;padding:6px;font-size:12px;margin-top:4px;">
+            <div id="spkmod-jukebox-items" style="display:flex;flex-direction:column;gap:3px;"></div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    lunHudElements.jukeboxModal = modal;
+
+    const header = modal.querySelector('#spkmod-jukebox-header');
+    if (typeof makeDraggable === 'function') {
+        makeDraggable(modal, [header]);
+    }
+
+    modal.addEventListener("wheel", (e) => { e.stopPropagation(); }, { passive: true });
+    modal.addEventListener("touchmove", (e) => { e.stopPropagation(); }, { passive: true });
+    modal.addEventListener("keydown", (e) => { e.stopPropagation(); });
+
+    // Buttons
+    const btnPlay = modal.querySelector('#spkmod-jukebox-play');
+    const btnPrev = modal.querySelector('#spkmod-jukebox-prev');
+    const btnNext = modal.querySelector('#spkmod-jukebox-next');
+    const btnShuffle = modal.querySelector('#spkmod-jukebox-shuffle');
+    const btnRepeat = modal.querySelector('#spkmod-jukebox-repeat');
+    const seekBar = modal.querySelector('#spkmod-jukebox-seek');
+    const volSlider = modal.querySelector('#spkmod-jukebox-vol');
+    const drawerBtn = modal.querySelector('#spkmod-jukebox-drawer-btn');
+    const closeBtn = modal.querySelector('#spkmod-jukebox-close-btn');
+    const drawer = modal.querySelector('#spkmod-jukebox-drawer');
+
+    btnPlay.addEventListener('click', () => {
+        if (!state.player || !state.isReady) return;
+        if (state.isPlaying) state.player.pauseVideo();
+        else state.player.playVideo();
+    });
+
+    function playNext() {
+        if (!state.player || !state.isReady) return;
+        if (state.shuffle) {
+            const randIdx = Math.floor(Math.random() * SPKMOD_JUKEBOX_TRACKS.length);
+            state.player.playVideoAt(randIdx);
+        } else {
+            state.player.nextVideo();
+        }
+    }
+
+    btnPrev.addEventListener('click', () => {
+        if (state.player && state.isReady) state.player.previousVideo();
+    });
+    btnNext.addEventListener('click', () => {
+        playNext();
+    });
+    btnShuffle.addEventListener('click', () => {
+        state.shuffle = !state.shuffle;
+        btnShuffle.style.background = state.shuffle ? '#e8b84b' : '#3b2d4f';
+        btnShuffle.style.color = state.shuffle ? '#1a1424' : '#bbb';
+        if (window.localStorage) localStorage.setItem("spkmod-jukebox-shuffle", state.shuffle ? "true" : "false");
+    });
+    btnRepeat.addEventListener('click', () => {
+        if (state.repeatMode === 'all') state.repeatMode = 'one';
+        else if (state.repeatMode === 'one') state.repeatMode = 'off';
+        else state.repeatMode = 'all';
+
+        btnRepeat.textContent = (state.repeatMode === 'one' ? '🔂' : '🔁');
+        btnRepeat.style.background = (state.repeatMode !== 'off' ? '#e8b84b' : '#3b2d4f');
+        btnRepeat.style.color = (state.repeatMode !== 'off' ? '#1a1424' : '#bbb');
+        if (window.localStorage) localStorage.setItem("spkmod-jukebox-repeat", state.repeatMode);
+    });
+
+    seekBar.addEventListener('input', () => {
+        if (!state.player || !state.duration) return;
+        state.player.seekTo((seekBar.value / 100) * state.duration, true);
+    });
+    volSlider.addEventListener('input', () => {
+        state.volume = Number(volSlider.value);
+        if (state.player && state.isReady) state.player.setVolume(state.volume);
+        modal.querySelector('#spkmod-jukebox-vol-icon').textContent = state.volume === 0 ? '🔇' : (state.volume < 50 ? '🔉' : '🔊');
+        if (window.localStorage) localStorage.setItem("spkmod-jukebox-vol", String(state.volume));
+    });
+    drawerBtn.addEventListener('click', () => {
+        drawer.style.display = drawer.style.display === 'none' ? 'block' : 'none';
+    });
+    closeBtn.addEventListener('click', () => {
+        modal.classList.add('hidden');
+        state.modalVisible = false;
+    });
+
+    populateJukeboxDrawer(modal);
+    return modal;
+}
+
+function populateJukeboxDrawer(modal) {
+    if (!modal) return;
+    const listContainer = modal.querySelector('#spkmod-jukebox-items');
+    if (!listContainer) return;
+    listContainer.innerHTML = '';
+
+    const state = window.__speakiMusicState;
+    SPKMOD_JUKEBOX_TRACKS.forEach(([vid, title], idx) => {
+        const row = document.createElement('div');
+        row.className = 'spkmod-pl-item';
+        row.style.cssText = 'padding:5px 8px;border-radius:5px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:background 0.15s;';
+        row.textContent = title;
+        row.title = title;
+        row.addEventListener('click', () => {
+            if (state.player && state.isReady) state.player.playVideoAt(idx);
+        });
+        listContainer.appendChild(row);
+    });
+}
+
+function updateJukeboxUI() {
+    const modal = lunHudElements.jukeboxModal;
+    if (!modal) return;
+    const state = window.__speakiMusicState;
+
+    const btnPlay = modal.querySelector('#spkmod-jukebox-play');
+    const titleEl = modal.querySelector('#spkmod-jukebox-title');
+    const timeCur = modal.querySelector('#spkmod-jukebox-time-cur');
+    const timeDur = modal.querySelector('#spkmod-jukebox-time-dur');
+    const seekBar = modal.querySelector('#spkmod-jukebox-seek');
+
+    if (btnPlay) btnPlay.textContent = state.isPlaying ? '⏸' : '▶';
+    if (titleEl && state.currentTrackTitle) titleEl.textContent = state.currentTrackTitle;
+    if (timeCur) timeCur.textContent = formatJukeboxTime(state.currentTime);
+    if (timeDur) timeDur.textContent = formatJukeboxTime(state.duration);
+    if (seekBar && state.duration > 0 && !seekBar.matches(':active')) {
+        seekBar.value = Math.min(100, Math.floor((state.currentTime / state.duration) * 100));
+    }
+
+    const drawerItems = modal.querySelectorAll('.spkmod-pl-item');
+    drawerItems.forEach((el, idx) => {
+        if (idx === state.currentTrackIndex) {
+            el.style.background = '#e8b84b';
+            el.style.color = '#1a1424';
+            el.style.fontWeight = 'bold';
+        } else {
+            el.style.background = 'transparent';
+            el.style.color = '#ddd';
+            el.style.fontWeight = 'normal';
+        }
+    });
+}
+
+function initJukeboxPlayer() {
+    const targetId = createYtContainer();
+    buildJukeboxUI();
+    const state = window.__speakiMusicState;
+
+    initYouTubeApi(() => {
+        state.player = new YT.Player(targetId, {
+            height: '160',
+            width: '240',
+            playerVars: {
+                listType: 'playlist',
+                list: SPKMOD_JUKEBOX_PLAYLIST_ID,
+                autoplay: 0,
+                controls: 0,
+                disablekb: 1,
+                fs: 0,
+                enablejsapi: 1,
+                origin: window.location.origin
+            },
+            events: {
+                onReady: () => {
+                    state.isReady = true;
+                    state.player.setVolume(state.volume);
+                },
+                onStateChange: (e) => {
+                    if (e.data === 1) { // Playing
+                        state.isPlaying = true;
+                        suppressGameBgm(true);
+
+                        const idx = state.player.getPlaylistIndex() || 0;
+                        state.currentTrackIndex = idx;
+                        if (SPKMOD_JUKEBOX_TRACKS[idx]) {
+                            state.currentTrackTitle = SPKMOD_JUKEBOX_TRACKS[idx][1];
+                        } else {
+                            const data = state.player.getVideoData();
+                            state.currentTrackTitle = cleanJukeboxTitle(data?.title || 'Trickcal BGM');
+                        }
+                        state.duration = state.player.getDuration() || 0;
+
+                        if (!state.updateInterval) {
+                            state.updateInterval = setInterval(() => {
+                                if (state.player && state.isPlaying) {
+                                    state.currentTime = state.player.getCurrentTime() || 0;
+                                    state.duration = state.player.getDuration() || state.duration;
+                                    updateJukeboxUI();
+                                }
+                            }, 300);
+                        }
+                    } else if (e.data === 2) { // Paused
+                        state.isPlaying = false;
+                        suppressGameBgm(false);
+                        if (state.updateInterval) {
+                            clearInterval(state.updateInterval);
+                            state.updateInterval = null;
+                        }
+                    } else if (e.data === 0) { // Track Ended
+                        if (state.repeatMode === 'one') {
+                            state.player.seekTo(0, true);
+                            state.player.playVideo();
+                        } else if (state.shuffle) {
+                            const randIdx = Math.floor(Math.random() * SPKMOD_JUKEBOX_TRACKS.length);
+                            state.player.playVideoAt(randIdx);
+                        } else if (state.repeatMode === 'off' && state.currentTrackIndex === SPKMOD_JUKEBOX_TRACKS.length - 1) {
+                            state.isPlaying = false;
+                            suppressGameBgm(false);
+                        }
+                    }
+                    updateJukeboxUI();
+                }
+            }
+        });
+    });
+}
+
+function toggleMusicPlayer(forceState) {
+    if (!lunHudElements.jukeboxModal) {
+        initJukeboxPlayer();
+    }
+    const modal = lunHudElements.jukeboxModal;
+    if (!modal) return;
+    const state = window.__speakiMusicState;
+
+    const isHidden = modal.classList.contains("hidden");
+    const targetShow = (typeof forceState === "boolean") ? forceState : isHidden;
+
+    if (targetShow) {
+        positionModalNicely(modal);
+        modal.classList.remove("hidden");
+        state.modalVisible = true;
+    } else {
+        modal.classList.add("hidden");
+        state.modalVisible = false;
+    }
+}
+window.toggleMusicPlayer = toggleMusicPlayer;
 
 
 const SPKMOD_VALID_FONT_PRESETS = new Set([
@@ -4918,9 +5399,9 @@ function updateDynamicStyles() {
 		${customFontRules}
 				#app { filter: ${filterRule}; }
 		#app > *:not(.sr-game-canvas):not(canvas):not(.sr-click-ripple-layer) { zoom: ${lunGameUiScale} !important; }
-		#spkmod-hud, #spkmod-settings-modal, #spkmod-event-modal, #spkmod-patchnotes-modal, #spkmod-bbs-modal, #spkmod-info-modal, #spkmod-effects-modal, #spkmod-stats-modal, #spkmod-edits-modal, #spkmod-quests-modal { transform: scale(var(--spkmod-scale)); transform-origin: top left; }
+		#spkmod-hud, #spkmod-settings-modal, #spkmod-event-modal, #spkmod-patchnotes-modal, #spkmod-bbs-modal, #spkmod-info-modal, #spkmod-effects-modal, #spkmod-stats-modal, #spkmod-edits-modal, #spkmod-quests-modal, #spkmod-jukebox-modal { transform: scale(var(--spkmod-scale)); transform-origin: top left; }
 		#spkmod-pq, body > #spkmod-panel { transform: scale(var(--spkmod-scale)); transform-origin: top right; }
-		#spkmod-main, #spkmod-pq, #spkmod-settings-modal, #spkmod-gamepad-modal, #spkmod-players-modal, #spkmod-event-modal, #spkmod-patchnotes-modal, #spkmod-bbs-modal, #spkmod-info-modal, #spkmod-effects-modal, #spkmod-stats-modal, #spkmod-edits-modal, #spkmod-quests-modal, .spkmod-panel-btn, .spkmod-panel-counter, .spkmod-panel-combo, #spkmod-discord-btn {
+		#spkmod-main, #spkmod-pq, #spkmod-settings-modal, #spkmod-gamepad-modal, #spkmod-players-modal, #spkmod-event-modal, #spkmod-patchnotes-modal, #spkmod-bbs-modal, #spkmod-info-modal, #spkmod-effects-modal, #spkmod-stats-modal, #spkmod-edits-modal, #spkmod-quests-modal, #spkmod-jukebox-modal, .spkmod-panel-btn, .spkmod-panel-counter, .spkmod-panel-combo, #spkmod-discord-btn {
 			background: var(--spkmod-bg) !important;
 			backdrop-filter: var(--spkmod-blur) !important;
 			border-color: var(--spkmod-accent) !important;
@@ -5370,10 +5851,17 @@ document.head.appendChild(buildElement(
 			from { opacity: 0.7; transform: scale(0.98); }
 			to { opacity: 1.0; transform: scale(1.02); }
 		}
-		#spkmod-hud.hidden, .hidden, #spkmod-pq.hidden, #spkmod-settings-modal.hidden, #spkmod-gamepad-modal.hidden, #spkmod-players-modal.hidden, #spkmod-event-modal.hidden, #spkmod-stats-modal.hidden, #spkmod-effects-modal.hidden, #spkmod-edits-modal.hidden, #spkmod-quests-modal.hidden {
+		#spkmod-hud.hidden, .hidden, #spkmod-pq.hidden, #spkmod-settings-modal.hidden, #spkmod-gamepad-modal.hidden, #spkmod-players-modal.hidden, #spkmod-event-modal.hidden, #spkmod-stats-modal.hidden, #spkmod-effects-modal.hidden, #spkmod-edits-modal.hidden, #spkmod-quests-modal.hidden, #spkmod-jukebox-modal.hidden {
 			display: none !important;
 		}
 		
+		#spkmod-hud, #spkmod-drag-btn, .spkmod-quick-btn,
+		#spkmod-settings-modal, #spkmod-patchnotes-modal, #spkmod-bbs-modal,
+		#spkmod-info-modal, #spkmod-effects-modal, #spkmod-stats-modal,
+		#spkmod-edits-modal, #spkmod-quests-modal, #spkmod-map-modal,
+		#spkmod-jukebox-modal, .spkmod-music-modal {
+			z-index: 2147483645 !important;
+		}
 		
 		body.spkmod-ui-hidden #spkmod-hud,
 		body.spkmod-ui-hidden #spkmod-pq,
@@ -5388,6 +5876,7 @@ document.head.appendChild(buildElement(
 		body.spkmod-ui-hidden #spkmod-effects-modal,
 		body.spkmod-ui-hidden #spkmod-edits-modal,
 		body.spkmod-ui-hidden #spkmod-quests-modal,
+		body.spkmod-ui-hidden #spkmod-jukebox-modal,
 		body.spkmod-ui-hidden #spkmod-info-modal,
 		body.spkmod-ui-hidden #spkmod-translate-picker {
 			display: none !important;
@@ -6540,6 +7029,16 @@ document.body.appendChild(
 						if (typeof toggleQuestsModal === "function") toggleQuestsModal();
 					}
 				}),
+				lunPanelElements.jukeboxBtn = buildElement("button", {
+					id: "spkmod-jukebox-btn",
+					className: "spkmod-panel-btn",
+					style: "flex: 1; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 12pt; cursor: pointer;",
+					innerText: "🎵",
+					title: "Speaki Jukebox (Alt+M)",
+					onclick: _ => {
+						if (typeof toggleMusicPlayer === "function") toggleMusicPlayer();
+					}
+				}),
 				lunPanelElements.dragBtn = buildElement("button", {
 					id: "spkmod-drag-btn",
 					className: "spkmod-panel-btn",
@@ -7518,7 +8017,12 @@ function updateHudIconTooltips() {
         setSpkmodRichTooltip(lunPanelElements.questsBtn, "📋 " + (t("questsBtnTooltip") || "Quests Checklist"));
     }
 
-    // 13. Drag / Lock button
+    // 13. Jukebox button
+    if (lunPanelElements.jukeboxBtn) {
+        setSpkmodRichTooltip(lunPanelElements.jukeboxBtn, "🎵 " + (t("jukeboxBtnTooltip") || "Speaki Jukebox (Alt+M)"));
+    }
+
+    // 14. Drag / Lock button
     if (lunPanelElements.dragBtn) {
         const isLocked = lunHudElements && lunHudElements.hud && lunHudElements.hud.dataset.spkmodLocked === "true";
         const tip = t("dragMenuTooltip") || "Drag Menu";
@@ -21472,6 +21976,10 @@ function hookGameStateOnce() {
 		gameState.cameraController.__speakiObstaclesHooked = true;
 	}
 
+	if (gameState.speakovHost && typeof initDuckovFpHook === "function") {
+		initDuckovFpHook(gameState.speakovHost);
+	}
+
 	if (typeof gameState.trySendChat === "function" && !gameState.__speakiTrySendChatHooked) {
 		const origTrySendChat = gameState.trySendChat.bind(gameState);
 		gameState.trySendChat = (msg) => {
@@ -21611,7 +22119,13 @@ function hookGameStateOnce() {
 						break;
 					case "firstperson":
 					case "fp":
-						if (lunPanelElements.firstPersonBtn) lunPanelElements.firstPersonBtn.click();
+						if (typeof gameState !== "undefined" && gameState?.isSpeakovActive?.()) {
+							if (typeof window.testDuckovFP === "function") {
+								window.testDuckovFP();
+							}
+						} else if (lunPanelElements.firstPersonBtn) {
+							lunPanelElements.firstPersonBtn.click();
+						}
 						break;
 					case "camlock":
 						if (lunPanelElements.lockCameraBtn) lunPanelElements.lockCameraBtn.click();
@@ -22601,6 +23115,22 @@ window.addEventListener("keydown", e => {
 });
 
 window.addEventListener("keydown", e => {
+	if (e.altKey && (e.key === "m" || e.key === "M" || e.code === "KeyM")) {
+		const active = document.activeElement;
+		if (active) {
+			const tag = active.tagName ? active.tagName.toLowerCase() : "";
+			if (tag === "input" || tag === "textarea" || active.isContentEditable) {
+				return;
+			}
+		}
+		e.preventDefault();
+		if (typeof toggleMusicPlayer === "function") {
+			toggleMusicPlayer();
+		}
+	}
+});
+
+window.addEventListener("keydown", e => {
 	if (e.key !== "Escape" && e.code !== "Escape") return;
 
 	const newsModal = document.getElementById("spkmod-news-modal");
@@ -22634,7 +23164,8 @@ window.addEventListener("keydown", e => {
 			lunHudElements.patchNotesModal,
 			lunHudElements.bbsModal,
 			lunHudElements.eventModal,
-			lunHudElements.statsModal
+			lunHudElements.statsModal,
+			lunHudElements.jukeboxModal
 		].filter(m => m && !m.classList.contains("hidden"));
 
 		if (candidateModals.length > 0) {
@@ -22897,6 +23428,433 @@ if (typeof spkmodI18nRenderers !== 'undefined') {
         }
     });
 }
+
+// == Duckov (Speakov) First Person Camera (Fixed Controls, 360 Mouse Look & Full Render Distance) ==
+(function() {
+    window.__duckovFpState = window.__duckovFpState || {
+        enabled: false,
+        pitch: 0,
+        yaw: 0,
+        sensitivity: 0.0025,
+        invertY: false,
+        invertX: false,
+        ads: false,
+        isLocked: false
+    };
+    const state = window.__duckovFpState;
+
+    // Track arrow keys alongside WASD for smooth movement without altering aim
+    const extraMoveKeys = {
+        up: false,
+        down: false,
+        left: false,
+        right: false
+    };
+
+    function getHost() {
+        const gs = window.gameState || (typeof gameState !== 'undefined' ? gameState : null);
+        if (gs && gs.speakovHost) return gs.speakovHost;
+        if (window.speakovHost) return window.speakovHost;
+        return null;
+    }
+
+    function isPointerLocked(host) {
+        if (!host) return !!document.pointerLockElement;
+        const cur = document.pointerLockElement || (host.shadow && host.shadow.pointerLockElement);
+        if (!cur) return false;
+        return cur === document.body || cur === host.host || cur === host.canvas || cur === host.shadow?.pointerLockElement || cur === document.documentElement;
+    }
+
+    // Ensure custom CSS rule for guaranteed cursor hiding
+    function updateCursorStyle(enable) {
+        let style = document.getElementById('__duckovCursorStyle');
+        if (!style) {
+            style = document.createElement('style');
+            style.id = '__duckovCursorStyle';
+            style.textContent = `
+                .duckov-fp-active, .duckov-fp-active *, .duckov-fp-active canvas {
+                    cursor: none !important;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        if (enable) {
+            document.body.classList.add('duckov-fp-active');
+            const host = getHost();
+            if (host?.host) host.host.classList.add('duckov-fp-active');
+        } else {
+            document.body.classList.remove('duckov-fp-active');
+            const host = getHost();
+            if (host?.host) host.host.classList.remove('duckov-fp-active');
+        }
+    }
+
+    function initDuckovFpHook(host) {
+        if (!host) return false;
+
+        // Save original functions once to prevent wrapper nesting on re-execution
+        if (!host.__duckovOrigUpdateCam) host.__duckovOrigUpdateCam = host.updateCamera.bind(host);
+        if (!host.__duckovOrigUpdateInput) host.__duckovOrigUpdateInput = host.updateInput.bind(host);
+        if (!host.__duckovOrigUpdateVisuals) host.__duckovOrigUpdateVisuals = host.updateVisuals.bind(host);
+        if (!host.__duckovOrigAimAtScreen) host.__duckovOrigAimAtScreen = host.aimAtScreenPoint.bind(host);
+        if (!host.__duckovOrigUpdateMobileYaw) host.__duckovOrigUpdateMobileYaw = host.updateMobileYaw.bind(host);
+
+        // 1. Hook updateCamera to Character Eye Level
+        host.updateCamera = function(dt) {
+            if (state.enabled) {
+                const pos = this.viewDisplayPosition() ?? (typeof this.positionVector === 'function' ? this.positionVector(0, 0) : { x: 0, z: 0 });
+                const groundY = typeof this.standingY === 'function' ? this.standingY(pos.x, pos.z) : 0;
+                this.cameraGroundY += (groundY - this.cameraGroundY) * (1 - Math.exp(-dt / 0.15));
+
+                const viewId = typeof this.viewObjectId === 'function' ? this.viewObjectId() : this.localObjectId;
+                const yaw = state.yaw ?? (viewId !== null && this.playerYaws && this.playerYaws.get(viewId)) ?? 0;
+                const pitch = state.pitch || 0;
+
+                const eyeHeight = 0.95;
+                const forwardOffset = 0.22;
+                const camX = pos.x + Math.sin(yaw) * forwardOffset;
+                const camY = this.cameraGroundY + eyeHeight;
+                const camZ = pos.z + Math.cos(yaw) * forwardOffset;
+                this.camera.position.set(camX, camY, camZ);
+
+                const lookDist = 30.0;
+                const cosP = Math.cos(pitch);
+                const sinP = Math.sin(pitch);
+                const targetX = camX + Math.sin(yaw) * cosP * lookDist;
+                const targetY = camY - sinP * lookDist;
+                const targetZ = camZ + Math.cos(yaw) * cosP * lookDist;
+                this.camera.lookAt(targetX, targetY, targetZ);
+
+                // FPS FOV (85 normal, 60 when holding right-click for ADS zoom)
+                const targetFov = state.ads ? 60 : 85;
+                if (this.camera.fov !== targetFov) {
+                    this.camera.fov = targetFov;
+                    this.camera.updateProjectionMatrix();
+                }
+            } else {
+                if (this.camera.fov !== 48) {
+                    this.camera.fov = 48;
+                    this.camera.updateProjectionMatrix();
+                }
+                host.__duckovOrigUpdateCam(dt);
+            }
+        };
+
+        // 2. Prevent movement from rotating aim (Fix for "moving left or right arrows will also move the aim")
+        host.updateMobileYaw = function(nowMs, pos) {
+            if (state.enabled) return;
+            host.__duckovOrigUpdateMobileYaw(nowMs, pos);
+        };
+
+        // 3. Hook updateInput: Rotate WASD & Arrow movement into camera view direction without altering aim
+        host.updateInput = function(nowMs, dt) {
+            if (state.enabled && this.canAcceptGameplayInput() && this.localObjectId !== null && this.mapGeometry !== null) {
+                const hasW = this.pressedKeys.has('w') || extraMoveKeys.up;
+                const hasA = this.pressedKeys.has('a') || extraMoveKeys.left;
+                const hasS = this.pressedKeys.has('s') || extraMoveKeys.down;
+                const hasD = this.pressedKeys.has('d') || extraMoveKeys.right;
+
+                if (hasW || hasA || hasS || hasD) {
+                    this.pressedKeys.delete('w');
+                    this.pressedKeys.delete('a');
+                    this.pressedKeys.delete('s');
+                    this.pressedKeys.delete('d');
+
+                    const fwd = (hasW ? 1 : 0) - (hasS ? 1 : 0);
+                    const strafe = (hasD ? 1 : 0) - (hasA ? 1 : 0);
+                    const len = Math.hypot(fwd, strafe);
+                    const nfwd = len > 1 ? fwd / len : fwd;
+                    const nstrafe = len > 1 ? strafe / len : strafe;
+
+                    const curYaw = state.yaw ?? (this.localObjectId !== null && this.playerYaws.get(this.localObjectId)) ?? 0;
+                    const fwdX = Math.sin(curYaw);
+                    const fwdZ = Math.cos(curYaw);
+                    const rightX = -Math.cos(curYaw);
+                    const rightZ = Math.sin(curYaw);
+
+                    this.joystickVector.x = nfwd * fwdX + nstrafe * rightX;
+                    this.joystickVector.y = nfwd * fwdZ + nstrafe * rightZ;
+
+                    host.__duckovOrigUpdateInput(nowMs, dt);
+
+                    // Re-apply current mouse aim yaw so joystick processing doesn't override character facing
+                    if (this.localObjectId !== null && state.yaw !== undefined) {
+                        this.playerYaws.set(this.localObjectId, state.yaw);
+                    }
+
+                    if (this.pressedKeys.has('w') || extraMoveKeys.up) this.pressedKeys.add('w');
+                    if (this.pressedKeys.has('a') || extraMoveKeys.left) this.pressedKeys.add('a');
+                    if (this.pressedKeys.has('s') || extraMoveKeys.down) this.pressedKeys.add('s');
+                    if (this.pressedKeys.has('d') || extraMoveKeys.right) this.pressedKeys.add('d');
+
+                    this.joystickVector.set(0, 0);
+                    return;
+                }
+            }
+            host.__duckovOrigUpdateInput(nowMs, dt);
+        };
+
+        // 4. Hide local avatar head/body in FP
+        host.updateVisuals = function(dt, now) {
+            host.__duckovOrigUpdateVisuals(dt, now);
+            if (this.localObjectId !== null && this.playerVisuals) {
+                const me = this.playerVisuals.get(this.localObjectId);
+                if (me && me.root) {
+                    me.root.visible = !state.enabled;
+                }
+            }
+        };
+
+        // 5. Prevent 2D ground raycaster from overriding yaw in FP
+        host.aimAtScreenPoint = function(x, y) {
+            if (state.enabled) return;
+            host.__duckovOrigAimAtScreen(x, y);
+        };
+
+        // 6. Disable 2D ground flashlight mask in FP
+        if (host.visionCone && typeof host.visionCone.setEnabled === 'function') {
+            if (!host.visionCone.__origSetEnabled) {
+                host.visionCone.__origSetEnabled = host.visionCone.setEnabled.bind(host.visionCone);
+            }
+            host.visionCone.setEnabled = function(en) {
+                host.visionCone.__origSetEnabled(state.enabled ? false : en);
+            };
+        }
+
+        // 7. Extend Enemy Rendering Distance across full draw distance (Fix for "rendering distance of enemies is too short")
+        if (host.enemyVisibility) {
+            if (!host.enemyVisibility.__origIsInView) {
+                host.enemyVisibility.__origIsInView = host.enemyVisibility.isInView.bind(host.enemyVisibility);
+                host.enemyVisibility.__origIsHidden = host.enemyVisibility.isHidden.bind(host.enemyVisibility);
+                host.enemyVisibility.__origIsShown = host.enemyVisibility.isShown.bind(host.enemyVisibility);
+            }
+            host.enemyVisibility.isInView = function(pos) {
+                if (state.enabled) return true;
+                return this.__origIsInView(pos);
+            };
+            host.enemyVisibility.isHidden = function(id) {
+                if (state.enabled) return false;
+                return this.__origIsHidden(id);
+            };
+            host.enemyVisibility.isShown = function(id) {
+                if (state.enabled) return true;
+                return this.__origIsShown(id);
+            };
+        }
+
+        // 8. 360° Infinite Mouse Look & Bullet Alignment
+        let lastClientX = null;
+        let lastClientY = null;
+
+        const onMouseMove = (e) => {
+            if (!state.enabled || !host.active || host.localObjectId === null) return;
+            if (e.__duckovProcessed) return;
+            e.__duckovProcessed = true;
+
+            const locked = isPointerLocked(host);
+            let dx = 0;
+            let dy = 0;
+
+            if (locked) {
+                dx = e.movementX || 0;
+                dy = e.movementY || 0;
+                lastClientX = e.clientX;
+                lastClientY = e.clientY;
+            } else {
+                if (lastClientX !== null && lastClientY !== null) {
+                    dx = e.clientX - lastClientX;
+                    dy = e.clientY - lastClientY;
+                }
+                lastClientX = e.clientX;
+                lastClientY = e.clientY;
+            }
+
+            if (dx === 0 && dy === 0) return;
+
+            if (state.invertX) dx = -dx;
+            if (state.invertY) dy = -dy;
+
+            // YAW: Horizontal 360 rotation (mouse right -> turn right)
+            state.yaw = (state.yaw || 0) - dx * state.sensitivity;
+            state.yaw = Math.atan2(Math.sin(state.yaw), Math.cos(state.yaw));
+            host.playerYaws.set(host.localObjectId, state.yaw);
+
+            // PITCH: Vertical view angle
+            state.pitch = Math.max(-1.15, Math.min(1.15, (state.pitch || 0) + dy * state.sensitivity));
+
+            // Align weapon aimPoint with 3D crosshair ray
+            const pos = host.playerPositions.get(host.localObjectId);
+            if (pos) {
+                const groundY = typeof host.standingY === 'function' ? host.standingY(pos.x, pos.z) : 0;
+                const cosP = Math.cos(state.pitch);
+                const sinP = Math.sin(state.pitch);
+                host.aimPoint.set(
+                    pos.x + Math.sin(state.yaw) * cosP * 25,
+                    groundY + 0.95 - sinP * 25,
+                    pos.z + Math.cos(state.yaw) * cosP * 25
+                );
+            }
+        };
+
+        const acquirePointerLock = () => {
+            if (!state.enabled) return;
+            const targets = [document.body, host.host, host.canvas, document.documentElement].filter(Boolean);
+            for (const target of targets) {
+                try {
+                    const res = target.requestPointerLock();
+                    if (res && typeof res.catch === 'function') res.catch(() => {});
+                    break;
+                } catch (_) {}
+            }
+        };
+
+        if (host.canvas && !host.canvas.__duckovFpEvents) {
+            host.canvas.__duckovFpEvents = true;
+
+            host.canvas.addEventListener('click', acquirePointerLock);
+            host.canvas.addEventListener('pointerdown', (e) => {
+                if (state.enabled && e.button === 0) acquirePointerLock();
+            });
+
+            host.canvas.addEventListener('mousemove', onMouseMove);
+            host.canvas.addEventListener('pointermove', onMouseMove);
+
+            // ADS (Right-click zoom)
+            host.canvas.addEventListener('mousedown', (e) => {
+                if (state.enabled && e.button === 2) {
+                    e.preventDefault();
+                    state.ads = true;
+                }
+            });
+            host.canvas.addEventListener('contextmenu', (e) => {
+                if (state.enabled) e.preventDefault();
+            });
+        }
+
+        if (!window.__duckovGlobalMouseHooked) {
+            window.__duckovGlobalMouseHooked = true;
+
+            window.addEventListener('click', acquirePointerLock, { capture: true });
+            window.addEventListener('pointerdown', (e) => {
+                if (state.enabled && e.button === 0) acquirePointerLock();
+            }, { capture: true });
+
+            window.addEventListener('mousemove', onMouseMove, { capture: true });
+            window.addEventListener('pointermove', onMouseMove, { capture: true });
+
+            document.addEventListener('pointerlockchange', () => {
+                const curHost = getHost();
+                state.isLocked = isPointerLocked(curHost);
+                console.log(`[Duckov FP] Pointer Lock: ${state.isLocked ? 'LOCKED' : 'UNLOCKED'}`);
+            });
+
+            window.addEventListener('mouseup', (e) => {
+                if (e.button === 2) state.ads = false;
+            });
+
+            // Arrow keys movement listeners
+            window.addEventListener('keydown', (e) => {
+                if (!state.enabled) return;
+                const tag = document.activeElement ? (document.activeElement.tagName || '').toLowerCase() : '';
+                if (tag === 'input' || tag === 'textarea' || document.activeElement?.isContentEditable) return;
+
+                if (e.code === 'ArrowUp' || e.key === 'ArrowUp') { extraMoveKeys.up = true; e.preventDefault(); }
+                if (e.code === 'ArrowDown' || e.key === 'ArrowDown') { extraMoveKeys.down = true; e.preventDefault(); }
+                if (e.code === 'ArrowLeft' || e.key === 'ArrowLeft') { extraMoveKeys.left = true; e.preventDefault(); }
+                if (e.code === 'ArrowRight' || e.key === 'ArrowRight') { extraMoveKeys.right = true; e.preventDefault(); }
+            });
+
+            window.addEventListener('keyup', (e) => {
+                if (e.code === 'ArrowUp' || e.key === 'ArrowUp') extraMoveKeys.up = false;
+                if (e.code === 'ArrowDown' || e.key === 'ArrowDown') extraMoveKeys.down = false;
+                if (e.code === 'ArrowLeft' || e.key === 'ArrowLeft') extraMoveKeys.left = false;
+                if (e.code === 'ArrowRight' || e.key === 'ArrowRight') extraMoveKeys.right = false;
+            });
+        }
+
+        return true;
+    }
+
+    function updateCrosshair(host) {
+        if (!host || !host.hudRoot) return;
+        let ch = host.hudRoot.querySelector('.duckov-fp-crosshair');
+        if (!ch) {
+            ch = document.createElement('div');
+            ch.className = 'duckov-fp-crosshair';
+            ch.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:20px;height:20px;pointer-events:none;z-index:999;display:none;';
+            ch.innerHTML = `
+                <div style="position:absolute;left:9px;top:9px;width:2px;height:2px;background:#00ffcc;border-radius:50%;box-shadow:0 0 3px #000;"></div>
+                <div style="position:absolute;left:9px;top:2px;width:2px;height:5px;background:rgba(255,255,255,0.9);box-shadow:0 0 2px #000;"></div>
+                <div style="position:absolute;left:9px;bottom:2px;width:2px;height:5px;background:rgba(255,255,255,0.9);box-shadow:0 0 2px #000;"></div>
+                <div style="position:absolute;top:9px;left:2px;width:5px;height:2px;background:rgba(255,255,255,0.9);box-shadow:0 0 2px #000;"></div>
+                <div style="position:absolute;top:9px;right:2px;width:5px;height:2px;background:rgba(255,255,255,0.9);box-shadow:0 0 2px #000;"></div>
+            `;
+            host.hudRoot.appendChild(ch);
+        }
+        ch.style.display = state.enabled ? 'block' : 'none';
+    }
+
+    window.testDuckovFP = function(enable) {
+        const host = getHost();
+        if (!host) {
+            console.error('%c[Duckov FP Test] ERROR: speakovHost could not be found! Make sure you are inside Duckov match and gameState is loaded.', 'color: #ff4444; font-weight: bold; font-size: 14px;');
+            return 'ERROR: speakovHost not found';
+        }
+
+        state.enabled = (typeof enable === 'boolean') ? enable : !state.enabled;
+        initDuckovFpHook(host);
+        updateCrosshair(host);
+        updateCursorStyle(state.enabled);
+
+        if (state.enabled) {
+            state.yaw = (host.localObjectId !== null && host.playerYaws.get(host.localObjectId)) ?? Math.PI;
+            state.pitch = 0;
+            try {
+                if (!isPointerLocked(host)) {
+                    const res = document.body.requestPointerLock ? document.body.requestPointerLock() : host.canvas?.requestPointerLock();
+                    if (res && typeof res.catch === 'function') res.catch(() => {});
+                }
+            } catch (_) {}
+        } else {
+            if (document.pointerLockElement) {
+                try { document.exitPointerLock(); } catch (_) {}
+            }
+            if (host.camera && host.camera.fov !== 48) {
+                host.camera.fov = 48;
+                host.camera.updateProjectionMatrix();
+            }
+            if (host.localObjectId !== null && host.playerVisuals) {
+                const me = host.playerVisuals.get(host.localObjectId);
+                if (me && me.root) me.root.visible = true;
+            }
+        }
+
+        console.log(`%c[Duckov FP Test] 1st Person Camera: ${state.enabled ? 'ON' : 'OFF'}`, `color: ${state.enabled ? '#44ff88' : '#ff8888'}; font-weight: bold; font-size: 14px;`);
+        console.log("Controls: Left-click anywhere to lock mouse (360 look), WASD or Arrow Keys to move, Right-click hold for ADS zoom, 'V' to toggle.");
+        return `Duckov First-Person is now ${state.enabled ? 'ENABLED' : 'DISABLED'}`;
+    };
+
+    // Hotkey V listener
+    if (!window.__duckovFpHotkeyBound) {
+        window.__duckovFpHotkeyBound = true;
+        window.addEventListener('keydown', (e) => {
+            if ((e.key === 'v' || e.key === 'V' || e.code === 'KeyV') && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                const tag = document.activeElement ? (document.activeElement.tagName || '').toLowerCase() : '';
+                if (tag === 'input' || tag === 'textarea' || document.activeElement?.isContentEditable) return;
+                const host = getHost();
+                if (host && host.active) {
+                    e.preventDefault();
+                    window.testDuckovFP();
+                }
+            }
+        });
+    }
+
+    const host = getHost();
+    if (host) initDuckovFpHook(host);
+    window.testDuckovFP(true);
+})();
+
 
 
 const SPKMOD_ACCOUNTS_KEY = "spkmod-saved-accounts";
