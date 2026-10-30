@@ -3899,7 +3899,7 @@ function ensureJukeboxThumbPreview() {
     if (lunJukeboxThumbPreview) return lunJukeboxThumbPreview;
     lunJukeboxThumbPreview = document.createElement("img");
     lunJukeboxThumbPreview.id = "spkmod-jukebox-thumb-preview";
-    lunJukeboxThumbPreview.style.cssText = "display: none; position: fixed; width: 280px; height: 158px; max-width: 90vw; border-radius: 10px; box-shadow: 0 12px 36px rgba(0,0,0,0.85); border: 2px solid var(--spkmod-accent, #e8b84b); background: #1a1424; object-fit: cover; z-index: 2147483647 !important; pointer-events: none; transition: opacity 0.15s ease-out;";
+    lunJukeboxThumbPreview.style.cssText = "display: none; position: fixed; width: 380px; height: 214px; max-width: 92vw; max-height: 85vh; border-radius: 12px; box-shadow: 0 16px 40px rgba(0,0,0,0.9); border: 2px solid var(--spkmod-accent, #e8b84b); background: #1a1424; object-fit: cover; z-index: 2147483647 !important; pointer-events: none; transition: opacity 0.15s ease-out;";
     document.body.appendChild(lunJukeboxThumbPreview);
     return lunJukeboxThumbPreview;
 }
@@ -3907,8 +3907,8 @@ function ensureJukeboxThumbPreview() {
 function positionJukeboxThumbPreview(thumbEl) {
     if (!thumbEl || !lunJukeboxThumbPreview) return;
     const rect = thumbEl.getBoundingClientRect();
-    const prevW = 280;
-    const prevH = 158;
+    const prevW = 380;
+    const prevH = 214;
 
     let left = rect.left + rect.width / 2 - prevW / 2;
     left = Math.max(12, Math.min(left, window.innerWidth - prevW - 12));
@@ -4575,7 +4575,7 @@ function buildJukeboxUI() {
     const modal = buildElement("div", {
         id: "spkmod-jukebox-modal",
         className: "spkmod-music-modal" + (state.modalVisible ? "" : " hidden") + (state.isMiniMode ? " spkmod-mini-mode" : ""),
-        style: `position: fixed; left: ${initLeft}px; top: ${initTop}px; bottom: auto !important; right: auto !important; width: ${savedW}px; height: ${isDrawerOpen ? savedH + 'px' : 'auto'}; min-width: 340px; min-height: 170px; max-width: 98vw; max-height: 95vh; background: linear-gradient(180deg, #2a2038 0%, #1a1424 100%); border: 2px solid var(--spkmod-accent, #e8b84b); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.15); font-family: Pretendard, system-ui, -apple-system, sans-serif; color: #fff; z-index: 2147483600 !important; padding: 14px 16px; box-sizing: border-box; user-select: none; display: flex; flex-direction: column; gap: 10px; overflow: hidden;`
+        style: `position: fixed; left: ${initLeft}px; top: ${initTop}px; bottom: auto !important; right: auto !important; width: ${savedW}px; height: ${isDrawerOpen ? savedH + 'px' : 'auto'}; max-width: 98vw; max-height: 95vh; background: linear-gradient(180deg, #2a2038 0%, #1a1424 100%); border: 2px solid var(--spkmod-accent, #e8b84b); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.15); font-family: Pretendard, system-ui, -apple-system, sans-serif; color: #fff; z-index: 2147483600 !important; padding: 14px 16px; box-sizing: border-box; user-select: none; display: flex; flex-direction: column; gap: 10px; overflow: hidden;`
     });
 
     const activeTracks = getActiveJukeboxTracks();
@@ -4595,18 +4595,18 @@ function buildJukeboxUI() {
             </div>
         </div>
 
-        <div id="spkmod-jukebox-track-info" style="display:flex;align-items:center;gap:10px;background:rgba(0,0,0,0.3);padding:8px 10px;border-radius:10px;overflow:hidden;cursor:move;">
+        <div id="spkmod-jukebox-track-info" style="display:flex;align-items:center;gap:12px;background:rgba(0,0,0,0.32);padding:10px 12px;border-radius:12px;overflow:hidden;cursor:move;flex-shrink:0;min-height:62px;box-sizing:border-box;">
             <button class="spkmod-mini-expand-btn" id="spkmod-jukebox-mini-expand" title="${getJukeboxText('jukeboxMiniPlayerExpand')}" style="background:#e8b84b;border:none;color:#1a1424;border-radius:6px;width:24px;height:24px;cursor:pointer;font-size:12px;display:none;align-items:center;justify-content:center;flex-shrink:0;">⛶</button>
-            <img id="spkmod-jukebox-thumb" src="https://img.youtube.com/vi/${curVid}/mqdefault.jpg" style="width:46px;height:46px;border-radius:8px;object-fit:cover;border:1px solid rgba(232,184,75,0.4);flex-shrink:0;background:#1a1424;cursor:zoom-in;pointer-events:auto;">
-            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;">
-                <div id="spkmod-jukebox-title" style="font-size:13px;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+            <img id="spkmod-jukebox-thumb" src="https://img.youtube.com/vi/${curVid}/mqdefault.jpg" style="width:52px;height:52px;border-radius:8px;object-fit:cover;border:1px solid rgba(232,184,75,0.4);flex-shrink:0;background:#1a1424;cursor:zoom-in;pointer-events:auto;">
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;justify-content:center;">
+                <div id="spkmod-jukebox-title" style="font-size:13.5px;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3;">
                     ${state.currentTrackTitle}
                 </div>
-                <div id="spkmod-jukebox-author" style="font-size:11px;color:#e8b84b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:${state.currentTrackAuthor ? 'block' : 'none'};">
+                <div id="spkmod-jukebox-author" style="font-size:11.5px;color:#e8b84b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:${state.currentTrackAuthor ? 'block' : 'none'};line-height:1.2;">
                     ${state.currentTrackAuthor}
                 </div>
             </div>
-            <button id="spkmod-jukebox-heart-btn" title="${isJukeboxTrackFavorite(curVid) ? getJukeboxText('jukeboxRemoveFavorite') : getJukeboxText('jukeboxAddFavorite')}" style="background:transparent;border:none;cursor:pointer;font-size:16px;line-height:1;padding:4px;display:flex;align-items:center;justify-content:center;transition:transform 0.15s;flex-shrink:0;">${isJukeboxTrackFavorite(curVid) ? '❤️' : '🤍'}</button>
+            <button id="spkmod-jukebox-heart-btn" title="${isJukeboxTrackFavorite(curVid) ? getJukeboxText('jukeboxRemoveFavorite') : getJukeboxText('jukeboxAddFavorite')}" style="background:transparent;border:none;cursor:pointer;font-size:18px;line-height:1;padding:6px;display:flex;align-items:center;justify-content:center;transition:transform 0.15s;flex-shrink:0;">${isJukeboxTrackFavorite(curVid) ? '❤️' : '🤍'}</button>
         </div>
 
         <div id="spkmod-jukebox-seek-row" style="display:flex;flex-direction:column;gap:4px;">
@@ -6718,9 +6718,17 @@ document.head.appendChild(buildElement(
 			z-index: 2147483647 !important;
 		}
 
+		#spkmod-jukebox-modal:not(.spkmod-mini-mode) {
+			min-width: 340px;
+			min-height: 220px;
+		}
 		#spkmod-jukebox-modal.spkmod-mini-mode {
 			width: 290px !important;
 			height: 42px !important;
+			min-width: 0 !important;
+			max-width: 290px !important;
+			min-height: 0 !important;
+			max-height: 42px !important;
 			padding: 4px 10px !important;
 			border-radius: 24px !important;
 			flex-direction: row !important;
@@ -6753,9 +6761,25 @@ document.head.appendChild(buildElement(
 			background: transparent !important;
 			flex: 1 !important;
 			min-width: 0 !important;
+			min-height: 0 !important;
 		}
 		#spkmod-jukebox-modal.spkmod-mini-mode #spkmod-jukebox-title {
 			font-size: 11px !important;
+		}
+		#spkmod-jukebox-modal.spkmod-mini-mode #spkmod-jukebox-controls-row {
+			padding: 0 !important;
+			gap: 4px !important;
+			flex-shrink: 0 !important;
+		}
+		#spkmod-jukebox-modal.spkmod-mini-mode #spkmod-jukebox-controls-row button {
+			width: 26px !important;
+			height: 26px !important;
+			font-size: 12px !important;
+		}
+		#spkmod-jukebox-modal.spkmod-mini-mode #spkmod-jukebox-play {
+			width: 30px !important;
+			height: 30px !important;
+			font-size: 14px !important;
 		}
 		#spkmod-jukebox-modal.spkmod-mini-mode .spkmod-mini-expand-btn {
 			display: flex !important;
