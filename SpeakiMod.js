@@ -21015,7 +21015,7 @@ function isQuestPanel(panel) {
 
 	// 2. Positive checks - Quest Panel indicators
 	// A: Quest keyword in title
-	const questKeywords = ["quest", "퀘스트", "クエスト", "任務", "misión", "mision", "quête", "aufgabe"];
+	const questKeywords = ["quest", "퀘스트", "クエスト", "任務", "任务", "misión", "mision", "quête", "aufgabe"];
 	for (const qKw of questKeywords) {
 		if (headerText.includes(qKw)) return true;
 	}
@@ -21026,9 +21026,9 @@ function isQuestPanel(panel) {
 		for (const tb of tabBtns) {
 			const txt = (tb.textContent || "").toLowerCase();
 			if (
-				txt.includes("daily") || txt.includes("일일") || txt.includes("デイリー") || txt.includes("diaria") || txt.includes("每日") ||
-				txt.includes("week") || txt.includes("주간") || txt.includes("ウィークリー") || txt.includes("semanal") || txt.includes("每周") ||
-				txt.includes("stand") || txt.includes("perma") || txt.includes("상시") || txt.includes("常設") || txt.includes("permanente") || txt.includes("永久")
+				txt.includes("daily") || txt.includes("일일") || txt.includes("デイリー") || txt.includes("diaria") || txt.includes("每日") || txt.includes("日常") ||
+				txt.includes("week") || txt.includes("주간") || txt.includes("ウィークリー") || txt.includes("semanal") || txt.includes("每周") || txt.includes("周常") ||
+				txt.includes("stand") || txt.includes("perma") || txt.includes("상시") || txt.includes("常設") || txt.includes("permanente") || txt.includes("永久") || txt.includes("常驻")
 			) {
 				return true;
 			}
